@@ -2,3 +2,16 @@
 .env*.local
 node_modules
 .next
+
+# TypeScript 增量编译缓存
+tsconfig.tsbuildinfo
+
+# WSL 上从 Windows 拖入的元数据
+*:Zone.Identifier
+
+# 误放在仓库根目录的临时素材（图片应放 public/）
+/*.jfif
+/*.webp
+/*.jpg
+/*.jpeg
+/*.png
