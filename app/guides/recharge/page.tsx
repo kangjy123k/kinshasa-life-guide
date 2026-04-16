@@ -3,7 +3,7 @@ import { ArrowLeft, Info } from "lucide-react";
 
 export const metadata = {
   title: "本地话费充值指南 — 刚果金华人生活服务",
-  description: "刚果金 Africell · Airtel · Orange · VodaCom 常用 USSD 代码速查",
+  description: "刚果金 VodaCom · Orange · Airtel · Africell 常用 USSD 代码速查",
 };
 
 interface Item {
@@ -21,27 +21,15 @@ interface Carrier {
 
 const carriers: Carrier[] = [
   {
-    name: "Africell",
-    color: "from-violet-500 to-purple-600",
-    apn: "internet",
+    name: "VodaCom",
+    color: "from-red-500 to-red-600",
+    apn: "vodanet",
     items: [
-      { label: "查特惠流量", value: "*111*100#", isUssd: true },
-      { label: "查询余额", value: "*1000#", isUssd: true },
-      { label: "查询号码", value: "*1000#", isUssd: true },
-      { label: "查询流量", value: "*111*11#", isUssd: true },
-      { label: "购买流量", value: "*111*1#", isUssd: true },
-    ],
-  },
-  {
-    name: "Airtel",
-    color: "from-rose-500 to-pink-500",
-    apn: "internet",
-    items: [
-      { label: "包月流量", value: "拨打 *425# 后依次选 5，选套餐，选 1" },
-      { label: "查询余额", value: "*565#", isUssd: true },
-      { label: "查询号码", value: "*502#", isUssd: true },
-      { label: "查询流量", value: "拨打 *425# 后选 8" },
-      { label: "购买流量", value: "*425#", isUssd: true },
+      { label: "关套餐外流量", value: "*1468#", isUssd: true },
+      { label: "查询余额", value: "*1100#", isUssd: true },
+      { label: "查询号码", value: "*1489#", isUssd: true },
+      { label: "查询流量", value: "*1100*2#", isUssd: true },
+      { label: "购买流量", value: "*1111*1*4*1#", isUssd: true },
     ],
   },
   {
@@ -59,15 +47,27 @@ const carriers: Carrier[] = [
     ],
   },
   {
-    name: "VodaCom",
-    color: "from-red-500 to-red-600",
-    apn: "vodanet",
+    name: "Airtel",
+    color: "from-rose-500 to-pink-500",
+    apn: "internet",
     items: [
-      { label: "关套餐外流量", value: "*1468#", isUssd: true },
-      { label: "查询余额", value: "*1100#", isUssd: true },
-      { label: "查询号码", value: "*1489#", isUssd: true },
-      { label: "查询流量", value: "*1100*2#", isUssd: true },
-      { label: "购买流量", value: "*1111*1*4*1#", isUssd: true },
+      { label: "包月流量", value: "拨打 *425# 后依次选 5，选套餐，选 1" },
+      { label: "查询余额", value: "*565#", isUssd: true },
+      { label: "查询号码", value: "*502#", isUssd: true },
+      { label: "查询流量", value: "拨打 *425# 后选 8" },
+      { label: "购买流量", value: "*425#", isUssd: true },
+    ],
+  },
+  {
+    name: "Africell",
+    color: "from-violet-500 to-purple-600",
+    apn: "internet",
+    items: [
+      { label: "查特惠流量", value: "*111*100#", isUssd: true },
+      { label: "查询余额", value: "*1000#", isUssd: true },
+      { label: "查询号码", value: "*1000#", isUssd: true },
+      { label: "查询流量", value: "*111*11#", isUssd: true },
+      { label: "购买流量", value: "*111*1#", isUssd: true },
     ],
   },
 ];
@@ -89,7 +89,7 @@ export default function RechargeGuidePage() {
           </Link>
           <h1 className="text-2xl md:text-3xl font-black">本地话费充值指南</h1>
           <p className="text-sm md:text-base text-sky-100 mt-1">
-            刚果金 Africell · Airtel · Orange · VodaCom 常用 USSD 速查
+            刚果金 VodaCom · Orange · Airtel · Africell 常用 USSD 速查
           </p>
         </div>
       </header>
