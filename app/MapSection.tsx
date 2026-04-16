@@ -92,6 +92,15 @@ export default function MapSection({
     setMounted(true);
     return () => setMounted(false);
   }, []);
+  // 全屏时锁住 body 滚动,避免双层滚动
+  useEffect(() => {
+    if (!activated) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [activated]);
   const catMap = useMemo(() => {
     const m = new Map<string, MapCategory>();
     categories.forEach((c) => m.set(c.key, c));
@@ -146,16 +155,49 @@ export default function MapSection({
         </div>
       </div>
 
-      <div
-        className={`${
-          activated ? "h-[480px] md:h-[560px]" : "h-[220px] md:h-[280px]"
-        } w-full relative transition-[height] duration-300 ease-out`}
-      >
-        {!mounted ? (
-          <div className="h-full w-full flex items-center justify-center text-sky-400 text-sm">
-            地图加载中…
+      <div className="h-[220px] md:h-[280px] w-full relative bg-sky-50/40">
+        {activated && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xs text-sky-600 bg-white/95 px-3 py-1.5 rounded-full shadow-sm ring-1 ring-sky-100">
+              📍 地图已全屏 · 点"收起"返回
+            </span>
           </div>
-        ) : (
+        )}
+        <div
+          className={
+            activated
+              ? "fixed inset-0 z-[9999] bg-white flex flex-col"
+              : "absolute inset-0"
+          }
+        >
+          {activated && (
+            <div
+              className="flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur shadow-sm border-b border-sky-100 shrink-0"
+              style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+            >
+              <span className="text-sm font-semibold text-sky-700 inline-flex items-center gap-1.5">
+                <span>📍</span>
+                <span>商家地图</span>
+                <span className="text-xs text-gray-400 font-normal">
+                  · {markers.length} 家
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setActivated(false)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-700 active:bg-sky-200"
+              >
+                <span>✕</span>
+                <span>收起</span>
+              </button>
+            </div>
+          )}
+          <div className={activated ? "flex-1 relative" : "h-full w-full relative"}>
+            {!mounted ? (
+              <div className="h-full w-full flex items-center justify-center text-sky-400 text-sm">
+                地图加载中…
+              </div>
+            ) : (
         <MapContainer
           key={mapKey}
           center={KINSHASA_CENTER}
@@ -224,29 +266,21 @@ export default function MapSection({
         </MapContainer>
         )
         }
-        {mounted && !activated && (
-          <button
-            type="button"
-            onClick={() => setActivated(true)}
-            aria-label="激活地图"
-            className="absolute inset-0 z-[600] flex items-center justify-center bg-white/35 backdrop-blur-[3px] transition-opacity duration-200 active:bg-white/25 cursor-pointer"
-          >
-            <span className="flex items-center gap-2 bg-white/95 text-sky-700 px-4 py-2 rounded-full text-sm font-semibold shadow-lg ring-1 ring-sky-100">
-              <span className="text-base">👆</span>
-              <span>点击激活地图</span>
-            </span>
-          </button>
-        )}
-        {mounted && activated && (
-          <button
-            type="button"
-            onClick={() => setActivated(false)}
-            className="absolute top-2 right-2 z-[600] inline-flex items-center gap-1 bg-white/95 text-gray-600 hover:text-sky-700 px-2.5 py-1.5 rounded-full text-xs font-semibold shadow-md ring-1 ring-sky-100"
-          >
-            <span>✕</span>
-            <span>收起地图</span>
-          </button>
-        )}
+            {mounted && !activated && (
+              <button
+                type="button"
+                onClick={() => setActivated(true)}
+                aria-label="点击全屏地图"
+                className="absolute inset-0 z-[600] flex items-center justify-center bg-white/35 backdrop-blur-[3px] transition-opacity duration-200 active:bg-white/25 cursor-pointer"
+              >
+                <span className="flex items-center gap-2 bg-white/95 text-sky-700 px-4 py-2 rounded-full text-sm font-semibold shadow-lg ring-1 ring-sky-100">
+                  <span className="text-base">👆</span>
+                  <span>点击全屏看地图</span>
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
       <div className="px-3 py-2 text-xs text-gray-500 bg-sky-50/50 border-t border-sky-100">
         共 {markers.length} 家
