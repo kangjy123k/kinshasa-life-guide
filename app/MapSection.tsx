@@ -63,6 +63,15 @@ function FocusController({
   return null;
 }
 
+function MapResizer({ activated }: { activated: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const t = setTimeout(() => map.invalidateSize(), 320);
+    return () => clearTimeout(t);
+  }, [activated, map]);
+  return null;
+}
+
 export default function MapSection({
   businesses,
   categories,
@@ -76,6 +85,7 @@ export default function MapSection({
 }) {
   const [activeKey, setActiveKey] = useState<string>("all");
   const [mounted, setMounted] = useState(false);
+  const [activated, setActivated] = useState(false);
   const [mapKey, setMapKey] = useState(() => `map-${Math.random().toString(36).slice(2)}`);
   useEffect(() => {
     setMapKey(`map-${Math.random().toString(36).slice(2)}`);
@@ -99,6 +109,8 @@ export default function MapSection({
       if (activeKey !== "all" && activeKey !== focused.category) {
         setActiveKey("all");
       }
+      // 外部聚焦商家时直接激活地图
+      setActivated(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focused?.id]);
@@ -134,7 +146,11 @@ export default function MapSection({
         </div>
       </div>
 
-      <div className="h-[380px] md:h-[460px] w-full relative">
+      <div
+        className={`${
+          activated ? "h-[480px] md:h-[560px]" : "h-[220px] md:h-[280px]"
+        } w-full relative transition-[height] duration-300 ease-out`}
+      >
         {!mounted ? (
           <div className="h-full w-full flex items-center justify-center text-sky-400 text-sm">
             地图加载中…
@@ -148,6 +164,7 @@ export default function MapSection({
           scrollWheelZoom
           style={{ height: "100%", width: "100%" }}
         >
+          <MapResizer activated={activated} />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -207,6 +224,29 @@ export default function MapSection({
         </MapContainer>
         )
         }
+        {mounted && !activated && (
+          <button
+            type="button"
+            onClick={() => setActivated(true)}
+            aria-label="激活地图"
+            className="absolute inset-0 z-[600] flex items-center justify-center bg-white/35 backdrop-blur-[3px] transition-opacity duration-200 active:bg-white/25 cursor-pointer"
+          >
+            <span className="flex items-center gap-2 bg-white/95 text-sky-700 px-4 py-2 rounded-full text-sm font-semibold shadow-lg ring-1 ring-sky-100">
+              <span className="text-base">👆</span>
+              <span>点击激活地图</span>
+            </span>
+          </button>
+        )}
+        {mounted && activated && (
+          <button
+            type="button"
+            onClick={() => setActivated(false)}
+            className="absolute top-2 right-2 z-[600] inline-flex items-center gap-1 bg-white/95 text-gray-600 hover:text-sky-700 px-2.5 py-1.5 rounded-full text-xs font-semibold shadow-md ring-1 ring-sky-100"
+          >
+            <span>✕</span>
+            <span>收起地图</span>
+          </button>
+        )}
       </div>
       <div className="px-3 py-2 text-xs text-gray-500 bg-sky-50/50 border-t border-sky-100">
         共 {markers.length} 家
