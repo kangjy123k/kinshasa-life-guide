@@ -726,6 +726,7 @@ interface AdSlide {
   bg: string;       // tailwind gradient
   emoji: string;
   phone?: string;
+  address?: string;
 }
 
 const ads: AdSlide[] = [
@@ -741,6 +742,7 @@ const ads: AdSlide[] = [
     bg: "from-amber-400 via-yellow-400 to-orange-400",
     emoji: "🏗️",
     phone: "+243823170887",
+    address: "中国城",
   },
 ];
 
@@ -1177,14 +1179,23 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
         <div className="flex-1 min-w-0">
           <p className="text-lg md:text-2xl font-bold leading-snug">{slide.title}</p>
           <p className="text-sm md:text-base text-white/90 mt-1">{slide.subtitle}</p>
-          {slide.phone && (
-            <a
-              href={`tel:${slide.phone.replace(/\s+/g, "")}`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur text-sm font-semibold"
-            >
-              <Phone size={14} /> {slide.phone}
-            </a>
+          {(slide.phone || slide.address) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {slide.phone && (
+                <a
+                  href={`tel:${slide.phone.replace(/\s+/g, "")}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur text-sm font-semibold"
+                >
+                  <Phone size={14} /> {slide.phone}
+                </a>
+              )}
+              {slide.address && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-sm font-medium">
+                  <MapPin size={14} /> {slide.address}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
