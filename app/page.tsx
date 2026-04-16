@@ -1056,21 +1056,44 @@ function HomeView({
         <Carousel index={adIndex} onChange={setAdIndex} />
       </section>
 
-      {/* ---- 官方公告 ---- */}
-      <section className="max-w-4xl mx-auto px-4 mt-6">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="w-1 h-5 bg-red-500 rounded-full" />
-          <h2 className="text-base font-bold text-gray-800">官方公告</h2>
-          <span className="text-xs text-gray-400">政府最新通告 · 请及时查看</span>
+      {/* ---- 官方公告 + 实用指南（并列） ---- */}
+      <section className="max-w-4xl mx-auto px-4 mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-5 bg-red-500 rounded-full" />
+            <h2 className="text-base font-bold text-gray-800">官方公告</h2>
+            <span className="text-xs text-gray-400 hidden sm:inline">政府最新通告</span>
+          </div>
+          <NoticeCard
+            href="/guides/notices/2026-04-10-foreign-workers"
+            tag="就业与劳动部"
+            title="制止违规雇佣外籍劳动者 — 30 日整改期"
+            summary="017/CAB/MIN.ET/FMM/JTN/04/2026 号公告，自 2026-04-10 起 30 个日历日内须补正外籍员工手续，否则可暂停经营并移送法院。"
+            issueDate="2026-04-10"
+            deadline="2026-05-10"
+          />
         </div>
-        <NoticeCard
-          href="/guides/notices/2026-04-10-foreign-workers"
-          tag="就业与劳动部"
-          title="制止违规雇佣外籍劳动者 — 30 日整改期"
-          summary="017/CAB/MIN.ET/FMM/JTN/04/2026 号公告，自 2026-04-10 起 30 个日历日内须补正外籍员工手续，否则可暂停经营并移送法院。"
-          issueDate="2026-04-10"
-          deadline="2026-05-10"
-        />
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-5 bg-emerald-400 rounded-full" />
+            <h2 className="text-base font-bold text-gray-800">实用指南</h2>
+            <span className="text-xs text-gray-400 hidden sm:inline">本地常用信息</span>
+          </div>
+          <Link
+            href="/guides/recharge"
+            className="group flex items-center gap-3 p-4 bg-white rounded-2xl shadow-sm border border-sky-100 hover:border-emerald-300 hover:shadow-md transition-all h-full"
+          >
+            <span className="w-12 h-12 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors shrink-0">
+              <Smartphone size={22} className="text-emerald-600" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800">本地话费充值指南</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Vodacom / Orange / Airtel / Africell USSD 速查
+              </p>
+            </div>
+          </Link>
+        </div>
       </section>
 
       {/* ---- 二级页面导航 ---- */}
@@ -1097,31 +1120,6 @@ function HomeView({
               </button>
             );
           })}
-        </div>
-      </section>
-
-      {/* ---- 实用指南 ---- */}
-      <section className="max-w-4xl mx-auto px-4 mt-8">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="w-1 h-5 bg-emerald-400 rounded-full" />
-          <h2 className="text-base font-bold text-gray-800">实用指南</h2>
-          <span className="text-xs text-gray-400">刚果金本地常用信息</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Link
-            href="/guides/recharge"
-            className="group flex items-center gap-3 p-4 bg-white rounded-2xl shadow-sm border border-sky-100 hover:border-emerald-300 hover:shadow-md transition-all"
-          >
-            <span className="w-12 h-12 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors shrink-0">
-              <Smartphone size={22} className="text-emerald-600" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800">本地话费充值指南</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Vodacom / Orange / Airtel / Africell USSD 速查
-              </p>
-            </div>
-          </Link>
         </div>
       </section>
 
