@@ -1056,43 +1056,42 @@ function HomeView({
         <Carousel index={adIndex} onChange={setAdIndex} />
       </section>
 
-      {/* ---- 官方公告 + 实用指南（并列） ---- */}
-      <section className="max-w-4xl mx-auto px-4 mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-1 h-5 bg-red-500 rounded-full" />
-            <h2 className="text-base font-bold text-gray-800">官方公告</h2>
-            <span className="text-xs text-gray-400 hidden sm:inline">政府最新通告</span>
-          </div>
-          <NoticeCard
-            href="/guides/notices/2026-04-10-foreign-workers"
-            tag="就业与劳动部"
-            title="制止违规雇佣外籍劳动者 — 30 日整改期"
-            summary="017/CAB/MIN.ET/FMM/JTN/04/2026 号公告，自 2026-04-10 起 30 个日历日内须补正外籍员工手续，否则可暂停经营并移送法院。"
-            issueDate="2026-04-10"
-            deadline="2026-05-10"
-          />
-        </div>
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-1 h-5 bg-emerald-400 rounded-full" />
-            <h2 className="text-base font-bold text-gray-800">实用指南</h2>
-            <span className="text-xs text-gray-400 hidden sm:inline">本地常用信息</span>
-          </div>
-          <Link
-            href="/guides/recharge"
-            className="group flex items-center gap-3 p-4 bg-white rounded-2xl shadow-sm border border-sky-100 hover:border-emerald-300 hover:shadow-md transition-all h-full"
-          >
-            <span className="w-12 h-12 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors shrink-0">
-              <Smartphone size={22} className="text-emerald-600" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800">本地话费充值指南</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Vodacom / Orange / Airtel / Africell USSD 速查
-              </p>
+      {/* ---- 官方公告 + 实用指南（移动端也并列对齐） ---- */}
+      <section className="max-w-4xl mx-auto px-4 mt-6">
+        <div className="grid grid-cols-2 gap-3 items-stretch">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="w-1 h-4 bg-red-500 rounded-full shrink-0" />
+              <h2 className="text-sm md:text-base font-bold text-gray-800 truncate">官方公告</h2>
             </div>
-          </Link>
+            <div className="flex-1">
+              <NoticeCard
+                href="/guides/notices/2026-04-10-foreign-workers"
+                tag="就业与劳动部"
+                title="制止违规雇佣外籍劳动者 — 30 日整改期"
+                summary="017/CAB/MIN.ET/FMM/JTN/04/2026 号公告，自 2026-04-10 起 30 个日历日内须补正外籍员工手续，否则可暂停经营并移送法院。"
+                issueDate="2026-04-10"
+                deadline="2026-05-10"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="w-1 h-4 bg-emerald-400 rounded-full shrink-0" />
+              <h2 className="text-sm md:text-base font-bold text-gray-800 truncate">实用指南</h2>
+            </div>
+            <div className="flex-1">
+              <GuideCard
+                href="/guides/recharge"
+                tag="通讯·话费"
+                title="本地话费充值指南"
+                summary="Vodacom · Orange · Airtel · Africell 充值码、查余额、Mobile Money、客服电话速查，点击直拨。"
+                footer="4 家运营商"
+                badge="USSD"
+                icon={<Smartphone size={12} />}
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1304,31 +1303,82 @@ function NoticeCard({
   return (
     <Link
       href={href}
-      className="block group rounded-2xl overflow-hidden shadow-sm border border-rose-100 hover:border-red-300 hover:shadow-md transition-all bg-white"
+      className="flex flex-col h-full group rounded-2xl overflow-hidden shadow-sm border border-rose-100 hover:border-red-300 hover:shadow-md transition-all bg-white"
     >
-      <div className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-4 py-2.5 flex items-center justify-between">
-        <div className="inline-flex items-center gap-1.5 text-xs font-semibold">
-          <AlertTriangle size={14} /> {tag}
+      <div className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-3 py-2 flex items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1 text-[11px] md:text-xs font-semibold min-w-0 truncate">
+          <AlertTriangle size={12} className="shrink-0" /> <span className="truncate">{tag}</span>
         </div>
         <span
-          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+          className={`text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
             urgent ? "bg-yellow-300 text-red-700" : "bg-white/25 text-white"
           }`}
         >
           剩 {daysLeft} 天
         </span>
       </div>
-      <div className="p-4">
-        <p className="text-base font-bold text-gray-900 leading-snug group-hover:text-red-600 transition-colors">
+      <div className="p-3 md:p-4 flex-1 flex flex-col">
+        <p className="text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
           {title}
         </p>
-        <p className="text-sm text-gray-600 mt-2 line-clamp-3 leading-relaxed">
+        <p className="text-xs md:text-sm text-gray-600 mt-2 line-clamp-3 leading-relaxed">
           {summary}
         </p>
-        <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-          <span>发布日：{issueDate}</span>
-          <span className="text-red-500 font-medium group-hover:underline">
-            查看全文 →
+        <div className="mt-auto pt-3 flex items-center justify-between text-[11px] md:text-xs text-gray-500">
+          <span className="truncate">{issueDate}</span>
+          <span className="text-red-500 font-medium group-hover:underline shrink-0">
+            查看 →
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  GuideCard — 实用指南卡片（与 NoticeCard 同结构对齐）                  */
+/* ------------------------------------------------------------------ */
+function GuideCard({
+  href,
+  tag,
+  title,
+  summary,
+  footer,
+  badge,
+  icon,
+}: {
+  href: string;
+  tag: string;
+  title: string;
+  summary: string;
+  footer: string;
+  badge: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col h-full group rounded-2xl overflow-hidden shadow-sm border border-emerald-100 hover:border-emerald-300 hover:shadow-md transition-all bg-white"
+    >
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-3 py-2 flex items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1 text-[11px] md:text-xs font-semibold min-w-0 truncate">
+          <span className="shrink-0">{icon}</span> <span className="truncate">{tag}</span>
+        </div>
+        <span className="text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded-full bg-white/25 text-white shrink-0">
+          {badge}
+        </span>
+      </div>
+      <div className="p-3 md:p-4 flex-1 flex flex-col">
+        <p className="text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-emerald-600 transition-colors">
+          {title}
+        </p>
+        <p className="text-xs md:text-sm text-gray-600 mt-2 line-clamp-3 leading-relaxed">
+          {summary}
+        </p>
+        <div className="mt-auto pt-3 flex items-center justify-between text-[11px] md:text-xs text-gray-500">
+          <span className="truncate">{footer}</span>
+          <span className="text-emerald-600 font-medium group-hover:underline shrink-0">
+            查看 →
           </span>
         </div>
       </div>
