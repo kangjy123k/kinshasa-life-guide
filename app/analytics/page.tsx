@@ -12,6 +12,9 @@ import {
   Smartphone,
   Monitor,
   ArrowLeft,
+  MapPin,
+  Globe2,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -30,6 +33,11 @@ interface VisitRecord {
   ua: string;
   referer: string;
   ip: string;
+  country?: string;
+  city?: string;
+  region?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 interface AnalyticsData {
@@ -57,6 +65,43 @@ function getDeviceType(ua: string): "手机" | "电脑" | "其他" {
 
 function uniqueIPs(visits: VisitRecord[]): number {
   return new Set(visits.map((v) => v.ip)).size;
+}
+
+function visitCity(v: VisitRecord): string {
+  return v.city?.trim() || "未知";
+}
+function visitRegion(v: VisitRecord): string {
+  return v.region?.trim() || "未知";
+}
+function visitCountry(v: VisitRecord): string {
+  return v.country?.trim().toUpperCase() || "未知";
+}
+function visitLocation(v: VisitRecord): string {
+  const parts = [v.city, v.region, v.country].filter((s) => s && s.trim());
+  return parts.length ? parts.join(" · ") : "—";
+}
+
+/** 把分组数据转成 [{label, value}]，按 value 倒序，最多 topN，其余合并为"其他" */
+function topGroups<T>(
+  arr: T[],
+  keyFn: (item: T) => string,
+  topN = 8,
+): { label: string; value: number }[] {
+  const counts: Record<string, number> = {};
+  for (const item of arr) {
+    const k = keyFn(item);
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (sorted.length <= topN) {
+    return sorted.map(([label, value]) => ({ label, value }));
+  }
+  const top = sorted.slice(0, topN);
+  const rest = sorted.slice(topN).reduce((s, [, v]) => s + v, 0);
+  return [
+    ...top.map(([label, value]) => ({ label, value })),
+    { label: "其他", value: rest },
+  ];
 }
 
 /* ------------------------------------------------------------------ */
@@ -93,32 +138,46 @@ function StatCard({
 function BarChartSimple({
   data,
   title,
+  labelWidth = "w-16",
+  empty = "暂无数据",
 }: {
   data: { label: string; value: number }[];
   title: string;
+  labelWidth?: string;
+  empty?: string;
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
+  const hasAny = data.some((d) => d.value > 0);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-      <h3 className="text-sm font-semibold text-gray-700 mb-4">{title}</h3>
-      <div className="space-y-2">
-        {data.map((d) => (
-          <div key={d.label} className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 w-16 shrink-0 text-right">{d.label}</span>
-            <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
-              <div
-                className="h-full bg-emerald-500 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
-                style={{ width: `${Math.max((d.value / max) * 100, 2)}%` }}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3 md:mb-4">{title}</h3>
+      {!hasAny || data.length === 0 ? (
+        <p className="text-xs text-gray-400 py-6 text-center">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((d) => (
+            <div key={d.label} className="flex items-center gap-2 md:gap-3">
+              <span
+                className={`text-[11px] md:text-xs text-gray-500 ${labelWidth} shrink-0 text-right truncate`}
+                title={d.label}
               >
-                {d.value > 0 && (
-                  <span className="text-[10px] font-bold text-white">{d.value}</span>
-                )}
+                {d.label}
+              </span>
+              <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                  style={{ width: `${Math.max((d.value / max) * 100, 2)}%` }}
+                >
+                  {d.value > 0 && (
+                    <span className="text-[10px] font-bold text-white">{d.value}</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -138,16 +197,17 @@ function VisitTable({ visits }: { visits: VisitRecord[] }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs">
             <tr>
-              <th className="px-4 py-2.5 text-left font-medium">时间</th>
-              <th className="px-4 py-2.5 text-left font-medium">IP</th>
-              <th className="px-4 py-2.5 text-left font-medium">设备</th>
-              <th className="px-4 py-2.5 text-left font-medium">来源</th>
+              <th className="px-4 py-2.5 text-left font-medium whitespace-nowrap">时间</th>
+              <th className="px-4 py-2.5 text-left font-medium whitespace-nowrap">位置</th>
+              <th className="px-4 py-2.5 text-left font-medium whitespace-nowrap">IP</th>
+              <th className="px-4 py-2.5 text-left font-medium whitespace-nowrap">设备</th>
+              <th className="px-4 py-2.5 text-left font-medium whitespace-nowrap">来源</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {recent.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                   暂无访问记录
                 </td>
               </tr>
@@ -156,6 +216,12 @@ function VisitTable({ visits }: { visits: VisitRecord[] }) {
                 <tr key={i} className="hover:bg-gray-50">
                   <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">
                     {tzFormatDateTime(v.timestamp)}
+                  </td>
+                  <td className="px-4 py-2.5 text-gray-700 text-xs whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin size={12} className="text-emerald-500 shrink-0" />
+                      {visitLocation(v)}
+                    </span>
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 font-mono text-xs">{v.ip}</td>
                   <td className="px-4 py-2.5">
@@ -262,6 +328,14 @@ export default function AnalyticsPage() {
     value: deviceGroups[d]?.length ?? 0,
   }));
 
+  // 地理分布（基于 Vercel Edge geo 头部，旧数据无 geo 字段会归"未知"）
+  const cityData = topGroups(visits, visitCity, 10);
+  const regionData = topGroups(visits, visitRegion, 10);
+  const countryData = topGroups(visits, visitCountry, 6);
+  const knownCityCount = new Set(
+    visits.map(visitCity).filter((c) => c !== "未知"),
+  ).size;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 顶栏 */}
@@ -319,10 +393,10 @@ export default function AnalyticsPage() {
             color="bg-orange-50"
           />
           <StatCard
-            icon={<Clock size={20} className="text-purple-600" />}
-            label="记录天数"
-            value={new Set(visits.map(visitDate)).size}
-            sub="有访问数据的天数"
+            icon={<Building2 size={20} className="text-purple-600" />}
+            label="覆盖城市"
+            value={knownCityCount}
+            sub={`共 ${countryData.filter((c) => c.label !== "未知").length} 个国家`}
             color="bg-purple-50"
           />
         </div>
@@ -335,6 +409,38 @@ export default function AnalyticsPage() {
 
         {/* 今日时段分布 */}
         <BarChartSimple data={displayHourly} title="今日各时段访问量（卢本巴希时间 UTC+2）" />
+
+        {/* 地理分布 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <BarChartSimple
+            data={cityData}
+            title="访客城市 Top 10"
+            labelWidth="w-24 md:w-28"
+            empty="暂无城市数据，需 Vercel 生产环境采集"
+          />
+          <BarChartSimple
+            data={regionData}
+            title="访客地区 / 省份 Top 10"
+            labelWidth="w-20 md:w-24"
+            empty="暂无地区数据"
+          />
+        </div>
+
+        <BarChartSimple
+          data={countryData}
+          title="访客国家分布"
+          labelWidth="w-16"
+          empty="暂无国家数据"
+        />
+
+        {/* 数据来源说明 */}
+        <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs leading-relaxed">
+          <Globe2 size={14} className="mt-0.5 shrink-0" />
+          <p>
+            地理位置基于 Vercel Edge IP 地理库（精度到城市 / 省份级，不到街区）。
+            历史访问数据无 geo 字段会归到「未知」；新访问会持续补齐。
+          </p>
+        </div>
 
         {/* 明细表 */}
         <VisitTable visits={visits} />

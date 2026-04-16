@@ -5,11 +5,17 @@ const BLOB_KEY = "analytics/visits.json";
 
 export interface VisitRecord {
   timestamp: string;
-  date: string;       // YYYY-MM-DD
+  date: string;       // YYYY-MM-DD（卢本巴希时区）
   hour: number;
   ua: string;
   referer: string;
   ip: string;
+  // Vercel Edge geolocation 头部（可能为空，尤其本地开发环境）
+  country?: string;   // ISO 国家代码，如 "CD"
+  city?: string;      // 城市名，可能 URL encoded
+  region?: string;    // 省/州/地区代码
+  latitude?: string;
+  longitude?: string;
 }
 
 export interface AnalyticsData {
