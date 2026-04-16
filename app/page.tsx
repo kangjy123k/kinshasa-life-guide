@@ -1028,6 +1028,13 @@ function HomeView({
     .slice()
     .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     .slice(0, 6);
+
+  // 商家入驻初期，只突出主 3 类，其余折叠
+  const PRIMARY_CATEGORY_KEYS = ["goods", "restaurant", "lodging"];
+  const primaryCats = categories.filter((c) => PRIMARY_CATEGORY_KEYS.includes(c.key));
+  const secondaryCats = categories.filter((c) => !PRIMARY_CATEGORY_KEYS.includes(c.key));
+  const [showMoreCats, setShowMoreCats] = useState(false);
+
   return (
     <>
       {/* ---- 顶部横幅（淡蓝 + 黄色五角星点缀） ---- */}
@@ -1094,9 +1101,10 @@ function HomeView({
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-5 bg-red-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">服务分类</h2>
+          <span className="ml-auto text-xs text-gray-400">商家持续入驻中</span>
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
-          {categories.map((cat) => {
+        <div className="grid grid-cols-3 gap-3">
+          {primaryCats.map((cat) => {
             const Icon = cat.icon;
             return (
               <button
@@ -1114,6 +1122,50 @@ function HomeView({
             );
           })}
         </div>
+
+        {!showMoreCats && (
+          <button
+            type="button"
+            onClick={() => setShowMoreCats(true)}
+            className="mt-3 w-full py-2.5 rounded-xl border border-dashed border-sky-200 text-xs text-sky-600 hover:bg-sky-50 active:bg-sky-100 transition flex items-center justify-center gap-1"
+          >
+            <span>更多分类</span>
+            <span className="text-sky-400">({secondaryCats.length})</span>
+            <ChevronDown size={14} />
+          </button>
+        )}
+
+        {showMoreCats && (
+          <>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {secondaryCats.map((cat) => {
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => onOpenCategory(cat.key)}
+                    className="flex items-center gap-2 px-2.5 py-2.5 bg-white rounded-xl shadow-sm border border-sky-100 hover:border-red-300 active:bg-sky-50 transition text-left"
+                  >
+                    <span className="w-7 h-7 shrink-0 rounded-lg bg-sky-100 flex items-center justify-center">
+                      <Icon size={14} className="text-sky-600" />
+                    </span>
+                    <span className="text-xs font-medium text-gray-700 truncate">
+                      {cat.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowMoreCats(false)}
+              className="mt-2 w-full py-2 text-xs text-gray-400 hover:text-gray-600 transition flex items-center justify-center gap-1"
+            >
+              <span>收起</span>
+              <ChevronUp size={14} />
+            </button>
+          </>
+        )}
       </section>
 
       {/* ---- 金沙萨商家地图 ---- */}
