@@ -14,6 +14,14 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  APP_TZ,
+  tzDateString,
+  tzHour,
+  tzRecentDates,
+  tzFormatDateTime,
+  tzFormatTime,
+} from "@/lib/tz";
 
 interface VisitRecord {
   timestamp: string;
@@ -147,7 +155,7 @@ function VisitTable({ visits }: { visits: VisitRecord[] }) {
               recent.map((v, i) => (
                 <tr key={i} className="hover:bg-gray-50">
                   <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">
-                    {new Date(v.timestamp).toLocaleString("zh-CN", { timeZone: "Africa/Kinshasa" })}
+                    {tzFormatDateTime(v.timestamp)}
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 font-mono text-xs">{v.ip}</td>
                   <td className="px-4 py-2.5">
@@ -216,31 +224,31 @@ export default function AnalyticsPage() {
   const visits = data?.visits ?? [];
   const totalVisits = data?.totalVisits ?? 0;
 
+  // 全部统计基于卢本巴希时区（UTC+2），并且重新从 timestamp 计算，
+  // 兼容历史用 UTC 写入的 date/hour 字段。
+  const visitDate = (v: VisitRecord) => tzDateString(v.timestamp);
+  const visitHour = (v: VisitRecord) => tzHour(v.timestamp);
+
   // 今日数据
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayVisits = visits.filter((v) => v.date === todayStr);
+  const todayStr = tzDateString(Date.now());
+  const todayVisits = visits.filter((v) => visitDate(v) === todayStr);
 
   // 独立访客
   const totalUniqueIPs = uniqueIPs(visits);
   const todayUniqueIPs = uniqueIPs(todayVisits);
 
-  // 按日统计（最近7天）
-  const last7Days: { label: string; value: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const ds = d.toISOString().slice(0, 10);
-    const label = `${d.getMonth() + 1}/${d.getDate()}`;
-    const count = visits.filter((v) => v.date === ds).length;
-    last7Days.push({ label, value: count });
-  }
+  // 按日统计（最近7天，卢本巴希时区）
+  const last7Days = tzRecentDates(7).map(({ iso, label }) => ({
+    label,
+    value: visits.filter((v) => visitDate(v) === iso).length,
+  }));
 
-  // 按小时统计（今日）
+  // 按小时统计（今日，卢本巴希时区）
   const hourlyData: { label: string; value: number }[] = [];
   for (let h = 0; h < 24; h++) {
     hourlyData.push({
       label: `${h}:00`,
-      value: todayVisits.filter((v) => v.hour === h).length,
+      value: todayVisits.filter((v) => visitHour(v) === h).length,
     });
   }
   // 只显示有数据的时段及前后
@@ -271,7 +279,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-3">
             {lastRefresh && (
               <span className="text-xs text-gray-400">
-                更新于 {lastRefresh.toLocaleTimeString("zh-CN")}
+                更新于 {tzFormatTime(lastRefresh)}（卢本巴希时间）
               </span>
             )}
             <button
@@ -313,7 +321,7 @@ export default function AnalyticsPage() {
           <StatCard
             icon={<Clock size={20} className="text-purple-600" />}
             label="记录天数"
-            value={new Set(visits.map((v) => v.date)).size}
+            value={new Set(visits.map(visitDate)).size}
             sub="有访问数据的天数"
             color="bg-purple-50"
           />
@@ -321,12 +329,12 @@ export default function AnalyticsPage() {
 
         {/* 图表 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <BarChartSimple data={last7Days} title="最近7天访问趋势" />
+          <BarChartSimple data={last7Days} title="最近7天访问趋势（卢本巴希时间 UTC+2）" />
           <BarChartSimple data={deviceData} title="设备类型分布" />
         </div>
 
         {/* 今日时段分布 */}
-        <BarChartSimple data={displayHourly} title="今日各时段访问量" />
+        <BarChartSimple data={displayHourly} title="今日各时段访问量（卢本巴希时间 UTC+2）" />
 
         {/* 明细表 */}
         <VisitTable visits={visits} />

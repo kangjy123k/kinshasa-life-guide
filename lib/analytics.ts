@@ -1,4 +1,5 @@
 import { put, list } from "@vercel/blob";
+import { tzDateString, tzHour } from "./tz";
 
 const BLOB_KEY = "analytics/visits.json";
 
@@ -36,9 +37,8 @@ async function readData(): Promise<AnalyticsData> {
 export async function recordVisit(record: Omit<VisitRecord, "date" | "hour">) {
   const data = await readData();
 
-  const now = new Date(record.timestamp);
-  const date = now.toISOString().slice(0, 10);
-  const hour = now.getUTCHours();
+  const date = tzDateString(record.timestamp);
+  const hour = tzHour(record.timestamp);
 
   // 只保留最近 5000 条明细，防止 blob 过大
   const visits = [...data.visits, { ...record, date, hour }].slice(-5000);
