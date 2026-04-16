@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import {
   Search,
   MapPin,
@@ -31,6 +32,7 @@ import {
   CheckCircle2,
   Loader2,
   Volume2,
+  Smartphone,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -1077,6 +1079,31 @@ function HomeView({
               </button>
             );
           })}
+        </div>
+      </section>
+
+      {/* ---- 实用指南 ---- */}
+      <section className="max-w-4xl mx-auto px-4 mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-5 bg-emerald-400 rounded-full" />
+          <h2 className="text-base font-bold text-gray-800">实用指南</h2>
+          <span className="text-xs text-gray-400">刚果金本地常用信息</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Link
+            href="/guides/recharge"
+            className="group flex items-center gap-3 p-4 bg-white rounded-2xl shadow-sm border border-sky-100 hover:border-emerald-300 hover:shadow-md transition-all"
+          >
+            <span className="w-12 h-12 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors shrink-0">
+              <Smartphone size={22} className="text-emerald-600" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800">本地话费充值指南</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Vodacom / Orange / Airtel / Africell USSD 速查
+              </p>
+            </div>
+          </Link>
         </div>
       </section>
 
