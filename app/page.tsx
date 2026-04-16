@@ -33,7 +33,6 @@ import {
   Loader2,
   Volume2,
   Smartphone,
-  AlertTriangle,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -1056,42 +1055,23 @@ function HomeView({
         <Carousel index={adIndex} onChange={setAdIndex} />
       </section>
 
-      {/* ---- 官方公告 + 实用指南（移动端也并列对齐） ---- */}
+      {/* ---- 实用指南 ---- */}
       <section className="max-w-4xl mx-auto px-4 mt-6">
-        <div className="grid grid-cols-2 gap-3 items-stretch">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="w-1 h-4 bg-red-500 rounded-full shrink-0" />
-              <h2 className="text-sm md:text-base font-bold text-gray-800 truncate">官方公告</h2>
-            </div>
-            <div className="flex-1">
-              <NoticeCard
-                href="/guides/notices/2026-04-10-foreign-workers"
-                tag="就业与劳动部"
-                title="制止违规雇佣外籍劳动者 — 30 日整改期"
-                summary="017/CAB/MIN.ET/FMM/JTN/04/2026 号公告，自 2026-04-10 起 30 个日历日内须补正外籍员工手续，否则可暂停经营并移送法院。"
-                issueDate="2026-04-10"
-                deadline="2026-05-10"
-              />
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="w-1 h-4 bg-emerald-400 rounded-full shrink-0" />
-              <h2 className="text-sm md:text-base font-bold text-gray-800 truncate">实用指南</h2>
-            </div>
-            <div className="flex-1">
-              <GuideCard
-                href="/guides/recharge"
-                tag="通讯·话费"
-                title="本地话费充值指南"
-                summary="Vodacom · Orange · Airtel · Africell 充值码、查余额、Mobile Money、客服电话速查，点击直拨。"
-                footer="4 家运营商"
-                badge="USSD"
-                icon={<Smartphone size={12} />}
-              />
-            </div>
-          </div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-5 bg-emerald-400 rounded-full" />
+          <h2 className="text-base font-bold text-gray-800">实用指南</h2>
+          <span className="text-xs text-gray-400">本地常用信息</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <GuideCard
+            href="/guides/recharge"
+            tag="通讯·话费"
+            title="本地话费充值指南"
+            summary="Vodacom · Orange · Airtel · Africell 充值码、查余额、Mobile Money、客服电话速查，点击直拨。"
+            footer="4 家运营商"
+            badge="USSD"
+            icon={<Smartphone size={12} />}
+          />
         </div>
       </section>
 
@@ -1276,67 +1256,7 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
 }
 
 /* ------------------------------------------------------------------ */
-/*  NoticeCard — 官方公告卡片                                           */
-/* ------------------------------------------------------------------ */
-function NoticeCard({
-  href,
-  tag,
-  title,
-  summary,
-  issueDate,
-  deadline,
-}: {
-  href: string;
-  tag: string;
-  title: string;
-  summary: string;
-  issueDate: string;
-  deadline: string;
-}) {
-  const daysLeft = useMemo(() => {
-    const ms = new Date(deadline).getTime() - Date.now();
-    return Math.max(0, Math.ceil(ms / 86_400_000));
-  }, [deadline]);
-
-  const urgent = daysLeft <= 7;
-
-  return (
-    <Link
-      href={href}
-      className="flex flex-col h-full group rounded-2xl overflow-hidden shadow-sm border border-rose-100 hover:border-red-300 hover:shadow-md transition-all bg-white"
-    >
-      <div className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-3 py-2 flex items-center justify-between gap-2">
-        <div className="inline-flex items-center gap-1 text-[11px] md:text-xs font-semibold min-w-0 truncate">
-          <AlertTriangle size={12} className="shrink-0" /> <span className="truncate">{tag}</span>
-        </div>
-        <span
-          className={`text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-            urgent ? "bg-yellow-300 text-red-700" : "bg-white/25 text-white"
-          }`}
-        >
-          剩 {daysLeft} 天
-        </span>
-      </div>
-      <div className="p-3 md:p-4 flex-1 flex flex-col">
-        <p className="text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
-          {title}
-        </p>
-        <p className="text-xs md:text-sm text-gray-600 mt-2 line-clamp-3 leading-relaxed">
-          {summary}
-        </p>
-        <div className="mt-auto pt-3 flex items-center justify-between text-[11px] md:text-xs text-gray-500">
-          <span className="truncate">{issueDate}</span>
-          <span className="text-red-500 font-medium group-hover:underline shrink-0">
-            查看 →
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  GuideCard — 实用指南卡片（与 NoticeCard 同结构对齐）                  */
+/*  GuideCard — 实用指南卡片                                            */
 /* ------------------------------------------------------------------ */
 function GuideCard({
   href,
