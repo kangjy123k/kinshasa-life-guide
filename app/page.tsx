@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import dynamic from "next/dynamic";
 import {
   Search,
   MapPin,
@@ -29,6 +30,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Loader2,
+  Volume2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -49,6 +51,35 @@ interface Business {
   category: string;
   subcategory?: string;
   featured?: boolean;
+  lat?: number;
+  lng?: number;
+  hidden?: boolean; // true = 保留数据但不在页面展示
+}
+
+/* 金沙萨主要 commune 的近似坐标 */
+const AREA_COORDS: Record<string, [number, number]> = {
+  "Gombe":       [-4.3050, 15.3050],
+  "Ngaliema":    [-4.3633, 15.2500],
+  "Limete":      [-4.3580, 15.3367],
+  "Masina":      [-4.3833, 15.4167],
+  "Ma Campagne": [-4.3400, 15.2833],
+  "Binza":       [-4.3833, 15.2333],
+  "Kintambo":    [-4.3267, 15.2700],
+  "Kalamu":      [-4.3500, 15.3150],
+  "Bandalungwa": [-4.3400, 15.2900],
+  "Lemba":       [-4.3833, 15.3500],
+};
+const KINSHASA_CENTER: [number, number] = [-4.3276, 15.3136];
+
+function coordsForArea(area: string, id = 0): [number, number] {
+  let base: [number, number] = KINSHASA_CENTER;
+  for (const k of Object.keys(AREA_COORDS)) {
+    if (area.includes(k)) { base = AREA_COORDS[k]; break; }
+  }
+  // 用 id 做稳定的小偏移，避免同区 marker 完全重叠
+  const jitter = ((id * 9301 + 49297) % 233280) / 233280; // 伪随机 0~1
+  const jitter2 = ((id * 7919 + 12345) % 233280) / 233280;
+  return [base[0] + (jitter - 0.5) * 0.012, base[1] + (jitter2 - 0.5) * 0.012];
 }
 
 interface CategoryDef {
@@ -56,27 +87,29 @@ interface CategoryDef {
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   sub: string[];
+  color: string;
+  emoji: string;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Categories（二级页面分类）                                          */
 /* ------------------------------------------------------------------ */
 const categories: CategoryDef[] = [
-  { key: "goods",      label: "商品",     icon: ShoppingBag,     sub: ["生活用品", "食品", "建材", "交通工具", "能源产品"] },
-  { key: "restaurant", label: "餐厅",     icon: UtensilsCrossed, sub: ["中国餐厅", "西餐厅", "刚果风味餐厅", "酒吧", "咖啡厅"] },
-  { key: "lodging",    label: "住宿",     icon: Hotel,           sub: ["中国酒店短租", "中国公寓长租", "国际级酒店", "本地酒店公寓"] },
-  { key: "life",       label: "生活服务", icon: HeartPulse,      sub: ["健康", "教育"] },
-  { key: "business",   label: "商业服务", icon: Briefcase,       sub: ["工程承包商", "建筑相关服务商", "装修队", "物流清关", "商业咨询"] },
-  { key: "leisure",    label: "休闲娱乐", icon: PartyPopper,     sub: [] },
-  { key: "rental",     label: "租赁设备", icon: Wrench,          sub: ["脚手架", "电气设备", "运输设备", "汽修设备"] },
-  { key: "jobs",       label: "招聘求职", icon: Users,           sub: ["招聘", "求职"] },
-  { key: "secondhand", label: "二手专区", icon: Tag,             sub: [] },
+  { key: "goods",      label: "商品",     icon: ShoppingBag,     sub: ["生活用品", "食品", "建材", "交通工具", "能源产品"], color: "#f59e0b", emoji: "🛍️" },
+  { key: "restaurant", label: "餐厅",     icon: UtensilsCrossed, sub: ["中国餐厅", "西餐厅", "刚果风味餐厅", "酒吧", "咖啡厅"], color: "#ef4444", emoji: "🍜" },
+  { key: "lodging",    label: "住宿",     icon: Hotel,           sub: ["中国酒店短租", "中国公寓长租", "国际级酒店", "本地酒店公寓"], color: "#8b5cf6", emoji: "🏨" },
+  { key: "life",       label: "生活服务", icon: HeartPulse,      sub: ["健康", "教育"], color: "#10b981", emoji: "💗" },
+  { key: "business",   label: "商业服务", icon: Briefcase,       sub: ["工程承包商", "建筑相关服务商", "装修队", "物流清关", "商业咨询"], color: "#3b82f6", emoji: "💼" },
+  { key: "leisure",    label: "休闲娱乐", icon: PartyPopper,     sub: [], color: "#ec4899", emoji: "🎉" },
+  { key: "rental",     label: "租赁设备", icon: Wrench,          sub: ["脚手架", "电气设备", "运输设备", "汽修设备"], color: "#64748b", emoji: "🔧" },
+  { key: "jobs",       label: "招聘求职", icon: Users,           sub: ["招聘", "求职"], color: "#14b8a6", emoji: "👥" },
+  { key: "secondhand", label: "二手专区", icon: Tag,             sub: [], color: "#f97316", emoji: "🏷️" },
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Sample data — 餐厅 2 家、超市（商品/食品）1 家                     */
+/*  种子数据 — 保留为基础样本，但默认 hidden 不在页面显示                */
 /* ------------------------------------------------------------------ */
-const businesses: Business[] = [
+const seedBusinesses: Business[] = [
   {
     id: 1,
     name: "川味坊",
@@ -492,6 +525,71 @@ const businesses: Business[] = [
 ];
 
 /* ------------------------------------------------------------------ */
+/*  页面实际展示的商家（真实录入 — 可逐步补充）                         */
+/* ------------------------------------------------------------------ */
+const liveBusinesses: Business[] = [
+  {
+    id: 2001,
+    name: "福美超市",
+    contactPerson: "",
+    wechat: "",
+    phone: "",
+    area: "金沙萨 Commune de Kinshasa · Avenue du Progrès",
+    mainService: "综合食品超市：中国食品、粮油调味、方便面、零食饮料、冷冻食品、日用百货",
+    hasStore: "有 — 临街超市门店",
+    serviceScope: "金沙萨市区",
+    intro: "福美超市位于 Avenue du Progrès，是华人常去的综合型食品超市。中国粮油、调味料、方便面、速冻饺子、零食饮料、日用杂货齐全，适合日常采买。",
+    image: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=800&h=600&fit=crop",
+    category: "goods",
+    subcategory: "食品",
+    featured: true,
+    lat: -4.3500,
+    lng: 15.3050,
+  },
+  {
+    id: 2002,
+    name: "亚洲花园 Jardin d'Asie",
+    contactPerson: "餐厅前台",
+    wechat: "",
+    phone: "+243 85 903 8380",
+    area: "金沙萨 Gombe 区 · Avenue Uvira N°60，Immeuble Aimer Tower 17-18 楼",
+    mainService: "亚洲料理 · 中餐 / 日料 / 韩式拼盘 · 商务宴请 · 刚果河景包房",
+    hasStore: "有 — Aimer Tower 顶层整层餐厅",
+    serviceScope: "金沙萨市区；可预订包房、节日订席",
+    intro: "位于 Gombe 区 Aimer Tower 17-18 层的高端亚洲餐厅，俯瞰刚果河。菜品覆盖中餐、日料、韩式拼盘，环境优雅，适合商务宴请、家庭聚餐和节日庆典。Instagram @jardin_dasie_drc 可查看环境图与菜品。",
+    image: "/images/businesses/jardin-dasie.jpg",
+    category: "restaurant",
+    subcategory: "中国餐厅",
+    featured: true,
+    lat: -4.2990,
+    lng: 15.2895,
+  },
+  {
+    id: 2003,
+    name: "喜客饭店",
+    contactPerson: "",
+    wechat: "",
+    phone: "",
+    area: "金沙萨 Ngaliema 区 · 26 Avenue Sergent Moke",
+    mainService: "家常中餐、川菜、粤菜、小炒、外卖",
+    hasStore: "有 — 堂食餐厅",
+    serviceScope: "金沙萨市区；可预订包场小聚",
+    intro: "喜客饭店位于 Avenue Sergent Moke 26 号，周边是华人常驻的 Ngaliema / Haut Commandement 社区。主打家常中餐，川粤口味，适合日常快餐、家庭聚餐或小型宴请。",
+    image: "/images/businesses/xike.webp",
+    category: "restaurant",
+    subcategory: "中国餐厅",
+    lat: -4.3700,
+    lng: 15.2600,
+  },
+];
+
+/* 种子数据全部标记 hidden，保留但页面不展示 */
+const businesses: Business[] = [
+  ...seedBusinesses.map((b) => ({ ...b, hidden: true })),
+  ...liveBusinesses,
+];
+
+/* ------------------------------------------------------------------ */
 /*  审核通过的用户提交 → 转 Business                                    */
 /* ------------------------------------------------------------------ */
 type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand";
@@ -611,6 +709,7 @@ interface AdSlide {
   subtitle: string;
   bg: string;       // tailwind gradient
   emoji: string;
+  phone?: string;
 }
 
 const ads: AdSlide[] = [
@@ -625,6 +724,7 @@ const ads: AdSlide[] = [
     subtitle: "工程建材一站供应 · 价格实惠",
     bg: "from-amber-400 via-yellow-400 to-orange-400",
     emoji: "🏗️",
+    phone: "+243823170887",
   },
 ];
 
@@ -711,8 +811,17 @@ const FORMS: Record<
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
-type View = "home" | "category";
+type View = "home" | "category" | "business";
 type FormKey = keyof typeof FORMS;
+
+const MapSection = dynamic(() => import("./MapSection"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[380px] md:h-[460px] rounded-2xl bg-sky-50 flex items-center justify-center text-sky-400 text-sm">
+      地图加载中…
+    </div>
+  ),
+});
 
 export default function GuidePage() {
   const [view, setView] = useState<View>("home");
@@ -723,6 +832,8 @@ export default function GuidePage() {
   const [adIndex, setAdIndex] = useState(0);
   const [formOpen, setFormOpen] = useState<FormKey | null>(null);
   const [approvedExtras, setApprovedExtras] = useState<Business[]>([]);
+  const [detailBizId, setDetailBizId] = useState<number | null>(null);
+  const [focusBizId, setFocusBizId] = useState<number | null>(null);
 
   // 记录访问量
   useEffect(() => {
@@ -767,7 +878,14 @@ export default function GuidePage() {
   }, []);
 
   const allBusinesses = useMemo(
-    () => [...businesses, ...approvedExtras],
+    () =>
+      [...businesses, ...approvedExtras]
+        .filter((b) => !b.hidden)
+        .map((b) => {
+          if (typeof b.lat === "number" && typeof b.lng === "number") return b;
+          const [lat, lng] = coordsForArea(b.area, b.id);
+          return { ...b, lat, lng };
+        }),
     [approvedExtras]
   );
 
@@ -779,17 +897,45 @@ export default function GuidePage() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
 
+  const openBusiness = (id: number) => {
+    setDetailBizId(id);
+    setView("business");
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  };
+
+  const focusOnMap = (id: number | null) => {
+    setFocusBizId(id);
+    setView("home");
+    if (typeof window !== "undefined") {
+      // 等渲染后滚到地图区
+      setTimeout(() => {
+        document.getElementById("map-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 80);
+    }
+  };
+
+  const detailBiz = useMemo(
+    () => allBusinesses.find((b) => b.id === detailBizId) ?? null,
+    [allBusinesses, detailBizId]
+  );
+
   return (
     <div className="min-h-screen bg-sky-50">
-      {view === "home" ? (
+      {view === "home" && (
         <HomeView
           businesses={allBusinesses}
           onOpenCategory={openCategory}
           adIndex={adIndex}
           setAdIndex={setAdIndex}
           onOpenForm={setFormOpen}
+          focusBizId={focusBizId}
+          onOpenBusiness={openBusiness}
         />
-      ) : (
+      )}
+      {view === "category" && (
         <CategoryView
           businesses={allBusinesses}
           categoryKey={activeCategory}
@@ -800,6 +946,15 @@ export default function GuidePage() {
           showSearch={showSearch}
           setShowSearch={setShowSearch}
           onBack={() => setView("home")}
+          onOpenBusiness={openBusiness}
+        />
+      )}
+      {view === "business" && detailBiz && (
+        <BusinessDetailView
+          biz={detailBiz}
+          onBack={() => setView("home")}
+          onFocusMap={() => focusOnMap(detailBiz.id)}
+          onViewAllMap={() => focusOnMap(null)}
         />
       )}
 
@@ -824,12 +979,16 @@ function HomeView({
   adIndex,
   setAdIndex,
   onOpenForm,
+  focusBizId,
+  onOpenBusiness,
 }: {
   businesses: Business[];
   onOpenCategory: (k: string) => void;
   adIndex: number;
   setAdIndex: (n: number) => void;
   onOpenForm: (k: FormKey) => void;
+  focusBizId: number | null;
+  onOpenBusiness: (id: number) => void;
 }) {
   const featured = allBusinesses
     .slice()
@@ -903,6 +1062,36 @@ function HomeView({
         </div>
       </section>
 
+      {/* ---- 金沙萨商家地图 ---- */}
+      <section id="map-section" className="max-w-4xl mx-auto px-4 mt-8 scroll-mt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-5 bg-sky-400 rounded-full" />
+          <h2 className="text-base font-bold text-gray-800">金沙萨商家地图</h2>
+          <span className="text-xs text-gray-400">切换分类 · 点图钉看详情</span>
+        </div>
+        <MapSection
+          businesses={allBusinesses.map((b) => ({
+            id: b.id,
+            name: b.name,
+            category: b.category,
+            subcategory: b.subcategory,
+            area: b.area,
+            mainService: b.mainService,
+            image: b.image,
+            lat: b.lat,
+            lng: b.lng,
+          }))}
+          categories={categories.map((c) => ({
+            key: c.key,
+            label: c.label,
+            color: c.color,
+            emoji: c.emoji,
+          }))}
+          focusBusinessId={focusBizId}
+          onOpenBusiness={onOpenBusiness}
+        />
+      </section>
+
       {/* ---- 信息发布通道 ---- */}
       <section className="max-w-4xl mx-auto px-4 mt-8">
         <div className="flex items-center gap-2 mb-3">
@@ -949,7 +1138,7 @@ function HomeView({
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {featured.map((biz) => (
-            <BusinessCard key={biz.id} biz={biz} />
+            <BusinessCard key={biz.id} biz={biz} onOpen={onOpenBusiness} />
           ))}
         </div>
       </section>
@@ -972,6 +1161,15 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
         <div className="flex-1 min-w-0">
           <p className="text-lg md:text-2xl font-bold leading-snug">{slide.title}</p>
           <p className="text-sm md:text-base text-white/90 mt-1">{slide.subtitle}</p>
+          {slide.phone && (
+            <a
+              href={`tel:${slide.phone.replace(/\s+/g, "")}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur text-sm font-semibold"
+            >
+              <Phone size={14} /> {slide.phone}
+            </a>
+          )}
         </div>
       </div>
 
@@ -1049,6 +1247,7 @@ function CategoryView({
   showSearch,
   setShowSearch,
   onBack,
+  onOpenBusiness,
 }: {
   businesses: Business[];
   categoryKey: string;
@@ -1059,6 +1258,7 @@ function CategoryView({
   showSearch: boolean;
   setShowSearch: (b: boolean) => void;
   onBack: () => void;
+  onOpenBusiness: (id: number) => void;
 }) {
   const cat = categories.find((c) => c.key === categoryKey)!;
   const subs = useMemo(() => ["全部", ...cat.sub], [cat]);
@@ -1177,7 +1377,7 @@ function CategoryView({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map((biz) => (
-              <BusinessCard key={biz.id} biz={biz} />
+              <BusinessCard key={biz.id} biz={biz} onOpen={onOpenBusiness} />
             ))}
           </div>
         )}
@@ -1187,9 +1387,101 @@ function CategoryView({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Business Detail View                                               */
+/* ------------------------------------------------------------------ */
+function BusinessDetailView({
+  biz,
+  onBack,
+  onFocusMap,
+  onViewAllMap,
+}: {
+  biz: Business;
+  onBack: () => void;
+  onFocusMap: () => void;
+  onViewAllMap: () => void;
+}) {
+  const cat = categories.find((c) => c.key === biz.category);
+
+  return (
+    <>
+      <section className="bg-gradient-to-r from-sky-400 to-blue-500 text-white">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+            aria-label="返回"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold leading-tight truncate">{biz.name}</h1>
+            <p className="text-xs text-white/80">
+              {cat?.label}
+              {biz.subcategory ? ` · ${biz.subcategory}` : ""}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-4xl mx-auto px-4 py-5 space-y-5">
+        <div className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
+          <div className="relative h-56 md:h-72">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={biz.image} alt={biz.name} className="w-full h-full object-cover" />
+            {biz.featured && (
+              <span className="absolute top-3 left-3 px-2.5 py-1 bg-yellow-400 text-white text-xs font-bold rounded-full shadow flex items-center gap-1">
+                <Star size={12} fill="white" /> 推荐
+              </span>
+            )}
+          </div>
+          <div className="p-5">
+            <div className="flex items-start gap-2">
+              <h2 className="flex-1 text-xl font-bold text-gray-900">{biz.name}</h2>
+              <SpeakButton
+                text={`Je veux aller à cette adresse, ${biz.area}`}
+                cacheKey={`biz-${biz.id}`}
+              />
+            </div>
+
+            {/* 地图按钮（双向查询） */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                onClick={onFocusMap}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-red-400 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                <MapPin size={16} /> 在地图上查看
+              </button>
+              <button
+                onClick={onViewAllMap}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                🗺️ 查看全部地图
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3 text-sm">
+              <Field label="所在区域" value={biz.area} />
+              <Field label="联系人" value={biz.contactPerson} />
+              <Field label="微信号" value={biz.wechat} />
+              <Field label="电话 / WhatsApp" value={biz.phone} />
+              <Field label="门店/仓库" value={biz.hasStore} />
+              <Field label="服务范围" value={biz.serviceScope} />
+              <Field label="主营产品或服务" value={biz.mainService} />
+              <Field label="商家简介" value={biz.intro} />
+            </div>
+
+            <ContactButtons biz={biz} className="mt-5" />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  BusinessCard                                                       */
 /* ------------------------------------------------------------------ */
-function BusinessCard({ biz }: { biz: Business }) {
+function BusinessCard({ biz, onOpen }: { biz: Business; onOpen?: (id: number) => void }) {
   const [expanded, setExpanded] = useState(false);
   const cat = categories.find((c) => c.key === biz.category);
 
@@ -1210,20 +1502,36 @@ function BusinessCard({ biz }: { biz: Business }) {
       </div>
 
       <div className="p-4">
-        <h3 className="text-lg font-bold text-gray-900 leading-snug">{biz.name}</h3>
+        <div className="flex items-start gap-2">
+          <h3 className="flex-1 text-lg font-bold text-gray-900 leading-snug">{biz.name}</h3>
+          <SpeakButton
+            text={`Je veux aller à cette adresse, ${biz.area}`}
+            cacheKey={`biz-${biz.id}`}
+          />
+        </div>
 
         <div className="mt-3 space-y-2">
           <Row icon={<MapPin size={15} className="text-red-400" />} text={biz.area} />
           <Row icon={<Store size={15} className="text-sky-400" />} text={biz.mainService} clamp />
         </div>
 
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="mt-3 flex items-center gap-1 text-sm text-sky-600 font-medium hover:text-red-500 transition-colors"
-        >
-          {expanded ? "收起" : "查看详情"}
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-sm text-sky-600 font-medium hover:text-red-500 transition-colors"
+          >
+            {expanded ? "收起" : "快速预览"}
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          {onOpen && (
+            <button
+              onClick={() => onOpen(biz.id)}
+              className="ml-auto flex items-center gap-1 text-sm text-red-500 font-medium hover:text-red-600 transition-colors"
+            >
+              进入详情页 <ChevronRight size={14} />
+            </button>
+          )}
+        </div>
 
         {expanded && (
           <div className="mt-3 pt-3 border-t border-sky-100 space-y-3 text-sm">
@@ -1235,29 +1543,162 @@ function BusinessCard({ biz }: { biz: Business }) {
             <Field label="主营产品或服务" value={biz.mainService} />
             <Field label="商家简介" value={biz.intro} />
 
-            <div className="flex gap-2 pt-2">
-              <a
-                href={`https://wa.me/${biz.phone.replace(/[^0-9]/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-red-400 text-white text-sm font-semibold rounded-xl hover:bg-red-500 transition-colors"
-              >
-                <Phone size={14} /> WhatsApp 联系
-              </a>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(biz.wechat);
-                  alert(`已复制微信号：${biz.wechat}`);
-                }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-sky-500 text-white text-sm font-semibold rounded-xl hover:bg-sky-600 transition-colors"
-              >
-                <MessageCircle size={14} /> 复制微信号
-              </button>
-            </div>
+            <ContactButtons biz={biz} className="pt-2" />
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function ContactButtons({ biz, className = "" }: { biz: Business; className?: string }) {
+  const hasPhone = !!biz.phone?.trim();
+  const hasWechat = !!biz.wechat?.trim();
+  if (!hasPhone && !hasWechat) {
+    return (
+      <p className={`text-sm text-gray-400 italic ${className}`}>
+        暂无联系方式 · 请到店咨询
+      </p>
+    );
+  }
+  return (
+    <div className={`flex gap-2 ${className}`}>
+      {hasPhone && (
+        <a
+          href={`https://wa.me/${biz.phone.replace(/[^0-9]/g, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-red-400 text-white text-sm font-semibold rounded-xl hover:bg-red-500 transition-colors"
+        >
+          <Phone size={14} /> WhatsApp 联系
+        </a>
+      )}
+      {hasWechat && (
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(biz.wechat);
+            alert(`已复制微信号：${biz.wechat}`);
+          }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-sky-500 text-white text-sm font-semibold rounded-xl hover:bg-sky-600 transition-colors"
+        >
+          <MessageCircle size={14} /> 复制微信号
+        </button>
+      )}
+    </div>
+  );
+}
+
+function hashText(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return (h >>> 0).toString(36);
+}
+
+function SpeakButton({ text, cacheKey }: { text: string; cacheKey?: string }) {
+  const [speaking, setSpeaking] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const reportError = (stage: string, extra?: unknown) => {
+    console.error(`[SpeakButton] ${stage}`, extra);
+    alert(
+      `法语朗读失败（${stage}）。请检查：\n` +
+        `• 网络 / 后端 /api/speak 是否 200\n` +
+        `• GEMINI_API_KEY 是否已在 .env.local 配置并重启 dev\n` +
+        `• Gemini 配额是否耗尽\n` +
+        `（详细错误已打到控制台）`
+    );
+  };
+
+  const speak = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (speaking) return;
+    setSpeaking(true);
+
+    const fullCacheKey = cacheKey ? `${cacheKey}-${hashText(text)}` : undefined;
+    let res: Response;
+    try {
+      res = await fetch("/api/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, cacheKey: fullCacheKey }),
+      });
+    } catch (err) {
+      setSpeaking(false);
+      reportError("网络请求失败", err);
+      return;
+    }
+
+    if (!res.ok) {
+      let detail: unknown = null;
+      try {
+        detail = await res.json();
+      } catch {
+        /* ignore */
+      }
+      setSpeaking(false);
+      reportError(`HTTP ${res.status}`, detail);
+      return;
+    }
+
+    let audioUrl: string;
+    let revoke = () => {};
+    try {
+      const ctype = res.headers.get("Content-Type") ?? "";
+      if (ctype.includes("application/json")) {
+        const data = (await res.json()) as { url?: string };
+        if (!data.url) throw new Error("response missing url");
+        audioUrl = data.url;
+      } else {
+        const blob = await res.blob();
+        if (!blob.size) throw new Error("empty audio blob");
+        audioUrl = URL.createObjectURL(blob);
+        revoke = () => URL.revokeObjectURL(audioUrl);
+      }
+    } catch (err) {
+      setSpeaking(false);
+      reportError("解析响应失败", err);
+      return;
+    }
+
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    audio.onended = () => {
+      setSpeaking(false);
+      revoke();
+    };
+    audio.onerror = () => {
+      setSpeaking(false);
+      revoke();
+      reportError("音频解码/播放失败", audio.error);
+    };
+    try {
+      await audio.play();
+    } catch (err) {
+      setSpeaking(false);
+      revoke();
+      reportError("audio.play() 被拒", err);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={speak}
+      aria-label={`法语播报地址：${text}`}
+      title={`点击用法语朗读：${text}`}
+      className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors touch-manipulation active:scale-95 ${
+        speaking
+          ? "bg-red-100 text-red-500 animate-pulse"
+          : "bg-sky-100 text-sky-600 hover:bg-sky-200 active:bg-sky-200"
+      }`}
+    >
+      <Volume2 size={16} />
+      <span>法语播报地址</span>
+    </button>
   );
 }
 
@@ -1271,10 +1712,13 @@ function Row({ icon, text, clamp }: { icon: React.ReactNode; text: string; clamp
 }
 
 function Field({ label, value }: { label: string; value: string }) {
+  const empty = !value || !value.trim();
   return (
     <div>
       <p className="text-gray-400 text-xs tracking-wide mb-0.5">{label}</p>
-      <p className="text-gray-700 leading-relaxed">{value}</p>
+      <p className={`leading-relaxed ${empty ? "text-gray-400 italic" : "text-gray-700"}`}>
+        {empty ? "待补充" : value}
+      </p>
     </div>
   );
 }

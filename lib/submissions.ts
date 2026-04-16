@@ -22,8 +22,9 @@ async function readStore(): Promise<SubmissionStore> {
     const { blobs } = await list({ prefix: "submissions/" });
     const existing = blobs.find((b) => b.pathname === BLOB_KEY);
     if (!existing) return empty;
-    const res = await fetch(existing.downloadUrl, {
+    const res = await fetch(`${existing.downloadUrl}?_=${Date.now()}`, {
       headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      cache: "no-store",
     });
     if (!res.ok) return empty;
     return (await res.json()) as SubmissionStore;
