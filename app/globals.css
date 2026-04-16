@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-@theme {
-  --font-handwriting: var(--font-handwriting);
-}
-
 /* Hide scrollbar for category tabs */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -14,7 +10,7 @@
 }
 
 .font-handwriting {
-  font-family: var(--font-handwriting), "Kaiti", "STKaiti", "楷体", cursive;
+  font-family: "Kaiti", "STKaiti", "楷体", "KaiTi", cursive;
 }
 
 /* 轮播平滑动画 */

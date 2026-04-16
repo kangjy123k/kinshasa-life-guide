@@ -855,16 +855,30 @@ export default function GuidePage() {
   const [detailBizId, setDetailBizId] = useState<number | null>(null);
   const [focusBizId, setFocusBizId] = useState<number | null>(null);
 
-  // 记录访问量
+  // 记录访问量 — 用 sendBeacon，不占主请求通道，不阻塞首屏
   useEffect(() => {
-    fetch("/api/track", { method: "POST" }).catch(() => {});
+    const send = () => {
+      try {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon("/api/track", new Blob([""], { type: "text/plain" }));
+        } else {
+          fetch("/api/track", { method: "POST", keepalive: true }).catch(() => {});
+        }
+      } catch {}
+    };
+    // 等首屏绘制后再发，避免抢带宽
+    if ("requestIdleCallback" in window) {
+      (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(send);
+    } else {
+      setTimeout(send, 200);
+    }
   }, []);
 
-  // 拉取审核通过的用户提交（mount + 窗口聚焦 + 30s 轮询）
+  // 拉取审核通过的用户提交（mount + 窗口聚焦 + 60s 轮询；CDN s-maxage=60）
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      fetch("/api/public/approved", { cache: "no-store" })
+      fetch("/api/public/approved")
         .then((r) => r.json())
         .then((d: { records?: RawSubmission[] }) => {
           if (cancelled) return;
@@ -882,7 +896,7 @@ export default function GuidePage() {
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", load);
-    const timer = setInterval(load, 30_000);
+    const timer = setInterval(load, 60_000);
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);

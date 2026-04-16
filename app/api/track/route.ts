@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordVisit } from "@/lib/analytics";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 function pick(req: NextRequest, name: string): string | undefined {
   const v = req.headers.get(name);
