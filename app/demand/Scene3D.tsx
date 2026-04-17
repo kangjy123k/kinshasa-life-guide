@@ -103,7 +103,7 @@ function Bubble3D({
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
-  const htmlRef = useRef<HTMLDivElement | null>(null);
+  const labelRef = useRef<HTMLDivElement | null>(null);
 
   const color = useMemo(() => {
     const c = colorFromVotes(wish.votes);
@@ -159,8 +159,10 @@ function Bubble3D({
       matRef.current.transparent = true;
     }
 
-    if (htmlRef.current) {
-      htmlRef.current.style.opacity = String(opacity);
+    if (labelRef.current) {
+      // 文字跟着气泡当前大小缩放 + 同步透明度 → 融为一体
+      labelRef.current.style.opacity = String(opacity);
+      labelRef.current.style.transform = `scale(${Math.max(0.25, Math.min(1.25, scale))})`;
     }
   });
 
@@ -201,28 +203,36 @@ function Bubble3D({
         />
       </mesh>
 
-      {/* 文字 HTML 投影 */}
+      {/* 文字 HTML 投影（贴在气泡上，随气泡缩放） */}
       <Html
-        ref={htmlRef}
         center
-        distanceFactor={10}
+        distanceFactor={3.4}
         occlude={false}
         style={{
           pointerEvents: "none",
           userSelect: "none",
-          textAlign: "center",
-          whiteSpace: "nowrap",
-          textShadow:
-            "0 1px 3px rgba(0,0,0,0.6), 0 0 10px rgba(255,255,255,0.4)",
-          color: "#fff",
-          fontWeight: 800,
-          letterSpacing: "0.02em",
-          fontSize: 18,
         }}
       >
-        <div>{wish.name}</div>
-        <div style={{ fontSize: 13, opacity: 0.92, marginTop: 2 }}>
-          ✨ {wish.votes}
+        <div
+          ref={labelRef}
+          style={{
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            textShadow: "0 0 4px rgba(0,0,0,0.45)",
+            color: "rgba(255,255,255,0.92)",
+            fontWeight: 700,
+            letterSpacing: "0.01em",
+            fontSize: 10,
+            lineHeight: 1.15,
+            mixBlendMode: "screen",
+            transformOrigin: "center",
+            transition: "opacity 80ms linear",
+          }}
+        >
+          <div>{wish.name}</div>
+          <div style={{ fontSize: 8, opacity: 0.78, marginTop: 1, fontWeight: 600 }}>
+            ✨ {wish.votes}
+          </div>
         </div>
       </Html>
     </group>
