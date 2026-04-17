@@ -155,8 +155,11 @@ function Bubble3D({
     const wobble2 = Math.cos(now / 420 + bubble.wobblePhase) * bubble.wobbleAmp;
     const driftX = bubble.vx * ageSec;
     const driftY = bubble.vy * ageSec;
-    const finalX = bubble.x + driftX + wobble;
-    const finalZ = bubble.y + driftY + wobble2;
+    // 兜底 clamp：不论漂移/晃动如何，气泡中心绝不越出水池可视区
+    const SAFE_X = 2.3;
+    const SAFE_Y = 2.6;
+    const finalX = Math.max(-SAFE_X, Math.min(SAFE_X, bubble.x + driftX + wobble));
+    const finalZ = Math.max(-SAFE_Y, Math.min(SAFE_Y, bubble.y + driftY + wobble2));
 
     g.position.set(finalX, arcY, finalZ);
     g.scale.setScalar(scale);

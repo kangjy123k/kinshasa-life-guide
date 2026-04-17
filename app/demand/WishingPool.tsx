@@ -35,8 +35,13 @@ const FP_KEY = "klg_demand_fp";
 const MAX_VISIBLE = 8;
 const SPAWN_INTERVAL_MIN = 320;
 const SPAWN_INTERVAL_MAX = 720;
-const POOL_RADIUS = 3.4;
-const MIN_BUBBLE_GAP = 1.1;
+// 椭圆采样范围（横窄纵宽，贴合 1:1.1 竖屏画幅；留足边距给气泡半径 + 漂移 + 晃动不切边）
+const POOL_RADIUS_X = 1.9;
+const POOL_RADIUS_Y = 2.2;
+// 兜底：任何时刻气泡中心都不得超出此范围
+const SAFE_X = 2.3;
+const SAFE_Y = 2.6;
+const MIN_BUBBLE_GAP = 0.9;
 const LIFESPAN_MIN = 4200;  // 抛物线总时长：小→大→小
 const LIFESPAN_MAX = 5500;
 
@@ -159,13 +164,13 @@ export default function WishingPool() {
     const wid = pickNextWishId(wishesRef.current, excluded, queryRef.current);
     if (wid === null) return;
 
-    // 在 POOL_RADIUS 内撒点，但避开已在池中的气泡，防止重叠遮字
+    // 椭圆内撒点，偏向中心（幂次 >1 聚拢中心视觉重心），避开已在池中的气泡
     let placed: { x: number; y: number } | null = null;
     for (let attempt = 0; attempt < 14; attempt++) {
       const a = Math.random() * Math.PI * 2;
-      const r = Math.sqrt(Math.random()) * POOL_RADIUS;
-      const cx = Math.cos(a) * r;
-      const cy = Math.sin(a) * r;
+      const rFrac = Math.pow(Math.random(), 1.35); // 偏心：中心密集
+      const cx = Math.cos(a) * rFrac * POOL_RADIUS_X;
+      const cy = Math.sin(a) * rFrac * POOL_RADIUS_Y;
       const tooClose = active.some((b) => {
         const dx = b.x - cx;
         const dy = b.y - cy;
@@ -188,11 +193,11 @@ export default function WishingPool() {
         spawnAt: performance.now(),
         x: placed.x,
         y: placed.y,
-        vx: (Math.random() - 0.5) * 0.18,
-        vy: (Math.random() - 0.5) * 0.18,
+        vx: (Math.random() - 0.5) * 0.08,
+        vy: (Math.random() - 0.5) * 0.08,
         lifespan,
         wobblePhase: Math.random() * Math.PI * 2,
-        wobbleAmp: 0.04 + Math.random() * 0.07,
+        wobbleAmp: 0.03 + Math.random() * 0.04,
         poppedAt: null,
         popKind: null,
       },
