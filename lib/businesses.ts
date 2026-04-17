@@ -573,7 +573,7 @@ export const businesses: Business[] = [
   ...seedBusinesses.map((b) => ({ ...b, hidden: true })),
   ...liveBusinesses,
 ];
-export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand";
+export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage";
 export interface RawSubmission {
   id: string;
   type: SubmissionType;

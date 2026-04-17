@@ -3,7 +3,7 @@ import { addSubmission, SubmissionType } from "@/lib/submissions";
 
 export const runtime = "nodejs";
 
-const VALID_TYPES: SubmissionType[] = ["merchant", "hiring", "jobseeker", "secondhand"];
+const VALID_TYPES: SubmissionType[] = ["merchant", "hiring", "jobseeker", "secondhand", "luggage"];
 
 export async function POST(req: NextRequest) {
   try {
