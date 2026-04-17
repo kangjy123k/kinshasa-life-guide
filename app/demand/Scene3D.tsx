@@ -104,6 +104,8 @@ const Bubble3D = memo(function Bubble3D({
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const labelRef = useRef<HTMLDivElement | null>(null);
+  const shockRef = useRef<THREE.Mesh>(null);
+  const raysGroupRef = useRef<THREE.Group>(null);
 
   const color = useMemo(() => {
     const c = colorFromVotes(wish.votes);
@@ -111,6 +113,12 @@ const Bubble3D = memo(function Bubble3D({
   }, [wish.votes]);
 
   const peak = useMemo(() => peakScaleFromVotes(wish.votes), [wish.votes]);
+
+  // 8 条放射光线的角度（XZ 平面均布）
+  const rayAngles = useMemo(
+    () => Array.from({ length: 8 }, (_, i) => (i * Math.PI * 2) / 8),
+    []
+  );
 
   useFrame(() => {
     const g = groupRef.current;
@@ -185,6 +193,48 @@ const Bubble3D = memo(function Bubble3D({
       labelRef.current.style.opacity = String(opacity);
       labelRef.current.style.transform = `scale(${Math.max(0.25, Math.min(1.25, scale))})`;
     }
+
+    // 爆裂：中心冲击波环 + 放射光线（仅 wish-pop）
+    const shock = shockRef.current;
+    const rays = raysGroupRef.current;
+    const isPop = bubble.poppedAt !== null && bubble.popKind === "wish";
+    if (shock && rays) {
+      if (isPop) {
+        shock.visible = true;
+        rays.visible = true;
+        const popAge = now - bubble.poppedAt!;
+        const DUR = 520;
+        const dT = Math.min(1, popAge / DUR);
+        const ease = 1 - (1 - dT) * (1 - dT);
+        // invParent 抵消 group.scale，让特效的世界尺寸/位置只跟 dT 变化
+        const invParent = 1 / Math.max(0.001, scale);
+
+        // 冲击波环：从 0.3 扩到 2.4，同时变薄变淡
+        const ringR = (0.3 + ease * 2.1) * invParent;
+        shock.scale.setScalar(ringR);
+        const shockMat = shock.material as THREE.MeshBasicMaterial;
+        shockMat.opacity = (1 - dT) * 0.9;
+
+        // 放射光线：从 0.1 快速拉长到 1.4（最前 40% 伸展，然后淡出）
+        const stretch = dT < 0.4 ? (dT / 0.4) : 1;
+        const len = (0.1 + stretch * 1.3) * invParent;
+        const rayFade = dT < 0.4 ? 1 : 1 - (dT - 0.4) / 0.6;
+        for (let i = 0; i < rayAngles.length; i++) {
+          const r = rays.children[i] as THREE.Mesh | undefined;
+          if (!r) continue;
+          const a = rayAngles[i];
+          // scale.x 变长的同时把中心向外推 len/2，让 ray 内端始终锚在原点
+          r.scale.x = len;
+          r.position.x = (len / 2) * Math.cos(a);
+          r.position.z = (len / 2) * Math.sin(a);
+          const rm = r.material as THREE.MeshBasicMaterial;
+          rm.opacity = Math.max(0, rayFade);
+        }
+      } else {
+        shock.visible = false;
+        rays.visible = false;
+      }
+    }
   });
 
   return (
@@ -223,6 +273,35 @@ const Bubble3D = memo(function Bubble3D({
           attenuationColor={color}
         />
       </mesh>
+
+      {/* 从中心爆裂：冲击波环（XZ 平面，俯视可见） */}
+      <mesh ref={shockRef} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+        <ringGeometry args={[0.78, 1.0, 48]} />
+        <meshBasicMaterial
+          color="#ffe27a"
+          transparent
+          opacity={0}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* 从中心爆裂：8 条放射光线（细长盒子躺在 XZ 平面，长度/位置随 pop 动画同步） */}
+      <group ref={raysGroupRef} visible={false}>
+        {rayAngles.map((a, i) => (
+          <mesh key={i} rotation={[0, -a, 0]}>
+            <boxGeometry args={[1, 0.02, 0.08]} />
+            <meshBasicMaterial
+              color="#fff4c2"
+              transparent
+              opacity={0}
+              toneMapped={false}
+              depthWrite={false}
+            />
+          </mesh>
+        ))}
+      </group>
 
       {/* 文字 HTML 投影（贴在气泡上，随气泡缩放） */}
       <Html

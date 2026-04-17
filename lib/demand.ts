@@ -163,17 +163,19 @@ export async function voteProduct(
 
   // 原子 upsert：首次写入，或旧记录 voted_at <= (now - 24h) 才更新。
   // 并发同指纹请求会被 Turso 写锁串行化：
-  //   第一个 INSERT 成功；第二个走 ON CONFLICT 分支但 WHERE 不成立（voted_at 刚被设为 now），rowsAffected=0
-  // 仅 rowsAffected=1 才递增 votes，杜绝同一指纹刷票。
+  //   第一个 INSERT 成功；第二个走 ON CONFLICT 分支但 WHERE 不成立（voted_at 刚被设为 now），0 行
+  // 用 RETURNING 判断是否真的写入（libsql 的 rowsAffected 在某些 upsert 场景会漏报，
+  //   曾导致 vote 落库但 votes 没加 → 冷却生效但计数为 0，bug 重现过）
   const upsert = await db().execute({
     sql: `INSERT INTO product_vote (fingerprint, product_id, voted_at)
           VALUES (?, ?, ?)
           ON CONFLICT(fingerprint, product_id) DO UPDATE SET voted_at = excluded.voted_at
-          WHERE product_vote.voted_at <= ?`,
+          WHERE product_vote.voted_at <= ?
+          RETURNING voted_at`,
     args: [fingerprint, productId, nowIso, thresholdIso],
   });
 
-  const applied = Number(upsert.rowsAffected ?? 0) > 0;
+  const applied = upsert.rows.length > 0;
   if (!applied) {
     // 找当前记录计算剩余冷却时间（告知用户）
     const prev = await db().execute({
