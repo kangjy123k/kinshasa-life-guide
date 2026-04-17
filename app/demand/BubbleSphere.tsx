@@ -99,13 +99,24 @@ export default function BubbleSphere() {
     return () => window.removeEventListener("resize", recalc);
   }, []);
 
-  // 加载数据
+  // 加载数据（带 cache-bust + 合并策略：若服务器返回的 votes 比本地小，保留本地，防 CDN stale 覆盖乐观更新）
   async function reload() {
     setLoading(true);
     try {
-      const res = await fetch("/api/demand/list", { cache: "no-store" });
+      const res = await fetch(`/api/demand/list?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       const data = (await res.json()) as { ok: boolean; products: Product[] };
-      setProducts(data.products ?? []);
+      const fresh = data.products ?? [];
+      setProducts((prev) => {
+        const map = new Map(prev.map((p) => [p.id, p]));
+        return fresh.map((s) => {
+          const local = map.get(s.id);
+          if (local && local.votes > s.votes) return { ...s, votes: local.votes };
+          return s;
+        });
+      });
     } catch {
       setToast({ text: "加载失败，请检查网络", type: "err" });
     } finally {
@@ -129,6 +140,12 @@ export default function BubbleSphere() {
       const dt = Math.min(0.05, (t - prev) / 1000);
       prev = t;
 
+      // 加商品 modal 打开时冻结球，避免背后干扰
+      if (addingOpen) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+
       // 拖拽中：由 pointermove 直接累加；否则自动转 + 摩擦让 vy 回到 AUTO_SPIN
       if (pointerRef.current.id === null) {
         rotRef.current.y += rotRef.current.vy * dt;
@@ -147,7 +164,7 @@ export default function BubbleSphere() {
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products.length, dims.size, dims.radius, query, highlightId]);
+  }, [products.length, dims.size, dims.radius, query, highlightId, addingOpen]);
 
   function applyTransforms() {
     const { size, radius } = dims;
@@ -379,16 +396,18 @@ export default function BubbleSphere() {
       <div className="relative flex items-center justify-center mt-2">
         <div
           ref={sceneRef}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          onPointerDown={addingOpen ? undefined : onPointerDown}
+          onPointerMove={addingOpen ? undefined : onPointerMove}
+          onPointerUp={addingOpen ? undefined : onPointerUp}
+          onPointerCancel={addingOpen ? undefined : onPointerUp}
           className="relative select-none touch-none"
           style={{
             width: dims.size,
             height: dims.size,
             cursor: pointerRef.current.id !== null ? "grabbing" : "grab",
+            pointerEvents: addingOpen ? "none" : "auto",
           }}
+          aria-hidden={addingOpen}
         >
           {/* 背景光晕 */}
           <div
@@ -546,6 +565,20 @@ function AddProductModal({
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // 打开时锁 body 滚动 + 监听 Esc 关闭，离开时解锁
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
   async function submit() {
     const trimmed = name.trim();
     if (!trimmed) {
@@ -573,8 +606,17 @@ function AddProductModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
-      <div className="w-full sm:max-w-sm bg-[#121a38] text-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/10">
+    <div
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#050816]/95 backdrop-blur-md p-0 sm:p-4 overscroll-contain"
+      onClick={onClose}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+    >
+      <div
+        className="w-full sm:max-w-sm bg-[#121a38] text-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <h3 className="text-base font-bold">添加一个商品</h3>
           <button onClick={onClose} aria-label="关闭" className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center">

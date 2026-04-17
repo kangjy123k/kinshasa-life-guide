@@ -10,7 +10,8 @@ export async function GET() {
       { ok: true, products },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=10, stale-while-revalidate=60",
+          // 投票是实时行为，绝不能让 CDN 返回 stale → 会覆盖用户刚投的票
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );
