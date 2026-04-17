@@ -564,9 +564,9 @@ function HomeView({
         )}
       </section>
 
-      {/* ---- 快捷入口：天气 / 地图 / 话费充值 ---- */}
+      {/* ---- 快捷入口：天气 / 地图 / 充值 / 需求榜 ---- */}
       <section className="max-w-4xl mx-auto px-4 mt-4">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Link
             href="/weather"
             className="flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 active:scale-95 transition"
@@ -596,6 +596,19 @@ function HomeView({
               <div className="text-xs font-bold text-gray-800">话费充值</div>
               <div className="text-[10px] text-gray-500 truncate">4 家运营商</div>
             </div>
+          </Link>
+          <Link
+            href="/demand"
+            className="relative flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-600 text-white shadow active:scale-95 transition"
+          >
+            <span className="text-2xl leading-none">🪐</span>
+            <div className="min-w-0">
+              <div className="text-xs font-bold">需求榜</div>
+              <div className="text-[10px] text-white/85 truncate">想买啥？投一票</div>
+            </div>
+            <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[9px] font-black bg-yellow-300 text-rose-600 rounded-full shadow">
+              新
+            </span>
           </Link>
         </div>
       </section>
