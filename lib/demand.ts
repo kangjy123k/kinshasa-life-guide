@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client/web";
+import { moderate } from "./moderation";
 
 export interface ProductDemand {
   id: number;
@@ -100,8 +101,14 @@ export async function addProduct(rawName: string): Promise<
 > {
   await ensureSchema();
   const name = rawName.trim().replace(/\s+/g, " ");
-  if (!name) return { ok: false, reason: "商品名不能为空" };
-  if (name.length > 24) return { ok: false, reason: "商品名过长（最多 24 字符）" };
+  if (!name) return { ok: false, reason: "心愿内容不能为空" };
+  if (name.length > 24) return { ok: false, reason: "心愿过长（最多 24 字）" };
+
+  const mod = moderate(name);
+  if (!mod.ok) {
+    return { ok: false, reason: `含有不适宜内容（${mod.category}），请换个说法` };
+  }
+
   const nameLower = name.toLowerCase();
   const now = new Date().toISOString();
 
