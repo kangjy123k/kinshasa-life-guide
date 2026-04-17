@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowLeft, Search, Plus, X, Loader2, Trophy, Sparkles, Info } from "lucide-react";
+
+const Scene3D = dynamic(() => import("./Scene3D"), { ssr: false });
 
 interface Wish {
   id: number;
@@ -12,41 +15,28 @@ interface Wish {
   lastVotedAt: string | null;
 }
 
-interface Bubble {
+export interface BubbleInstance {
   instanceId: number;
   wishId: number;
-  spawnAt: number;   // performance.now()
-  lifespan: number;  // ms
-  x: number;         // 池内 px
+  spawnAt: number;
+  // 3D 空间：x, y 为水平散布；z 从 -4（深水）→ 0（水面）
+  x: number;
   y: number;
-  phase: number;
+  zStart: number;
+  zEnd: number;
+  vx: number;
+  vy: number;
+  riseSpeed: number;       // z 单位/秒
+  wobblePhase: number;
+  wobbleAmp: number;
   poppedAt: number | null;
   popKind: "wish" | "decay" | null;
 }
 
-interface Ripple {
-  id: number;
-  x: number;
-  y: number;
-  kind: "tap" | "wish" | "decay";
-}
-
-interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  color: string;
-}
-
 const FP_KEY = "klg_demand_fp";
-const MAX_VISIBLE = 5;
-const SPAWN_INTERVAL_MS = 1100;
-const LIFESPAN_MIN = 7500;
-const LIFESPAN_MAX = 10500;
-const POP_ANIM_MS = 520;
+const MAX_VISIBLE = 9;
+const SPAWN_INTERVAL_MIN = 180;
+const SPAWN_INTERVAL_MAX = 520;
 
 function getFingerprint(): string {
   if (typeof window === "undefined") return "";
@@ -58,39 +48,20 @@ function getFingerprint(): string {
   return fp;
 }
 
-/** 气泡的生命周期缩放：从小到大到小，正弦峰形 */
-function lifecycleScale(age: number, lifespan: number, peak: number): number {
-  const t = Math.max(0, Math.min(1, age / lifespan));
-  const curve = Math.sin(t * Math.PI); // 0 → 1 → 0
-  return 0.3 + (peak - 0.3) * curve;
-}
-function lifecycleOpacity(age: number, lifespan: number): number {
-  const t = Math.max(0, Math.min(1, age / lifespan));
-  const curve = Math.sin(t * Math.PI);
-  return 0.3 + 0.7 * curve;
+export function peakScaleFromVotes(votes: number): number {
+  return 1 + Math.log10(votes + 1) * 0.35;
 }
 
-/** 票数 → 峰值尺寸倍数 */
-function peakScaleFromVotes(votes: number): number {
-  return 1 + Math.log10(votes + 1) * 0.38;
-}
-
-/** 票数 → 颜色 */
-function colorFromVotes(votes: number): { bg: string; ring: string; glow: string; text: string } {
+export function colorFromVotes(votes: number): { h: number; s: number; l: number } {
   const t = Math.min(1, Math.log10(votes + 1) / 2);
   const hue = 210 - 220 * t;
-  const adjHue = (hue + 360) % 360;
-  const sat = 70 + t * 20;
-  const light = 70 - t * 18;
   return {
-    bg: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.88) 0%, hsla(${adjHue}, ${sat}%, ${light + 8}%, 0.85) 35%, hsla(${adjHue}, ${sat}%, ${light - 10}%, 0.8) 100%)`,
-    ring: `hsla(${adjHue}, ${sat}%, ${Math.min(light + 20, 90)}%, 0.9)`,
-    glow: `hsla(${adjHue}, ${sat}%, ${light + 15}%, 0.65)`,
-    text: t > 0.55 ? "#3b1206" : "#0a1b36",
+    h: (hue + 360) % 360,
+    s: 70 + t * 25,
+    l: 65 - t * 10,
   };
 }
 
-/** 随机选一条心愿（避开已在池中 + 尊重搜索过滤） */
 function pickNextWishId(
   all: Wish[],
   excludeIds: Set<number>,
@@ -101,7 +72,6 @@ function pickNextWishId(
     (w) => !excludeIds.has(w.id) && (!q || w.name.toLowerCase().includes(q))
   );
   if (pool.length === 0) return null;
-  // 按 sqrt(votes+1) 加权，热门略多曝光但非常温和
   const weights = pool.map((w) => Math.sqrt(w.votes + 1));
   const total = weights.reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
@@ -119,43 +89,20 @@ export default function WishingPool() {
   const [addingOpen, setAddingOpen] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: "ok" | "warn" | "err" } | null>(null);
   const [votingId, setVotingId] = useState<number | null>(null);
-  const [bubbles, setBubbles] = useState<Bubble[]>([]);
-  const [ripples, setRipples] = useState<Ripple[]>([]);
-  const [particles, setParticles] = useState<Particle[]>([]);
-
-  const poolRef = useRef<HTMLDivElement | null>(null);
-  const domRef = useRef<Map<number, HTMLDivElement>>(new Map());
-  const lastTapRef = useRef<{ instanceId: number | null; t: number }>({ instanceId: null, t: 0 });
-  const lastSpawnRef = useRef<number>(0);
-  const bubbleIdRef = useRef<number>(1);
-
-  const addingOpenRef = useRef(false);
-  const queryRef = useRef("");
-  const wishesRef = useRef<Wish[]>([]);
-  const bubblesRef = useRef<Bubble[]>([]);
-  useEffect(() => { addingOpenRef.current = addingOpen; }, [addingOpen]);
-  useEffect(() => { queryRef.current = query; }, [query]);
-  useEffect(() => { wishesRef.current = wishes; }, [wishes]);
-  useEffect(() => { bubblesRef.current = bubbles; }, [bubbles]);
+  const [bubbles, setBubbles] = useState<BubbleInstance[]>([]);
 
   const fingerprint = useRef<string>("");
   useEffect(() => { fingerprint.current = getFingerprint(); }, []);
 
-  // 池子尺寸
-  const [dims, setDims] = useState({ w: 340, h: 460 });
-  useEffect(() => {
-    function recalc() {
-      const w = Math.min(window.innerWidth - 16, 520);
-      const reserve = 340;
-      const h = Math.max(360, Math.min(window.innerHeight - reserve, 640));
-      setDims({ w, h });
-    }
-    recalc();
-    window.addEventListener("resize", recalc);
-    return () => window.removeEventListener("resize", recalc);
-  }, []);
+  const wishesRef = useRef<Wish[]>([]);
+  const bubblesRef = useRef<BubbleInstance[]>([]);
+  const queryRef = useRef("");
+  const addingOpenRef = useRef(false);
+  useEffect(() => { wishesRef.current = wishes; }, [wishes]);
+  useEffect(() => { bubblesRef.current = bubbles; }, [bubbles]);
+  useEffect(() => { queryRef.current = query; }, [query]);
+  useEffect(() => { addingOpenRef.current = addingOpen; }, [addingOpen]);
 
-  // 加载心愿
   async function reload() {
     setLoading(true);
     try {
@@ -181,256 +128,114 @@ export default function WishingPool() {
   }
   useEffect(() => { reload(); }, []);
 
-  // 选点：落在池内的椭圆安全区里
-  function randomSpawnPoint(): { x: number; y: number } {
-    const w = dims.w;
-    const h = dims.h;
-    const cx = w / 2;
-    const cy = h / 2;
-    // 椭圆安全区 = 池子内缩一点
-    const rx = w * 0.38;
-    const ry = h * 0.4;
-    // 生成单位圆内点
-    const a = Math.random() * Math.PI * 2;
-    const r = Math.sqrt(Math.random());
-    return { x: cx + rx * r * Math.cos(a), y: cy + ry * r * Math.sin(a) };
-  }
-
-  // 物理+生命周期循环
+  // Spawn 循环：用 setTimeout 链，避免频繁 setState
   useEffect(() => {
-    let raf = 0;
-    let prev = performance.now();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    const bubbleIdCtr = { n: 1 };
 
-    const loop = (t: number) => {
-      const dt = Math.min(0.05, (t - prev) / 1000);
-      prev = t;
-
-      if (!addingOpenRef.current) {
-        // 1. 尝试生成新气泡
-        maybeSpawn(t);
-
-        // 2. 推进现有气泡（写 DOM）
-        applyBubbleFrame(t);
-
-        // 3. 回收已消失的气泡
-        pruneBubbles(t);
-
-        // 4. 清理涟漪 / 推进粒子
-        setRipples((prev) => prev.filter((r) => t - r.id < 1400));
-        setParticles((prev) => {
-          if (!prev.length) return prev;
-          const next: Particle[] = [];
-          for (const p of prev) {
-            const life = p.life - dt;
-            if (life <= 0) continue;
-            next.push({
-              ...p,
-              x: p.x + p.vx * dt,
-              y: p.y + p.vy * dt + 70 * dt * (1 - life),
-              vx: p.vx * 0.95,
-              vy: p.vy * 0.95,
-              life,
-            });
-          }
-          return next;
-        });
-      }
-
-      raf = requestAnimationFrame(loop);
+    const schedule = () => {
+      if (cancelled) return;
+      const delay = SPAWN_INTERVAL_MIN + Math.random() * (SPAWN_INTERVAL_MAX - SPAWN_INTERVAL_MIN);
+      timer = setTimeout(() => {
+        if (!addingOpenRef.current) trySpawn(bubbleIdCtr);
+        schedule();
+      }, delay);
     };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dims.w, dims.h]);
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
-  function maybeSpawn(now: number) {
+  function trySpawn(ctr: { n: number }) {
     if (wishesRef.current.length === 0) return;
     const active = bubblesRef.current.filter((b) => b.poppedAt === null);
     if (active.length >= MAX_VISIBLE) return;
-    if (now - lastSpawnRef.current < SPAWN_INTERVAL_MS) return;
     const excluded = new Set(bubblesRef.current.map((b) => b.wishId));
-    const nextWishId = pickNextWishId(wishesRef.current, excluded, queryRef.current);
-    if (nextWishId === null) return;
+    const wid = pickNextWishId(wishesRef.current, excluded, queryRef.current);
+    if (wid === null) return;
 
-    const pt = randomSpawnPoint();
-    const lifespan = LIFESPAN_MIN + Math.random() * (LIFESPAN_MAX - LIFESPAN_MIN);
-    const newBubble: Bubble = {
-      instanceId: bubbleIdRef.current++,
-      wishId: nextWishId,
-      spawnAt: now,
-      lifespan,
-      x: pt.x,
-      y: pt.y,
-      phase: Math.random() * Math.PI * 2,
-      poppedAt: null,
-      popKind: null,
-    };
-    lastSpawnRef.current = now;
-    setBubbles((prev) => [...prev, newBubble]);
-  }
+    // 在半径 3.3 内均匀撒点 (3D 坐标系)
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random()) * 3.2;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    const zStart = -4.5 - Math.random() * 0.5;
+    const riseSpeed = 1.2 + Math.random() * 0.6; // ≈ 3-4s 升到水面
 
-  function applyBubbleFrame(now: number) {
-    const w = dims.w;
-    const h = dims.h;
-    const nameById = new Map(wishesRef.current.map((x) => [x.id, x]));
-    const q = queryRef.current.trim().toLowerCase();
-    const baseSize = Math.max(72, Math.min(w, h) * 0.32);
-
-    for (const b of bubblesRef.current) {
-      const el = domRef.current.get(b.instanceId);
-      if (!el) continue;
-      const wish = nameById.get(b.wishId);
-      if (!wish) continue;
-
-      const age = now - b.spawnAt;
-
-      let scale: number;
-      let opacity: number;
-
-      if (b.poppedAt !== null) {
-        // 爆裂动画
-        const pt = Math.max(0, Math.min(1, (now - b.poppedAt) / POP_ANIM_MS));
-        if (b.popKind === "wish") {
-          // 愿望成就：向外膨胀消散
-          scale = (1 + pt * 0.55) * peakScaleFromVotes(wish.votes);
-          opacity = 1 - pt;
-        } else {
-          // 自然消散
-          scale = (1 - pt * 0.5) * peakScaleFromVotes(wish.votes);
-          opacity = Math.max(0, 0.8 - pt);
-        }
-      } else {
-        // 生命周期缩放
-        const peak = peakScaleFromVotes(wish.votes);
-        scale = lifecycleScale(age, b.lifespan, peak);
-        opacity = lifecycleOpacity(age, b.lifespan);
-      }
-
-      // 轻微摆动：上下微浮 + 水平漂
-      const wobbleT = now / 1600 + b.phase;
-      const ox = Math.sin(wobbleT) * 4;
-      const oy = Math.cos(wobbleT * 1.3) * 3;
-
-      const size = baseSize * scale;
-      const match = !q || wish.name.toLowerCase().includes(q);
-
-      el.style.width = `${size}px`;
-      el.style.height = `${size}px`;
-      el.style.transform = `translate3d(${b.x - size / 2 + ox}px, ${b.y - size / 2 + oy}px, 0)`;
-      el.style.opacity = String(opacity * (match ? 1 : 0.25));
-      el.style.pointerEvents = b.poppedAt === null && match ? "auto" : "none";
-
-      // 颜色（票数变化才更新）
-      if (el.dataset.lastVotes !== String(wish.votes)) {
-        const c = colorFromVotes(wish.votes);
-        el.style.background = c.bg;
-        el.style.borderColor = c.ring;
-        el.style.color = c.text;
-        el.style.boxShadow = `0 0 ${size * 0.35}px ${c.glow}, inset 0 0 ${size * 0.45}px rgba(255,255,255,0.4)`;
-        el.dataset.lastVotes = String(wish.votes);
-      }
-
-      const fs = Math.max(10, Math.min(18, size * 0.16));
-      el.style.fontSize = `${fs}px`;
-    }
-  }
-
-  function pruneBubbles(now: number) {
-    const toKill: Bubble[] = [];
-    const toRemove: number[] = [];
-    for (const b of bubblesRef.current) {
-      if (b.poppedAt === null) {
-        const age = now - b.spawnAt;
-        if (age > b.lifespan) {
-          // 自然消散
-          toKill.push(b);
-        }
-      } else if (now - b.poppedAt > POP_ANIM_MS + 40) {
-        toRemove.push(b.instanceId);
-      }
-    }
-    if (toKill.length === 0 && toRemove.length === 0) return;
-    setBubbles((prev) => {
-      let next = prev;
-      if (toKill.length) {
-        const killIds = new Set(toKill.map((b) => b.instanceId));
-        next = next.map((b) =>
-          killIds.has(b.instanceId)
-            ? { ...b, poppedAt: now, popKind: "decay" as const }
-            : b
-        );
-        for (const b of toKill) {
-          spawnRipple(b.x, b.y, "decay");
-        }
-      }
-      if (toRemove.length) {
-        const rmSet = new Set(toRemove);
-        next = next.filter((b) => !rmSet.has(b.instanceId));
-      }
-      return next;
-    });
-  }
-
-  // 池面指针事件
-  function poolCoord(e: React.PointerEvent): { x: number; y: number } | null {
-    const el = poolRef.current;
-    if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  }
-
-  function onPoolPointerDown(e: React.PointerEvent) {
-    const pt = poolCoord(e);
-    if (!pt) return;
-    // 只在空白处（不在气泡上）生成涟漪
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-bubble]")) return;
-    spawnRipple(pt.x, pt.y, "tap");
-  }
-
-  function spawnRipple(x: number, y: number, kind: Ripple["kind"]) {
-    setRipples((prev) => [...prev, { id: performance.now() + Math.random(), x, y, kind }]);
-  }
-
-  function spawnWishParticles(x: number, y: number) {
-    const base = performance.now();
-    const n = 12;
-    const arr: Particle[] = [];
-    for (let i = 0; i < n; i++) {
-      const a = (Math.PI * 2 * i) / n + Math.random() * 0.35;
-      const sp = 180 + Math.random() * 80;
-      arr.push({
-        id: base + i,
+    setBubbles((prev) => [
+      ...prev,
+      {
+        instanceId: ctr.n++,
+        wishId: wid,
+        spawnAt: performance.now(),
         x, y,
-        vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp - 50,
-        life: 0.8 + Math.random() * 0.5,
-        color: ["#fde68a", "#fbbf24", "#fcd34d", "#fed7aa", "#fee2e2"][i % 5],
+        zStart,
+        zEnd: 0.1,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: (Math.random() - 0.5) * 0.25,
+        riseSpeed,
+        wobblePhase: Math.random() * Math.PI * 2,
+        wobbleAmp: 0.05 + Math.random() * 0.08,
+        poppedAt: null,
+        popKind: null,
+      },
+    ]);
+  }
+
+  // 回收已结束的气泡（定时检查）
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const now = performance.now();
+      setBubbles((prev) => {
+        const changed: BubbleInstance[] = [];
+        let dirty = false;
+        for (const b of prev) {
+          if (b.poppedAt !== null && now - b.poppedAt > 500) {
+            dirty = true;
+            continue;
+          }
+          // 到达水面自动爆（decay）
+          if (b.poppedAt === null) {
+            const age = (now - b.spawnAt) / 1000;
+            const z = b.zStart + age * b.riseSpeed;
+            if (z >= b.zEnd) {
+              dirty = true;
+              changed.push({ ...b, poppedAt: now, popKind: "decay" });
+              continue;
+            }
+          }
+          changed.push(b);
+        }
+        return dirty ? changed : prev;
       });
-    }
-    setParticles((prev) => [...prev, ...arr]);
-  }
+    }, 200);
+    return () => clearInterval(iv);
+  }, []);
 
-  // 单 / 双击气泡
-  async function onBubbleTap(b: Bubble, wish: Wish) {
-    if (b.poppedAt !== null) return;
-    const now = performance.now();
-    const last = lastTapRef.current;
-    if (last.instanceId === b.instanceId && now - last.t < 420) {
-      lastTapRef.current = { instanceId: null, t: 0 };
-      await doWish(b, wish);
-      return;
-    }
-    lastTapRef.current = { instanceId: b.instanceId, t: now };
-    setToast({ text: `再点一次确认为「${wish.name}」许愿`, type: "ok" });
-    setTimeout(() => {
-      if (lastTapRef.current.instanceId === b.instanceId) {
-        lastTapRef.current = { instanceId: null, t: 0 };
-      }
-    }, 1500);
-  }
+  const handleBubbleClick = useCallback(
+    (instanceId: number) => {
+      const b = bubblesRef.current.find((x) => x.instanceId === instanceId);
+      const w = b ? wishesRef.current.find((x) => x.id === b.wishId) : null;
+      if (!b || !w || b.poppedAt !== null) return;
+      setToast({ text: `再点一次确认为「${w.name}」许愿`, type: "ok" });
+    },
+    []
+  );
 
-  async function doWish(target: Bubble | null, wish: Wish) {
+  const handleBubbleDoubleClick = useCallback(
+    async (instanceId: number) => {
+      const b = bubblesRef.current.find((x) => x.instanceId === instanceId);
+      const w = b ? wishesRef.current.find((x) => x.id === b.wishId) : null;
+      if (!b || !w || b.poppedAt !== null) return;
+      await doWish(w, b);
+    },
+    []
+  );
+
+  async function doWish(wish: Wish, target: BubbleInstance | null) {
     if (votingId) return;
     setVotingId(wish.id);
     try {
@@ -449,7 +254,6 @@ export default function WishingPool() {
       setToast({ text: `🪷 已为「${wish.name}」许愿 · 愿力 +1（总 ${data.votes}）`, type: "ok" });
       setWishes((prev) => prev.map((p) => (p.id === wish.id ? { ...p, votes: data.votes } : p)));
 
-      // 爆裂当前气泡（若有）
       if (target && target.poppedAt === null) {
         const now = performance.now();
         setBubbles((prev) =>
@@ -459,8 +263,6 @@ export default function WishingPool() {
               : b
           )
         );
-        spawnRipple(target.x, target.y, "wish");
-        spawnWishParticles(target.x, target.y);
       }
     } catch {
       setToast({ text: "网络错误，请稍后重试", type: "err" });
@@ -490,8 +292,8 @@ export default function WishingPool() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#031023] via-[#072043] to-[#010612] text-white">
-      <header className="sticky top-0 z-30 backdrop-blur bg-[#031023]/75 border-b border-white/5">
+    <div className="min-h-screen bg-gradient-to-b from-[#020711] via-[#041326] to-[#000208] text-white">
+      <header className="sticky top-0 z-30 backdrop-blur bg-[#020711]/80 border-b border-white/5">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
           <Link
             href="/"
@@ -503,7 +305,7 @@ export default function WishingPool() {
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold leading-tight">🪷 许愿池</h1>
             <p className="text-[11px] text-white/60 leading-tight">
-              俯视池面 · 泡泡一个个冒出 · 双击抓住就是你的心愿
+              水底翻涌 · 泡泡一簇簇冒上水面 · 抢在爆开前双击许愿
             </p>
           </div>
           <button
@@ -531,150 +333,40 @@ export default function WishingPool() {
         </div>
       </header>
 
-      <div className="relative flex items-center justify-center mt-2">
-        <div
-          ref={poolRef}
-          onPointerDown={addingOpen ? undefined : onPoolPointerDown}
-          className="relative overflow-hidden rounded-full border border-sky-300/15 select-none touch-none"
-          style={{
-            width: dims.w,
-            height: dims.h,
-            pointerEvents: addingOpen ? "none" : "auto",
-            // 俯视水池：中心深，边缘浅，有井壁感
-            background:
-              "radial-gradient(ellipse at 50% 50%, #010813 0%, #03162e 35%, #0a2e5a 80%, #0f447d 100%)",
-            boxShadow:
-              "inset 0 0 60px rgba(0,0,0,0.55), inset 0 0 120px rgba(0,0,0,0.45), 0 18px 60px rgba(0,0,0,0.7)",
-          }}
-          aria-hidden={addingOpen}
+      <div className="relative max-w-4xl mx-auto px-2 mt-2">
+        <div className="relative mx-auto rounded-[32px] overflow-hidden border border-sky-300/15"
+             style={{
+               aspectRatio: "1 / 1.1",
+               maxWidth: 560,
+               boxShadow: "inset 0 0 60px rgba(0,0,0,0.6), 0 20px 80px rgba(0,0,0,0.6)",
+               background: "radial-gradient(ellipse at 50% 50%, #020a1e 0%, #04142d 40%, #08305d 80%, #0d4787 100%)",
+             }}
         >
-          {/* 水面光影 (caustics) */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-80"
-            style={{
-              background:
-                "radial-gradient(circle at 30% 25%, rgba(140, 210, 255, 0.14) 0%, transparent 35%)," +
-                "radial-gradient(circle at 70% 65%, rgba(200, 220, 255, 0.10) 0%, transparent 40%)," +
-                "radial-gradient(circle at 85% 30%, rgba(255,255,255,0.06) 0%, transparent 30%)",
-              animation: "wishing-caustics 9s ease-in-out infinite alternate",
-            }}
-          />
-          {/* 池壁高光（边缘细圈） */}
-          <div
-            className="absolute inset-0 rounded-full pointer-events-none"
-            style={{
-              boxShadow: "inset 0 0 0 2px rgba(180,220,255,0.12), inset 0 0 30px rgba(120,200,255,0.08)",
-            }}
-          />
-
-          {/* 涟漪 */}
-          {ripples.map((r) => {
-            const age = (performance.now() - r.id) / 1400;
-            const maxR =
-              r.kind === "wish" ? 280 : r.kind === "decay" ? 90 : 160;
-            const size = 16 + age * maxR;
-            const op = Math.max(0, 1 - age);
-            const color =
-              r.kind === "wish" ? "rgba(253, 224, 71, 0.65)"
-                : r.kind === "decay" ? "rgba(140, 190, 255, 0.35)"
-                : "rgba(180, 220, 255, 0.55)";
-            return (
-              <div
-                key={r.id}
-                className="absolute pointer-events-none rounded-full"
-                style={{
-                  left: r.x - size / 2,
-                  top: r.y - size / 2,
-                  width: size,
-                  height: size,
-                  border: `${r.kind === "wish" ? 2.5 : 1.5}px solid ${color}`,
-                  opacity: op,
-                }}
-              />
-            );
-          })}
-
-          {/* 粒子 */}
-          {particles.map((p) => (
-            <div
-              key={p.id}
-              className="absolute pointer-events-none rounded-full"
-              style={{
-                left: p.x - 3,
-                top: p.y - 3,
-                width: 6,
-                height: 6,
-                background: p.color,
-                boxShadow: `0 0 8px ${p.color}`,
-                opacity: Math.max(0, p.life),
-              }}
+          <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center"><Loader2 className="animate-spin text-white/60" size={28} /></div>}>
+            <Scene3D
+              bubbles={bubbles}
+              wishById={wishById}
+              addingOpen={addingOpen}
+              onBubbleClick={handleBubbleClick}
+              onBubbleDoubleClick={handleBubbleDoubleClick}
             />
-          ))}
-
-          {/* 气泡 */}
-          {bubbles.map((b) => {
-            const wish = wishById.get(b.wishId);
-            if (!wish) return null;
-            return (
-              <div
-                key={b.instanceId}
-                data-bubble
-                ref={(el) => {
-                  if (el) domRef.current.set(b.instanceId, el);
-                  else domRef.current.delete(b.instanceId);
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBubbleTap(b, wish);
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  doWish(b, wish);
-                }}
-                className="absolute flex flex-col items-center justify-center rounded-full border backdrop-blur-sm will-change-transform text-center leading-tight select-none"
-                style={{
-                  borderColor: "rgba(255,255,255,0.4)",
-                  padding: "6px",
-                  transformOrigin: "center",
-                }}
-              >
-                <span
-                  className="font-bold line-clamp-2 break-words px-1"
-                  style={{ maxWidth: "92%", textShadow: "0 1px 2px rgba(255,255,255,0.5)" }}
-                >
-                  {wish.name}
-                </span>
-                <span className="text-[10px] font-black mt-0.5 opacity-90 inline-flex items-center gap-0.5">
-                  <Sparkles size={10} />
-                  {wish.votes}
-                </span>
-                {votingId === wish.id && (
-                  <Loader2 size={12} className="absolute top-1 right-1 animate-spin text-white/80" />
-                )}
-              </div>
-            );
-          })}
+          </Suspense>
 
           {loading && bubbles.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <Loader2 size={28} className="animate-spin text-white/60" />
             </div>
           )}
           {!loading && wishes.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm px-6 text-center">
+            <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm px-6 text-center pointer-events-none">
               水池里还空空的，点右上角「加心愿」投下第一个泡泡 →
-            </div>
-          )}
-          {!loading && wishes.length > 0 && query.trim() && bubbles.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-white/50 text-sm px-6 text-center">
-              没有匹配的心愿浮上来，试试其他关键词
             </div>
           )}
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-white/55">
-        <span className="inline-flex items-center gap-1"><Info size={11} />每个泡泡只浮几秒</span>
+        <span className="inline-flex items-center gap-1"><Info size={11} />真·3D 水池</span>
         <span>· 单击确认</span>
         <span>· 双击许愿</span>
         <span>· 每心愿 24h 限 1 次</span>
@@ -694,7 +386,7 @@ export default function WishingPool() {
               return (
                 <button
                   key={w.id}
-                  onClick={() => doWish(null, w)}
+                  onClick={() => doWish(w, null)}
                   disabled={votingId === w.id}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.04] disabled:opacity-60 transition text-left"
                 >
@@ -710,8 +402,11 @@ export default function WishingPool() {
                   </span>
                   <span className="flex-1 text-sm font-medium truncate">{w.name}</span>
                   <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ color: c.text, background: c.bg, boxShadow: `0 0 10px ${c.glow}` }}
+                    className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                    style={{
+                      background: `hsl(${c.h}deg ${c.s}% ${c.l}% / 0.85)`,
+                      boxShadow: `0 0 10px hsl(${c.h}deg ${c.s}% ${c.l + 15}% / 0.55)`,
+                    }}
                   >
                     ✨ {w.votes}
                   </span>
@@ -750,14 +445,6 @@ export default function WishingPool() {
           </div>
         </div>
       )}
-
-      <style jsx global>{`
-        @keyframes wishing-caustics {
-          0% { transform: translate(0, 0) scale(1); opacity: 0.75; }
-          50% { transform: translate(6px, -4px) scale(1.06); opacity: 1; }
-          100% { transform: translate(-5px, 3px) scale(0.97); opacity: 0.7; }
-        }
-      `}</style>
     </div>
   );
 }
@@ -817,9 +504,6 @@ function AddWishModal({
     <div
       className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#030916]/95 backdrop-blur-md p-0 sm:p-4"
       onClick={onClose}
-      onPointerDown={(e) => e.stopPropagation()}
-      onPointerMove={(e) => e.stopPropagation()}
-      onPointerUp={(e) => e.stopPropagation()}
     >
       <div
         className="w-full sm:max-w-sm bg-[#0b1a3a] text-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/10"
@@ -842,7 +526,7 @@ function AddWishModal({
             maxLength={24}
             className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm placeholder-white/30 focus:outline-none focus:border-amber-300"
           />
-          <p className="text-[11px] text-white/50">投下后会以泡泡形式轮番冒出水面，大家双击就能为它增加愿力。</p>
+          <p className="text-[11px] text-white/50">投下后会以 3D 泡泡形式从水底冒出，大家双击就能为它增加愿力。</p>
           <button
             onClick={submit}
             disabled={submitting}

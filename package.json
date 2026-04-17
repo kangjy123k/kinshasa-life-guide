@@ -13,6 +13,8 @@
   "license": "ISC",
   "dependencies": {
     "@libsql/client": "^0.17.2",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^25.6.0",
@@ -25,6 +27,7 @@
     "react-dom": "^19.2.5",
     "react-leaflet": "^5.0.0",
     "tailwindcss": "^4.2.2",
+    "three": "^0.184.0",
     "typescript": "^6.0.2"
   }
 }
