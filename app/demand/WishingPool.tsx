@@ -33,16 +33,6 @@ export interface BubbleInstance {
   popKind: "wish" | "decay" | null;
 }
 
-export interface BurstEffect {
-  id: number;
-  x: number;           // 世界 x（气泡初始水平位置）
-  y: number;           // 世界 y（近水面）
-  z: number;           // 世界 z（气泡初始水平位置的另一维）
-  kind: "wish" | "decay";
-  startAt: number;
-  hue: number;         // 0-360
-}
-
 const FP_KEY = "klg_demand_fp";
 const MAX_VISIBLE = 8;
 const SPAWN_INTERVAL_MIN = 200;
@@ -102,7 +92,6 @@ export default function WishingPool() {
   const [toast, setToast] = useState<{ text: string; type: "ok" | "warn" | "err" } | null>(null);
   const [votingId, setVotingId] = useState<number | null>(null);
   const [bubbles, setBubbles] = useState<BubbleInstance[]>([]);
-  const [bursts, setBursts] = useState<BurstEffect[]>([]);
 
   const fingerprint = useRef<string>("");
   useEffect(() => { fingerprint.current = getFingerprint(); }, []);
@@ -213,26 +202,6 @@ export default function WishingPool() {
     ]);
   }
 
-  function pushBurst(bubble: BubbleInstance, kind: "wish" | "decay") {
-    const wish = wishesRef.current.find((w) => w.id === bubble.wishId);
-    const c = colorFromVotes(wish?.votes ?? 0);
-    setBursts((prev) => [
-      ...prev,
-      {
-        id: performance.now() + Math.random(),
-        x: bubble.x,
-        y: 0,
-        z: bubble.y,
-        kind,
-        startAt: performance.now(),
-        hue: c.h,
-      },
-    ]);
-  }
-
-  const clearBurst = useCallback((id: number) => {
-    setBursts((prev) => prev.filter((b) => b.id !== id));
-  }, []);
 
   // 回收已结束的气泡（定时检查）
   useEffect(() => {
@@ -252,9 +221,7 @@ export default function WishingPool() {
             const z = b.zStart + age * b.riseSpeed;
             if (z >= b.zEnd) {
               dirty = true;
-              const popped = { ...b, poppedAt: now, popKind: "decay" as const };
-              changed.push(popped);
-              pushBurst(popped, "decay");
+              changed.push({ ...b, poppedAt: now, popKind: "decay" as const });
               continue;
             }
           }
@@ -314,7 +281,6 @@ export default function WishingPool() {
               : b
           )
         );
-        pushBurst(target, "wish");
       }
     } catch {
       setToast({ text: "网络错误，请稍后重试", type: "err" });
@@ -397,12 +363,10 @@ export default function WishingPool() {
           <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center"><Loader2 className="animate-spin text-white/60" size={28} /></div>}>
             <Scene3D
               bubbles={bubbles}
-              bursts={bursts}
               wishById={wishById}
               addingOpen={addingOpen}
               onBubbleClick={handleBubbleClick}
               onBubbleDoubleClick={handleBubbleDoubleClick}
-              onBurstDone={clearBurst}
             />
           </Suspense>
 

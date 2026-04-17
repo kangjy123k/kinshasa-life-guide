@@ -3,9 +3,9 @@
 import { useFrame } from "@react-three/fiber";
 import { Canvas } from "@react-three/fiber";
 import { Html, Environment } from "@react-three/drei";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import type { BubbleInstance, BurstEffect } from "./WishingPool";
+import type { BubbleInstance } from "./WishingPool";
 import { peakScaleFromVotes, colorFromVotes } from "./WishingPool";
 
 interface Wish {
@@ -18,22 +18,18 @@ interface Wish {
 
 interface Props {
   bubbles: BubbleInstance[];
-  bursts: BurstEffect[];
   wishById: Map<number, Wish>;
   addingOpen: boolean;
   onBubbleClick: (instanceId: number) => void;
   onBubbleDoubleClick: (instanceId: number) => void;
-  onBurstDone: (id: number) => void;
 }
 
 export default function Scene3D({
   bubbles,
-  bursts,
   wishById,
   addingOpen,
   onBubbleClick,
   onBubbleDoubleClick,
-  onBurstDone,
 }: Props) {
   return (
     <Canvas
@@ -58,7 +54,7 @@ export default function Scene3D({
       {/* 环境贴图（给气泡折射用） */}
       <Environment preset="night" />
 
-      {/* 气泡 */}
+      {/* 气泡（爆破直接做在气泡本身的动画上） */}
       {bubbles.map((b) => {
         const w = wishById.get(b.wishId);
         if (!w) return null;
@@ -72,11 +68,6 @@ export default function Scene3D({
           />
         );
       })}
-
-      {/* 爆裂特效 */}
-      {bursts.map((b) => (
-        <Burst key={b.id} burst={b} onDone={() => onBurstDone(b.id)} />
-      ))}
     </Canvas>
   );
 }
@@ -133,13 +124,25 @@ function Bubble3D({
     let opacity = 1;
 
     if (bubble.poppedAt !== null) {
-      const pt = Math.max(0, Math.min(1, (now - bubble.poppedAt) / 400));
+      const popAge = now - bubble.poppedAt;
       if (bubble.popKind === "wish") {
-        scale = 1 + pt * 0.9;
-        opacity = 1 - pt;
+        // 爆开：0-120ms 快速膨胀到 2.2×；120-500ms 塌缩到 0
+        const EXPAND = 120;
+        const COLLAPSE = 380;
+        if (popAge < EXPAND) {
+          const k = popAge / EXPAND;
+          scale = 1 + k * 1.2;           // 1 → 2.2
+          opacity = 1;
+        } else {
+          const k = Math.min(1, (popAge - EXPAND) / COLLAPSE);
+          scale = 2.2 * (1 - k * k);     // 2.2 → 0（ease-out）
+          opacity = 1 - k;
+        }
       } else {
-        scale = 1 + pt * 0.35;
-        opacity = Math.max(0, 1 - pt);
+        // 自然消散：轻微膨胀后淡出，不抢眼
+        const k = Math.min(1, popAge / 360);
+        scale = 1 + k * 0.25;
+        opacity = Math.max(0, 1 - k);
       }
     } else {
       // 深度映射：zStart (-5) → zEnd (0)
@@ -166,6 +169,17 @@ function Bubble3D({
     if (matRef.current) {
       matRef.current.opacity = opacity;
       matRef.current.transparent = true;
+      // 爆破瞬间 emissive 闪一下（金色光）
+      if (bubble.poppedAt !== null && bubble.popKind === "wish") {
+        const popAge = now - bubble.poppedAt;
+        const flash = Math.max(0, 1 - popAge / 260); // 260ms 内衰减
+        matRef.current.emissive.setHSL(0.13, 1, 0.55); // 温暖金色
+        matRef.current.emissiveIntensity = 0.15 + flash * 2.2;
+      } else {
+        // 平时用气泡本色做微量自发光
+        matRef.current.emissive.copy(color);
+        matRef.current.emissiveIntensity = 0.15;
+      }
     }
 
     if (labelRef.current) {
@@ -247,86 +261,3 @@ function Bubble3D({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  爆裂特效：只留冲击波环（去掉杂乱的小粒子）                            */
-/* ------------------------------------------------------------------ */
-const WISH_LIFE_MS = 820;
-const DECAY_LIFE_MS = 480;
-
-function Burst({ burst, onDone }: { burst: BurstEffect; onDone: () => void }) {
-  const lifeMs = burst.kind === "wish" ? WISH_LIFE_MS : DECAY_LIFE_MS;
-  const ring1Ref = useRef<THREE.Mesh>(null);
-  const ring1MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const ring2Ref = useRef<THREE.Mesh>(null);
-  const ring2MatRef = useRef<THREE.MeshBasicMaterial>(null);
-
-  useEffect(() => {
-    const t = setTimeout(onDone, lifeMs + 80);
-    return () => clearTimeout(t);
-  }, [lifeMs, onDone]);
-
-  const baseColor = useMemo(() => {
-    const hue = burst.kind === "wish" ? 48 : burst.hue;
-    return new THREE.Color().setHSL(hue / 360, 0.85, 0.68);
-  }, [burst.kind, burst.hue]);
-
-  useFrame(() => {
-    const now = performance.now();
-    const age = (now - burst.startAt) / 1000;
-    const life = lifeMs / 1000;
-    const t = Math.min(1, age / life);
-
-    // 主涟漪
-    if (ring1Ref.current && ring1MatRef.current) {
-      const s = burst.kind === "wish" ? 0.4 + t * 5.2 : 0.3 + t * 2.4;
-      ring1Ref.current.scale.set(s, s, s);
-      ring1MatRef.current.opacity =
-        Math.max(0, 1 - t) * (burst.kind === "wish" ? 0.9 : 0.55);
-    }
-    // 叠加一圈滞后的次级涟漪（仅 wish，更仪式感）
-    if (ring2Ref.current && ring2MatRef.current && burst.kind === "wish") {
-      const t2 = Math.max(0, Math.min(1, (age - 0.08) / life));
-      const s = 0.3 + t2 * 3.6;
-      ring2Ref.current.scale.set(s, s, s);
-      ring2MatRef.current.opacity = Math.max(0, 1 - t2) * 0.6;
-    }
-  });
-
-  return (
-    <group>
-      {/* 主冲击波 */}
-      <mesh
-        ref={ring1Ref}
-        position={[burst.x, burst.y + 0.02, burst.z]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        <ringGeometry args={[0.85, 1.0, 64]} />
-        <meshBasicMaterial
-          ref={ring1MatRef}
-          color={baseColor}
-          transparent
-          side={THREE.DoubleSide}
-          toneMapped={false}
-        />
-      </mesh>
-
-      {/* 次级涟漪（仅 wish） */}
-      {burst.kind === "wish" && (
-        <mesh
-          ref={ring2Ref}
-          position={[burst.x, burst.y + 0.03, burst.z]}
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          <ringGeometry args={[0.9, 0.98, 64]} />
-          <meshBasicMaterial
-            ref={ring2MatRef}
-            color={baseColor}
-            transparent
-            side={THREE.DoubleSide}
-            toneMapped={false}
-          />
-        </mesh>
-      )}
-    </group>
-  );
-}
