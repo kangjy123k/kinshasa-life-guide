@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Droplets, Wind, CloudRain } from "lucide-react";
+import { Droplets, Wind, CloudRain, CloudSun } from "lucide-react";
 
 interface WeatherHour {
   time: string;
@@ -56,6 +56,48 @@ function wmoLabel(code: number): { emoji: string; zh: string } {
 
 function formatHour(iso: string): string {
   return iso.slice(11, 16);
+}
+
+function hourInt(iso: string): number {
+  return parseInt(iso.slice(11, 13), 10);
+}
+
+/**
+ * 从小时序列里抽出未来的"雨时段"，阈值 40%。
+ * 返回最多前 2 个连续时段。相邻 1h 间隙视为同一段。
+ */
+function extractRainWindows(
+  hours: WeatherHour[],
+  fromHour: string,
+  threshold = 40
+): Array<{ start: string; end: string }> {
+  const future = hours.filter((h) => h.time.slice(0, 13) >= fromHour);
+  const wins: Array<{ startIdx: number; endIdx: number }> = [];
+  let run: { startIdx: number; endIdx: number } | null = null;
+  future.forEach((h, i) => {
+    if (h.precip >= threshold) {
+      if (!run) run = { startIdx: i, endIdx: i };
+      else run.endIdx = i;
+    } else if (run) {
+      wins.push(run);
+      run = null;
+    }
+  });
+  if (run) wins.push(run);
+  // 合并：两段之间只隔 1 个非雨小时 → 合并
+  const merged: typeof wins = [];
+  for (const w of wins) {
+    const last = merged[merged.length - 1];
+    if (last && w.startIdx - last.endIdx <= 2) {
+      last.endIdx = w.endIdx;
+    } else {
+      merged.push({ ...w });
+    }
+  }
+  return merged.slice(0, 2).map((w) => ({
+    start: future[w.startIdx].time,
+    end: future[w.endIdx].time,
+  }));
 }
 
 function RainAlertBanner({ alert }: { alert: RainAlert }) {
@@ -127,6 +169,7 @@ export default function WeatherStrip() {
     data.hours.findIndex((h) => h.time.slice(0, 13) > nowHour)
   );
   const displayHours = data.hours.slice(startIdx, startIdx + 24);
+  const rainWindows = extractRainWindows(displayHours, nowHour);
 
   return (
     <section className="max-w-4xl mx-auto px-4 mt-6">
@@ -155,7 +198,7 @@ export default function WeatherStrip() {
         </div>
 
         {current && (
-          <div className="mt-2 flex items-center gap-3 text-[11px] text-gray-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
             {current.relative_humidity_2m != null && (
               <span className="flex items-center gap-1">
                 <Droplets size={11} className="text-sky-500" />
@@ -166,6 +209,26 @@ export default function WeatherStrip() {
               <span className="flex items-center gap-1">
                 <Wind size={11} className="text-sky-500" />
                 风 {Math.round(current.wind_speed_10m)} km/h
+              </span>
+            )}
+            {rainWindows.length === 0 ? (
+              <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                <CloudSun size={11} />
+                24 小时内预计无雨
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-sky-600 font-medium">
+                <CloudRain size={11} />
+                {rainWindows
+                  .map((w) => {
+                    const s = hourInt(w.start);
+                    const e = hourInt(w.end);
+                    return s === e
+                      ? `${String(s).padStart(2, "0")}:00`
+                      : `${String(s).padStart(2, "0")}-${String(e).padStart(2, "0")}时`;
+                  })
+                  .join(" / ")}{" "}
+                可能有雨
               </span>
             )}
           </div>
