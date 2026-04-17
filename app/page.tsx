@@ -843,6 +843,10 @@ const MapSection = dynamic(() => import("./MapSection"), {
   ),
 });
 
+const WeatherStrip = dynamic(() => import("@/components/WeatherStrip"), {
+  ssr: false,
+});
+
 export default function GuidePage() {
   const [view, setView] = useState<View>("home");
   const [activeCategory, setActiveCategory] = useState<string>("restaurant");
@@ -1075,6 +1079,9 @@ function HomeView({
       <section className="max-w-4xl mx-auto px-4 -mt-4 relative z-10">
         <Carousel index={adIndex} onChange={setAdIndex} />
       </section>
+
+      {/* ---- 金沙萨天气 + 2 小时雨预警 ---- */}
+      <WeatherStrip />
 
       {/* ---- 实用指南 ---- */}
       <section className="max-w-4xl mx-auto px-4 mt-6">
