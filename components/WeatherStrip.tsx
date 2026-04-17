@@ -6,10 +6,31 @@ import { Droplets, Wind, CloudRain, CloudSun } from "lucide-react";
 interface WeatherHour {
   time: string;
   temp: number;
-  precip: number;
-  code: number;
+  precip: number;   // Probability of Precipitation (PoP) %
+  precipMm: number; // forecast precipitation amount, mm/hr
+  code: number;     // WMO present weather code
   wind: number;
   humidity: number;
+}
+
+// 国际标准（WMO 4677 / Open-Meteo）判定是否"下雨"：
+// 51-57 毛毛雨 · 61-67 雨 · 80-82 阵雨 · 95-99 雷阵雨
+function isRainHour(code: number): boolean {
+  return (
+    (code >= 51 && code <= 57) ||
+    (code >= 61 && code <= 67) ||
+    (code >= 80 && code <= 82) ||
+    (code >= 95 && code <= 99)
+  );
+}
+
+// WMO 降水强度分级（mm/hr）：< 2.5 小雨 / 2.5-7.5 中雨 / 7.5-50 大雨 / >50 暴雨
+function intensityLabel(mm: number): string | null {
+  if (mm <= 0) return null;
+  if (mm < 2.5) return "小雨";
+  if (mm < 7.5) return "中雨";
+  if (mm < 50) return "大雨";
+  return "暴雨";
 }
 
 interface Minutely15 {
@@ -63,21 +84,23 @@ function hourInt(iso: string): number {
 }
 
 /**
- * 从小时序列里抽出未来的"雨时段"，阈值 40%。
- * 返回最多前 2 个连续时段。相邻 1h 间隙视为同一段。
+ * 从小时序列里抽出未来的"雨时段"，判定依据是 WMO 天气代码。
+ * 相邻 1h 间隙视为同一段；最多返回前 2 段。
  */
 function extractRainWindows(
   hours: WeatherHour[],
-  fromHour: string,
-  threshold = 30
-): Array<{ start: string; end: string }> {
+  fromHour: string
+): Array<{ start: string; end: string; peakMm: number }> {
   const future = hours.filter((h) => h.time.slice(0, 13) >= fromHour);
-  const wins: Array<{ startIdx: number; endIdx: number }> = [];
-  let run: { startIdx: number; endIdx: number } | null = null;
+  const wins: Array<{ startIdx: number; endIdx: number; peakMm: number }> = [];
+  let run: { startIdx: number; endIdx: number; peakMm: number } | null = null;
   future.forEach((h, i) => {
-    if (h.precip >= threshold) {
-      if (!run) run = { startIdx: i, endIdx: i };
-      else run.endIdx = i;
+    if (isRainHour(h.code)) {
+      if (!run) run = { startIdx: i, endIdx: i, peakMm: h.precipMm };
+      else {
+        run.endIdx = i;
+        run.peakMm = Math.max(run.peakMm, h.precipMm);
+      }
     } else if (run) {
       wins.push(run);
       run = null;
@@ -90,6 +113,7 @@ function extractRainWindows(
     const last = merged[merged.length - 1];
     if (last && w.startIdx - last.endIdx <= 2) {
       last.endIdx = w.endIdx;
+      last.peakMm = Math.max(last.peakMm, w.peakMm);
     } else {
       merged.push({ ...w });
     }
@@ -97,6 +121,7 @@ function extractRainWindows(
   return merged.slice(0, 2).map((w) => ({
     start: future[w.startIdx].time,
     end: future[w.endIdx].time,
+    peakMm: w.peakMm,
   }));
 }
 
@@ -214,7 +239,7 @@ export default function WeatherStrip() {
             {rainWindows.length === 0 ? (
               <span className="flex items-center gap-1 text-emerald-600 font-medium">
                 <CloudSun size={11} />
-                24 小时内预计无雨
+                24 小时内无降雨
               </span>
             ) : (
               <span className="flex items-center gap-1 text-sky-600 font-medium">
@@ -223,12 +248,17 @@ export default function WeatherStrip() {
                   .map((w) => {
                     const s = hourInt(w.start);
                     const e = hourInt(w.end);
-                    return s === e
-                      ? `${String(s).padStart(2, "0")}:00`
-                      : `${String(s).padStart(2, "0")}-${String(e).padStart(2, "0")}时`;
+                    const intensity = intensityLabel(w.peakMm);
+                    const range =
+                      s === e
+                        ? `${String(s).padStart(2, "0")}:00`
+                        : `${String(s).padStart(2, "0")}-${String(e).padStart(
+                            2,
+                            "0"
+                          )}时`;
+                    return intensity ? `${range} ${intensity}` : `${range} 有雨`;
                   })
-                  .join(" / ")}{" "}
-                可能有雨
+                  .join(" · ")}
               </span>
             )}
           </div>
@@ -238,7 +268,7 @@ export default function WeatherStrip() {
           <div className="flex gap-1.5 px-1 pb-1">
             {displayHours.map((h) => {
               const label = wmoLabel(h.code);
-              const rainy = h.precip >= 30;
+              const rainy = isRainHour(h.code);
               return (
                 <div
                   key={h.time}
@@ -262,7 +292,9 @@ export default function WeatherStrip() {
                       rainy ? "text-sky-600 font-medium" : "text-gray-400"
                     }`}
                   >
-                    {h.precip}%
+                    {rainy && h.precipMm > 0
+                      ? `${h.precipMm.toFixed(1)}mm`
+                      : `${h.precip}%`}
                   </div>
                 </div>
               );

@@ -25,7 +25,7 @@ async function fetchOpenMeteo() {
     `https://api.open-meteo.com/v1/forecast` +
     `?latitude=${KINSHASA_LAT}` +
     `&longitude=${KINSHASA_LON}` +
-    `&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m` +
+    `&hourly=temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m` +
     `&minutely_15=precipitation,precipitation_probability` +
     `&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m` +
     `&timezone=${encodeURIComponent(TZ)}` +
@@ -45,6 +45,7 @@ async function fetchOpenMeteo() {
     hourly?: {
       time: string[];
       temperature_2m: number[];
+      precipitation: number[];
       precipitation_probability: number[];
       weather_code: number[];
       wind_speed_10m: number[];
@@ -135,6 +136,7 @@ export async function GET() {
           time: t,
           temp: h.temperature_2m[i],
           precip: h.precipitation_probability[i] ?? 0,
+          precipMm: h.precipitation[i] ?? 0,
           code: h.weather_code[i] ?? 0,
           wind: h.wind_speed_10m[i] ?? 0,
           humidity: h.relative_humidity_2m[i] ?? 0,
