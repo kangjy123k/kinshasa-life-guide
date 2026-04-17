@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put, list } from "@vercel/blob";
+import { put } from "@vercel/blob";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,21 +11,19 @@ function safeKey(raw: string): string {
   return raw.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 80);
 }
 
-async function findCachedUrl(cacheKey: string): Promise<string | null> {
-  const pathname = `audio/${cacheKey}.wav`;
-  try {
-    const { blobs } = await list({ prefix: pathname });
-    const hit = blobs.find((b) => b.pathname === pathname);
-    return hit?.downloadUrl ?? null;
-  } catch (e) {
-    console.error("audio cache lookup failed:", e);
-    return null;
-  }
+function privateBlobUrl(pathname: string): string | null {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return null;
+  const storeId = token.split("_")[3]?.toLowerCase();
+  if (!storeId) return null;
+  return `https://${storeId}.private.blob.vercel-storage.com/${pathname}`;
 }
 
-async function fetchBlobBytes(url: string): Promise<Buffer | null> {
+async function fetchCachedWav(cacheKey: string): Promise<Buffer | null> {
+  const url = privateBlobUrl(`audio/${cacheKey}.wav`);
+  if (!url) return null;
   try {
-    const res = await fetch(`${url}?_=${Date.now()}`, {
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
       cache: "no-store",
     });
@@ -39,7 +37,6 @@ async function fetchBlobBytes(url: string): Promise<Buffer | null> {
 async function storeWav(cacheKey: string, wav: Buffer): Promise<void> {
   const pathname = `audio/${cacheKey}.wav`;
   await put(pathname, wav, {
-    // 项目的 blob store 配置为 private；同 lib/submissions.ts
     access: "private" as "public",
     addRandomSuffix: false,
     allowOverwrite: true,
@@ -68,14 +65,11 @@ export async function POST(req: NextRequest) {
     }
     const cacheKey = rawKey ? safeKey(rawKey) : null;
 
-    // 1) 命中缓存：直接代理读 Blob 返回 wav
+    // 1) 命中缓存：直接用固定 URL 拉 Blob（省掉 list 那一次 Advanced op）
     if (cacheKey) {
-      const cachedUrl = await findCachedUrl(cacheKey);
-      if (cachedUrl) {
-        const buf = await fetchBlobBytes(cachedUrl);
-        if (buf) {
-          return wavResponse(buf);
-        }
+      const buf = await fetchCachedWav(cacheKey);
+      if (buf) {
+        return wavResponse(buf);
       }
     }
 
