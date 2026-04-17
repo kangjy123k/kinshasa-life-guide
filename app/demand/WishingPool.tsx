@@ -19,26 +19,26 @@ export interface BubbleInstance {
   instanceId: number;
   wishId: number;
   spawnAt: number;
-  // 3D 空间：x, y 为水平散布；z 从 -4（深水）→ 0（水面）
+  // 3D 空间：x, y 为水平散布；垂直 y（3D）由生命周期参数计算（抛物线）
   x: number;
   y: number;
-  zStart: number;
-  zEnd: number;
   vx: number;
   vy: number;
-  riseSpeed: number;       // z 单位/秒
+  lifespan: number;        // 总时长 ms
   wobblePhase: number;
   wobbleAmp: number;
   poppedAt: number | null;
-  popKind: "wish" | "decay" | null;
+  popKind: "wish" | null;  // 只留 wish；自然老去不做特殊动画
 }
 
 const FP_KEY = "klg_demand_fp";
 const MAX_VISIBLE = 8;
-const SPAWN_INTERVAL_MIN = 200;
-const SPAWN_INTERVAL_MAX = 560;
+const SPAWN_INTERVAL_MIN = 320;
+const SPAWN_INTERVAL_MAX = 720;
 const POOL_RADIUS = 3.4;
-const MIN_BUBBLE_GAP = 1.1;  // 最近两气泡的水平间距下限（3D 单位）
+const MIN_BUBBLE_GAP = 1.1;
+const LIFESPAN_MIN = 4200;  // 抛物线总时长：小→大→小
+const LIFESPAN_MAX = 5500;
 
 function getFingerprint(): string {
   if (typeof window === "undefined") return "";
@@ -178,8 +178,7 @@ export default function WishingPool() {
     }
     if (!placed) return; // 找不到空位，本次跳过
 
-    const zStart = -4.5 - Math.random() * 0.5;
-    const riseSpeed = 1.2 + Math.random() * 0.6; // ≈ 3-4s 升到水面
+    const lifespan = LIFESPAN_MIN + Math.random() * (LIFESPAN_MAX - LIFESPAN_MIN);
 
     setBubbles((prev) => [
       ...prev,
@@ -189,11 +188,9 @@ export default function WishingPool() {
         spawnAt: performance.now(),
         x: placed.x,
         y: placed.y,
-        zStart,
-        zEnd: 0.1,
-        vx: (Math.random() - 0.5) * 0.2, // 稍减漂移，防止爬到邻居脸上
-        vy: (Math.random() - 0.5) * 0.2,
-        riseSpeed,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: (Math.random() - 0.5) * 0.18,
+        lifespan,
         wobblePhase: Math.random() * Math.PI * 2,
         wobbleAmp: 0.04 + Math.random() * 0.07,
         poppedAt: null,
@@ -204,6 +201,7 @@ export default function WishingPool() {
 
 
   // 回收已结束的气泡（定时检查）
+  // 回收已结束的气泡
   useEffect(() => {
     const iv = setInterval(() => {
       const now = performance.now();
@@ -211,17 +209,16 @@ export default function WishingPool() {
         const changed: BubbleInstance[] = [];
         let dirty = false;
         for (const b of prev) {
-          if (b.poppedAt !== null && now - b.poppedAt > 500) {
-            dirty = true;
-            continue;
-          }
-          // 到达水面自动爆（decay）
-          if (b.poppedAt === null) {
-            const age = (now - b.spawnAt) / 1000;
-            const z = b.zStart + age * b.riseSpeed;
-            if (z >= b.zEnd) {
+          // 被点过 → 等爆裂动画结束 (500ms)
+          if (b.poppedAt !== null) {
+            if (now - b.poppedAt > 520) {
               dirty = true;
-              changed.push({ ...b, poppedAt: now, popKind: "decay" as const });
+              continue;
+            }
+          } else {
+            // 自然走完生命周期 → 静静消失
+            if (now - b.spawnAt > b.lifespan) {
+              dirty = true;
               continue;
             }
           }
@@ -229,7 +226,7 @@ export default function WishingPool() {
         }
         return dirty ? changed : prev;
       });
-    }, 200);
+    }, 180);
     return () => clearInterval(iv);
   }, []);
 

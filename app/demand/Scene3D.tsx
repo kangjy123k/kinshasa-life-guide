@@ -116,54 +116,49 @@ function Bubble3D({
     const g = groupRef.current;
     if (!g) return;
     const now = performance.now();
-    const age = (now - bubble.spawnAt) / 1000; // s
+    const ageMs = now - bubble.spawnAt;
+    const ageSec = ageMs / 1000;
 
-    // z 计算：自然上升
-    let z = bubble.zStart + age * bubble.riseSpeed;
-    let scale = 1;
-    let opacity = 1;
+    // 生命周期参数 t ∈ [0, 1]：0=冒出水底，0.5=跃出水面峰值，1=回落水底
+    const t = Math.max(0, Math.min(1, ageMs / bubble.lifespan));
+    const bell = Math.sin(t * Math.PI); // 0 → 1 → 0
 
-    if (bubble.poppedAt !== null) {
+    // 3D 垂直高度：抛物线，从深水 -2.5 升到 +0.5（破水面）再落回 -2.5
+    const arcY = -2.5 + 3.0 * bell;
+
+    let scale: number;
+    let opacity: number;
+
+    if (bubble.poppedAt !== null && bubble.popKind === "wish") {
+      // 用户点中 → 爆裂：急速膨胀 + 塌缩 + 金闪
       const popAge = now - bubble.poppedAt;
-      if (bubble.popKind === "wish") {
-        // 爆开：0-120ms 快速膨胀到 2.2×；120-500ms 塌缩到 0
-        const EXPAND = 120;
-        const COLLAPSE = 380;
-        if (popAge < EXPAND) {
-          const k = popAge / EXPAND;
-          scale = 1 + k * 1.2;           // 1 → 2.2
-          opacity = 1;
-        } else {
-          const k = Math.min(1, (popAge - EXPAND) / COLLAPSE);
-          scale = 2.2 * (1 - k * k);     // 2.2 → 0（ease-out）
-          opacity = 1 - k;
-        }
+      const EXPAND = 120;
+      const COLLAPSE = 380;
+      if (popAge < EXPAND) {
+        const k = popAge / EXPAND;
+        scale = peak * (0.22 + 0.78 * bell) * (1 + k * 1.2); // 在当时大小基础上急速放大
+        opacity = 1;
       } else {
-        // 自然消散：轻微膨胀后淡出，不抢眼
-        const k = Math.min(1, popAge / 360);
-        scale = 1 + k * 0.25;
-        opacity = Math.max(0, 1 - k);
+        const k = Math.min(1, (popAge - EXPAND) / COLLAPSE);
+        scale = peak * 2.2 * (1 - k * k);
+        opacity = 1 - k;
       }
     } else {
-      // 深度映射：zStart (-5) → zEnd (0)
-      const tDepth = (z - bubble.zStart) / (bubble.zEnd - bubble.zStart);
-      const depthT = Math.max(0, Math.min(1, tDepth));
-      const base = 0.25 + depthT * 0.75; // 深水小，上升到水面变大
-      scale = base * peak;
-      opacity = 0.45 + 0.55 * depthT;
+      // 正常生命周期：小→大→小
+      scale = peak * (0.22 + 0.78 * bell);
+      // 透明度在两头稍快淡入/淡出，中段保持清晰
+      opacity = Math.pow(bell, 0.6);
     }
 
     // 水流湍流：水平漂移 + 轻微摆动
     const wobble = Math.sin(now / 360 + bubble.wobblePhase) * bubble.wobbleAmp;
     const wobble2 = Math.cos(now / 420 + bubble.wobblePhase) * bubble.wobbleAmp;
-    const driftX = bubble.vx * age;
-    const driftY = bubble.vy * age;
+    const driftX = bubble.vx * ageSec;
+    const driftY = bubble.vy * ageSec;
     const finalX = bubble.x + driftX + wobble;
-    const finalY = bubble.y + driftY + wobble2;
+    const finalZ = bubble.y + driftY + wobble2;
 
-    // 注意：相机俯视 → 我们把 y 位置映射成 3D 的 z 轴（深度），
-    // x,y(水平散布) → 3D 的 x,z 平面
-    g.position.set(finalX, z, finalY);
+    g.position.set(finalX, arcY, finalZ);
     g.scale.setScalar(scale);
 
     if (matRef.current) {
