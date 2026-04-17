@@ -29,6 +29,16 @@ export default function RootLayout({
     <html lang="zh" className="h-full antialiased">
       <head>
         <link rel="preload" as="fetch" href="/api/public/approved" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap"
+        />
         <script dangerouslySetInnerHTML={{ __html: swRegister }} />
       </head>
       <body className="min-h-full bg-sky-50">{children}</body>

@@ -10,7 +10,9 @@
 }
 
 .font-handwriting {
-  font-family: "Kaiti", "STKaiti", "楷体", "KaiTi", cursive;
+  /* 先用 Google Fonts 的 Ma Shan Zheng 手写体（移动端必须，桌面也可用），
+     再 fallback 到系统楷体（老款 Windows / Mac 装了就能直接显示，省一次字体请求） */
+  font-family: "Ma Shan Zheng", "Kaiti", "STKaiti", "楷体", "KaiTi", cursive;
 }
 
 /* 轮播平滑动画 */
