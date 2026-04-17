@@ -215,7 +215,7 @@ function Bubble3D({
       {/* 文字 HTML 投影（贴在气泡上，随气泡缩放） */}
       <Html
         center
-        distanceFactor={3.4}
+        distanceFactor={8}
         occlude={false}
         style={{
           pointerEvents: "none",
@@ -227,19 +227,18 @@ function Bubble3D({
           style={{
             textAlign: "center",
             whiteSpace: "nowrap",
-            textShadow: "0 0 4px rgba(0,0,0,0.45)",
-            color: "rgba(255,255,255,0.92)",
-            fontWeight: 700,
-            letterSpacing: "0.01em",
-            fontSize: 10,
-            lineHeight: 1.15,
-            mixBlendMode: "screen",
+            textShadow: "0 1px 3px rgba(0,0,0,0.55), 0 0 6px rgba(0,0,0,0.35)",
+            color: "#fff",
+            fontWeight: 800,
+            letterSpacing: "0.02em",
+            fontSize: 18,
+            lineHeight: 1.1,
             transformOrigin: "center",
             transition: "opacity 80ms linear",
           }}
         >
           <div>{wish.name}</div>
-          <div style={{ fontSize: 8, opacity: 0.78, marginTop: 1, fontWeight: 600 }}>
+          <div style={{ fontSize: 12, opacity: 0.88, marginTop: 2, fontWeight: 700 }}>
             ✨ {wish.votes}
           </div>
         </div>
@@ -249,125 +248,85 @@ function Bubble3D({
 }
 
 /* ------------------------------------------------------------------ */
-/*  爆裂特效：粒子 + 冲击波环                                           */
+/*  爆裂特效：只留冲击波环（去掉杂乱的小粒子）                            */
 /* ------------------------------------------------------------------ */
-const WISH_LIFE_MS = 900;
-const DECAY_LIFE_MS = 520;
+const WISH_LIFE_MS = 820;
+const DECAY_LIFE_MS = 480;
 
 function Burst({ burst, onDone }: { burst: BurstEffect; onDone: () => void }) {
   const lifeMs = burst.kind === "wish" ? WISH_LIFE_MS : DECAY_LIFE_MS;
+  const ring1Ref = useRef<THREE.Mesh>(null);
+  const ring1MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const ring2Ref = useRef<THREE.Mesh>(null);
+  const ring2MatRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  // 粒子初速度（固定一次，不每帧重算）
-  const particles = useMemo(() => {
-    const n = burst.kind === "wish" ? 14 : 5;
-    const arr: Array<{ vx: number; vy: number; vz: number; size: number }> = [];
-    for (let i = 0; i < n; i++) {
-      const theta = (i / n) * Math.PI * 2 + Math.random() * 0.45;
-      const pitch =
-        burst.kind === "wish"
-          ? (Math.random() - 0.25) * 1.0 // 偏向上扩散
-          : -0.15 - Math.random() * 0.2; // 贴着水面跑
-      const speed =
-        burst.kind === "wish"
-          ? 1.6 + Math.random() * 1.2
-          : 0.5 + Math.random() * 0.5;
-      arr.push({
-        vx: Math.cos(theta) * Math.cos(pitch) * speed,
-        vy: Math.sin(pitch) * speed + (burst.kind === "wish" ? 0.9 : 0.25),
-        vz: Math.sin(theta) * Math.cos(pitch) * speed,
-        size: (burst.kind === "wish" ? 0.06 : 0.04) * (0.85 + Math.random() * 0.4),
-      });
-    }
-    return arr;
-  }, [burst.kind]);
-
-  const particleRefs = useRef<(THREE.Mesh | null)[]>([]);
-  const ringRef = useRef<THREE.Mesh>(null);
-  const ringMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const particleMatRef = useRef<THREE.MeshStandardMaterial>(null);
-
-  // 过期清理
   useEffect(() => {
     const t = setTimeout(onDone, lifeMs + 80);
     return () => clearTimeout(t);
   }, [lifeMs, onDone]);
 
   const baseColor = useMemo(() => {
-    const hue = burst.kind === "wish" ? 48 : burst.hue; // 愿望成就 = 金色
-    return new THREE.Color().setHSL(hue / 360, 0.9, 0.72);
+    const hue = burst.kind === "wish" ? 48 : burst.hue;
+    return new THREE.Color().setHSL(hue / 360, 0.85, 0.68);
   }, [burst.kind, burst.hue]);
 
   useFrame(() => {
     const now = performance.now();
-    const age = (now - burst.startAt) / 1000; // s
+    const age = (now - burst.startAt) / 1000;
     const life = lifeMs / 1000;
     const t = Math.min(1, age / life);
 
-    // 粒子：位置 + 重力 + 淡出
-    const gravity = burst.kind === "wish" ? 2.4 : 1.2;
-    particleRefs.current.forEach((m, i) => {
-      if (!m) return;
-      const p = particles[i];
-      if (!p) return;
-      m.position.set(
-        burst.x + p.vx * age,
-        burst.y + p.vy * age - 0.5 * gravity * age * age,
-        burst.z + p.vz * age
-      );
-    });
-    if (particleMatRef.current) {
-      particleMatRef.current.opacity = Math.max(0, 1 - t);
+    // 主涟漪
+    if (ring1Ref.current && ring1MatRef.current) {
+      const s = burst.kind === "wish" ? 0.4 + t * 5.2 : 0.3 + t * 2.4;
+      ring1Ref.current.scale.set(s, s, s);
+      ring1MatRef.current.opacity =
+        Math.max(0, 1 - t) * (burst.kind === "wish" ? 0.9 : 0.55);
     }
-
-    // 冲击波环
-    if (ringRef.current && ringMatRef.current) {
-      const ringScale =
-        burst.kind === "wish" ? 0.5 + t * 4.5 : 0.3 + t * 2;
-      ringRef.current.scale.set(ringScale, ringScale, ringScale);
-      ringMatRef.current.opacity = Math.max(0, 1 - t) * (burst.kind === "wish" ? 0.85 : 0.5);
+    // 叠加一圈滞后的次级涟漪（仅 wish，更仪式感）
+    if (ring2Ref.current && ring2MatRef.current && burst.kind === "wish") {
+      const t2 = Math.max(0, Math.min(1, (age - 0.08) / life));
+      const s = 0.3 + t2 * 3.6;
+      ring2Ref.current.scale.set(s, s, s);
+      ring2MatRef.current.opacity = Math.max(0, 1 - t2) * 0.6;
     }
   });
 
   return (
     <group>
-      {/* 粒子 */}
-      {particles.map((_, i) => (
-        <mesh
-          key={i}
-          ref={(el) => {
-            particleRefs.current[i] = el;
-          }}
-          position={[burst.x, burst.y, burst.z]}
-        >
-          <sphereGeometry args={[particles[i].size, 8, 8]} />
-          {/* 共用一个材质引用以便整体淡出 */}
-          <meshStandardMaterial
-            ref={i === 0 ? particleMatRef : undefined}
-            color={baseColor}
-            emissive={baseColor}
-            emissiveIntensity={burst.kind === "wish" ? 1.4 : 0.5}
-            transparent
-            roughness={0.25}
-            metalness={0.15}
-          />
-        </mesh>
-      ))}
-
-      {/* 冲击波环 */}
+      {/* 主冲击波 */}
       <mesh
-        ref={ringRef}
+        ref={ring1Ref}
         position={[burst.x, burst.y + 0.02, burst.z]}
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <ringGeometry args={[0.85, 1.0, 64]} />
         <meshBasicMaterial
-          ref={ringMatRef}
+          ref={ring1MatRef}
           color={baseColor}
           transparent
           side={THREE.DoubleSide}
           toneMapped={false}
         />
       </mesh>
+
+      {/* 次级涟漪（仅 wish） */}
+      {burst.kind === "wish" && (
+        <mesh
+          ref={ring2Ref}
+          position={[burst.x, burst.y + 0.03, burst.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <ringGeometry args={[0.9, 0.98, 64]} />
+          <meshBasicMaterial
+            ref={ring2MatRef}
+            color={baseColor}
+            transparent
+            side={THREE.DoubleSide}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
     </group>
   );
 }
