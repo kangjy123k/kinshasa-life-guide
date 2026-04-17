@@ -168,6 +168,20 @@ export default function GuidePage() {
   const [approvedExtras, setApprovedExtras] = useState<Business[]>([]);
   const [detailBizId, setDetailBizId] = useState<number | null>(null);
 
+  // 从 URL 读 ?biz=<id>（/map 点详情跳过来的），自动打开商家详情页
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("biz");
+    if (!raw) return;
+    const id = Number(raw);
+    if (!Number.isFinite(id)) return;
+    setDetailBizId(id);
+    setView("business");
+    // 清理 URL，浏览器后退直接回上一页而不是又触发一次
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+
   // 记录访问量 — 用 sendBeacon，不占主请求通道，不阻塞首屏
   useEffect(() => {
     const send = () => {
