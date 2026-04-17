@@ -69,7 +69,7 @@ function hourInt(iso: string): number {
 function extractRainWindows(
   hours: WeatherHour[],
   fromHour: string,
-  threshold = 40
+  threshold = 30
 ): Array<{ start: string; end: string }> {
   const future = hours.filter((h) => h.time.slice(0, 13) >= fromHour);
   const wins: Array<{ startIdx: number; endIdx: number }> = [];
