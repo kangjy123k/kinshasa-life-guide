@@ -56,8 +56,8 @@ function getFingerprint(): string {
 }
 
 export function peakScaleFromVotes(votes: number): number {
-  // 封顶 1.55：再火的心愿也不得吃掉邻居 / 撑爆水池
-  return 1 + Math.min(0.55, Math.log10(votes + 1) * 0.28);
+  // 0 票 → 0.80，100+ 票 → 1.55；最大 ≈ 最小 × 1.94，人气阶梯一眼看得出
+  return 0.80 + Math.min(0.75, Math.log10(votes + 1) * 0.38);
 }
 
 export function colorFromVotes(votes: number): { h: number; s: number; l: number } {
