@@ -3,7 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { Canvas } from "@react-three/fiber";
 import { Html, Environment } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { memo, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { BubbleInstance } from "./WishingPool";
 import { peakScaleFromVotes, colorFromVotes } from "./WishingPool";
@@ -89,7 +89,7 @@ function PoolFloor() {
   );
 }
 
-function Bubble3D({
+const Bubble3D = memo(function Bubble3D({
   bubble,
   wish,
   onClick,
@@ -257,5 +257,14 @@ function Bubble3D({
       </Html>
     </group>
   );
-}
+}, (prev, next) => {
+  // 仅当本气泡自身数据变化才重渲染；别的气泡 spawn/reap 不影响
+  return (
+    prev.bubble === next.bubble &&
+    prev.wish.votes === next.wish.votes &&
+    prev.wish.name === next.wish.name &&
+    prev.onClick === next.onClick &&
+    prev.onDoubleClick === next.onDoubleClick
+  );
+});
 

@@ -41,7 +41,7 @@ const POOL_RADIUS_Y = 2.2;
 // 兜底：任何时刻气泡中心都不得超出此范围
 const SAFE_X = 2.3;
 const SAFE_Y = 2.6;
-const MIN_BUBBLE_GAP = 0.9;
+// 最小间距按两颗气泡的峰值尺寸动态算：r1+r2+0.1；避免大气泡吃小气泡
 const LIFESPAN_MIN = 4200;  // 抛物线总时长：小→大→小
 const LIFESPAN_MAX = 5500;
 
@@ -56,7 +56,8 @@ function getFingerprint(): string {
 }
 
 export function peakScaleFromVotes(votes: number): number {
-  return 1 + Math.log10(votes + 1) * 0.35;
+  // 封顶 1.55：再火的心愿也不得吃掉邻居 / 撑爆水池
+  return 1 + Math.min(0.55, Math.log10(votes + 1) * 0.28);
 }
 
 export function colorFromVotes(votes: number): { h: number; s: number; l: number } {
@@ -165,6 +166,17 @@ export default function WishingPool() {
     if (wid === null) return;
 
     // 椭圆内撒点，偏向中心（幂次 >1 聚拢中心视觉重心），避开已在池中的气泡
+    const newWish = wishesRef.current.find((w) => w.id === wid);
+    const newPeak = newWish ? peakScaleFromVotes(newWish.votes) : 1;
+    const peakCache = new Map<number, number>();
+    const peakOf = (b: BubbleInstance) => {
+      let p = peakCache.get(b.instanceId);
+      if (p !== undefined) return p;
+      const w = wishesRef.current.find((x) => x.id === b.wishId);
+      p = w ? peakScaleFromVotes(w.votes) : 1;
+      peakCache.set(b.instanceId, p);
+      return p;
+    };
     let placed: { x: number; y: number } | null = null;
     for (let attempt = 0; attempt < 14; attempt++) {
       const a = Math.random() * Math.PI * 2;
@@ -172,9 +184,11 @@ export default function WishingPool() {
       const cx = Math.cos(a) * rFrac * POOL_RADIUS_X;
       const cy = Math.sin(a) * rFrac * POOL_RADIUS_Y;
       const tooClose = active.some((b) => {
+        // 球半径 0.6 × peak，两心距要 > r1+r2+0.1
+        const gap = 0.6 * (newPeak + peakOf(b)) + 0.1;
         const dx = b.x - cx;
         const dy = b.y - cy;
-        return dx * dx + dy * dy < MIN_BUBBLE_GAP * MIN_BUBBLE_GAP;
+        return dx * dx + dy * dy < gap * gap;
       });
       if (!tooClose) {
         placed = { x: cx, y: cy };
@@ -240,7 +254,7 @@ export default function WishingPool() {
       const b = bubblesRef.current.find((x) => x.instanceId === instanceId);
       const w = b ? wishesRef.current.find((x) => x.id === b.wishId) : null;
       if (!b || !w || b.poppedAt !== null) return;
-      setToast({ text: `再点一次确认为「${w.name}」许愿`, type: "ok" });
+      setToast({ text: `双击为「${w.name}」许愿`, type: "ok" });
     },
     []
   );
