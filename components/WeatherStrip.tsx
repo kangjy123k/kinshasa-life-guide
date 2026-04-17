@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cloud, Droplets, Wind, CloudRain } from "lucide-react";
+import { Droplets, Wind, CloudRain } from "lucide-react";
 
 interface WeatherHour {
   time: string;
@@ -168,12 +168,6 @@ export default function WeatherStrip() {
                 风 {Math.round(current.wind_speed_10m)} km/h
               </span>
             )}
-            <span className="flex items-center gap-1">
-              <Cloud size={11} className="text-sky-500" />
-              {data.alert.source === "tomorrow.io"
-                ? "Open-Meteo + Tomorrow.io"
-                : "Open-Meteo"}
-            </span>
           </div>
         )}
 
