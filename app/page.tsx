@@ -380,7 +380,7 @@ function HomeView({
           <span className="text-xs text-gray-400">{categories.length} 大类</span>
           <span className="ml-auto text-xs text-gray-400">← 左右滑动 →</span>
         </div>
-        <div className="overflow-x-auto scrollbar-none pb-2">
+        <div className="max-w-4xl mx-auto overflow-x-auto scrollbar-none pb-2">
           <div className="grid grid-rows-2 grid-flow-col auto-cols-[76px] gap-2 px-4 w-max">
             {categories.map((cat) => {
               const Icon = cat.icon;
