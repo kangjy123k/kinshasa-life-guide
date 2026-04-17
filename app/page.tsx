@@ -599,12 +599,12 @@ function HomeView({
           </Link>
           <Link
             href="/demand"
-            className="relative flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-600 text-white shadow active:scale-95 transition"
+            className="relative flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-sky-600 via-cyan-500 to-teal-500 text-white shadow active:scale-95 transition"
           >
-            <span className="text-2xl leading-none">🪐</span>
+            <span className="text-2xl leading-none">🪷</span>
             <div className="min-w-0">
-              <div className="text-xs font-bold">需求榜</div>
-              <div className="text-[10px] text-white/85 truncate">想买啥？投一票</div>
+              <div className="text-xs font-bold">许愿池</div>
+              <div className="text-[10px] text-white/90 truncate">拨水泡·双击许愿</div>
             </div>
             <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[9px] font-black bg-yellow-300 text-rose-600 rounded-full shadow">
               新
