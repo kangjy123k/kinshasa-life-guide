@@ -143,22 +143,9 @@ export async function voteProduct(
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
   const DAY = 24 * 60 * 60 * 1000;
+  const thresholdIso = new Date(now - DAY).toISOString();
 
-  // 1. 查这个指纹对这个商品的最近投票
-  const prev = await db().execute({
-    sql: "SELECT voted_at FROM product_vote WHERE fingerprint = ? AND product_id = ?",
-    args: [fingerprint, productId],
-  });
-  if (prev.rows.length > 0) {
-    const last = Date.parse(String((prev.rows[0] as unknown as { voted_at: string }).voted_at));
-    const elapsed = now - last;
-    if (elapsed < DAY) {
-      const cooldownHours = Math.ceil((DAY - elapsed) / 3600_000);
-      return { ok: false, reason: `你已投过票，${cooldownHours} 小时后可再次投`, cooldownHours };
-    }
-  }
-
-  // 2. 商品必须存在
+  // 商品存在性检查（避免孤儿 vote）
   const prod = await db().execute({
     sql: "SELECT id FROM product_demand WHERE id = ?",
     args: [productId],
@@ -167,15 +154,36 @@ export async function voteProduct(
     return { ok: false, reason: "商品不存在" };
   }
 
-  // 3. upsert 投票记录
-  await db().execute({
+  // 原子 upsert：首次写入，或旧记录 voted_at <= (now - 24h) 才更新。
+  // 并发同指纹请求会被 Turso 写锁串行化：
+  //   第一个 INSERT 成功；第二个走 ON CONFLICT 分支但 WHERE 不成立（voted_at 刚被设为 now），rowsAffected=0
+  // 仅 rowsAffected=1 才递增 votes，杜绝同一指纹刷票。
+  const upsert = await db().execute({
     sql: `INSERT INTO product_vote (fingerprint, product_id, voted_at)
           VALUES (?, ?, ?)
-          ON CONFLICT(fingerprint, product_id) DO UPDATE SET voted_at = excluded.voted_at`,
-    args: [fingerprint, productId, nowIso],
+          ON CONFLICT(fingerprint, product_id) DO UPDATE SET voted_at = excluded.voted_at
+          WHERE product_vote.voted_at <= ?`,
+    args: [fingerprint, productId, nowIso, thresholdIso],
   });
 
-  // 4. 递增 votes
+  const applied = Number(upsert.rowsAffected ?? 0) > 0;
+  if (!applied) {
+    // 找当前记录计算剩余冷却时间（告知用户）
+    const prev = await db().execute({
+      sql: "SELECT voted_at FROM product_vote WHERE fingerprint = ? AND product_id = ?",
+      args: [fingerprint, productId],
+    });
+    let cooldownHours = 24;
+    if (prev.rows.length > 0) {
+      const last = Date.parse(String((prev.rows[0] as unknown as { voted_at: string }).voted_at));
+      if (Number.isFinite(last)) {
+        cooldownHours = Math.max(1, Math.ceil((DAY - (now - last)) / 3600_000));
+      }
+    }
+    return { ok: false, reason: `你已投过票，${cooldownHours} 小时后可再次投`, cooldownHours };
+  }
+
+  // vote 写入成功 → 递增 votes（单行 UPDATE 在 Turso 写锁下原子）
   await db().execute({
     sql: "UPDATE product_demand SET votes = votes + 1, last_voted_at = ? WHERE id = ?",
     args: [nowIso, productId],
