@@ -186,7 +186,8 @@ function BarChartSimple({
 /*  访问明细表                                                          */
 /* ------------------------------------------------------------------ */
 function VisitTable({ visits }: { visits: VisitRecord[] }) {
-  const recent = [...visits].reverse().slice(0, 50);
+  // API 返回已经是新 → 旧排序，直接 slice 取前 50 即最新 50 条
+  const recent = visits.slice(0, 50);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
