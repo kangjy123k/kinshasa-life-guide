@@ -8,6 +8,10 @@ const WeatherStrip = dynamic(() => import("@/components/WeatherStrip"), {
   ssr: false,
 });
 
+const RainRadarMap = dynamic(() => import("@/components/RainRadarMap"), {
+  ssr: false,
+});
+
 export default function WeatherPage() {
   return (
     <div className="min-h-screen bg-sky-50 pb-12">
@@ -28,6 +32,8 @@ export default function WeatherPage() {
       </header>
 
       <WeatherStrip />
+
+      <RainRadarMap />
 
       <section className="max-w-4xl mx-auto px-4 mt-4 text-[11px] text-gray-500 leading-relaxed">
         <div className="p-3 rounded-xl bg-white/70 border border-sky-100">

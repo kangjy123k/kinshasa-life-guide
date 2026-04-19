@@ -43,6 +43,15 @@
   animation: pulseRed 1.6s ease-in-out infinite;
 }
 
+/* 雨云图标记淡入淡出 */
+.rain-marker {
+  transition: opacity 0.7s ease !important;
+  pointer-events: none;
+}
+.rain-marker > div {
+  transition: background 0.5s ease, box-shadow 0.5s ease, transform 0.5s ease;
+}
+
 /* Leaflet 商家名称 tooltip */
 .kin-name-tip.leaflet-tooltip {
   background: rgba(255, 255, 255, 0.95);
