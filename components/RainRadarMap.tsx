@@ -6,28 +6,17 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Play, Pause, CloudRain } from "lucide-react";
 
-const DRC_CITIES = [
-  { name: "金沙萨",     lat: -4.3276, lng: 15.3136 },
-  { name: "马塔迪",     lat: -5.8168, lng: 13.4610 },
-  { name: "博马",       lat: -5.8539, lng: 13.0550 },
-  { name: "姆班达卡",   lat:  0.0487, lng: 18.2625 },
-  { name: "格梅纳",     lat:  3.2537, lng: 19.7717 },
-  { name: "基桑加尼",   lat:  0.5156, lng: 25.2214 },
-  { name: "布尼亚",     lat:  1.5648, lng: 30.2422 },
-  { name: "贝尼",       lat:  0.4914, lng: 29.4692 },
-  { name: "戈马",       lat: -1.6792, lng: 29.2228 },
-  { name: "布卡武",     lat: -2.5083, lng: 28.8608 },
-  { name: "乌维拉",     lat: -3.4075, lng: 29.1375 },
-  { name: "金杜",       lat: -2.9486, lng: 25.9125 },
-  { name: "卡南加",     lat: -5.8961, lng: 22.4178 },
-  { name: "姆布吉马伊", lat: -6.1456, lng: 23.5898 },
-  { name: "奇卡帕",     lat: -6.4163, lng: 20.8020 },
-  { name: "科卢韦齐",   lat: -10.716, lng: 25.4667 },
-  { name: "利卡西",     lat: -10.979, lng: 26.7384 },
-  { name: "卢本巴希",   lat: -11.688, lng: 27.5026 },
+// 金沙萨市内 6 个代表片区，覆盖东西南北中
+const KINSHASA_DISTRICTS = [
+  { name: "Gombe",        lat: -4.302, lng: 15.302 },
+  { name: "Kintambo",     lat: -4.320, lng: 15.270 },
+  { name: "Binza",        lat: -4.355, lng: 15.235 },
+  { name: "Limete",       lat: -4.345, lng: 15.355 },
+  { name: "Ndjili 机场",  lat: -4.386, lng: 15.442 },
+  { name: "Mont-Ngafula", lat: -4.425, lng: 15.283 },
 ];
 
-const CENTER: [number, number] = [-3.5, 22];
+const CENTER: [number, number] = [-4.36, 15.32];
 
 interface Grid {
   hours: string[];
@@ -40,8 +29,8 @@ interface Grid {
 }
 
 async function fetchGrid(): Promise<Grid> {
-  const lat = DRC_CITIES.map((c) => c.lat).join(",");
-  const lng = DRC_CITIES.map((c) => c.lng).join(",");
+  const lat = KINSHASA_DISTRICTS.map((c) => c.lat).join(",");
+  const lng = KINSHASA_DISTRICTS.map((c) => c.lng).join(",");
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
     `&hourly=precipitation&forecast_days=2&timezone=Africa%2FKinshasa`;
@@ -53,9 +42,9 @@ async function fetchGrid(): Promise<Grid> {
   const arr = Array.isArray(json) ? json : [json];
   const hours = arr[0].hourly.time;
   const data = arr.map((d, i) => ({
-    name: DRC_CITIES[i].name,
-    lat: DRC_CITIES[i].lat,
-    lng: DRC_CITIES[i].lng,
+    name: KINSHASA_DISTRICTS[i].name,
+    lat: KINSHASA_DISTRICTS[i].lat,
+    lng: KINSHASA_DISTRICTS[i].lng,
     precip: d.hourly.precipitation ?? [],
   }));
   return { hours, data };
@@ -244,10 +233,10 @@ export default function RainRadarMap() {
         {/* 标题 */}
         <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-100">
           <CloudRain size={16} className="text-sky-500" />
-          <span className="text-sm font-bold text-gray-800">雨云动态图</span>
-          <span className="text-[11px] text-gray-500">刚果金 · 逐小时</span>
+          <span className="text-sm font-bold text-gray-800">金沙萨雨云动态图</span>
+          <span className="text-[11px] text-gray-500">6 个片区 · 逐小时</span>
           <span className="ml-auto text-[11px] text-sky-600 font-semibold">
-            {rainingCount > 0 ? `${rainingCount} 地有雨` : "全境无雨"}
+            {rainingCount > 0 ? `${rainingCount} 片区有雨` : "城内无雨"}
           </span>
         </div>
 
@@ -255,9 +244,9 @@ export default function RainRadarMap() {
         <div className="relative bg-sky-50" style={{ height: 320 }}>
           <MapContainer
             center={CENTER}
-            zoom={5}
-            minZoom={4}
-            maxZoom={8}
+            zoom={11}
+            minZoom={10}
+            maxZoom={13}
             scrollWheelZoom={false}
             zoomControl={false}
             attributionControl={false}
