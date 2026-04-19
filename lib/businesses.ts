@@ -47,6 +47,36 @@ export const AREA_COORDS: Record<string, [number, number]> = {
 };
 export const KINSHASA_CENTER: [number, number] = [-4.3276, 15.3136];
 
+/* 金沙萨 24 个 commune（按华人聚集/关注度排序，供入驻表单下拉使用）*/
+export const KINSHASA_COMMUNES: string[] = [
+  "Gombe",
+  "Ngaliema",
+  "Limete",
+  "Ma Campagne",
+  "Kintambo",
+  "Bandalungwa",
+  "Kalamu",
+  "Binza",
+  "Lemba",
+  "Masina",
+  "Barumbu",
+  "Kasa-Vubu",
+  "Lingwala",
+  "Ngiri-Ngiri",
+  "Kinshasa (commune)",
+  "Selembao",
+  "Makala",
+  "Mont-Ngafula",
+  "Matete",
+  "Ngaba",
+  "Kimbanseke",
+  "N'djili",
+  "Kisenso",
+  "Bumbu",
+  "Nsele",
+  "Maluku",
+];
+
 export function coordsForArea(area: string, id = 0): [number, number] {
   let base: [number, number] = KINSHASA_CENTER;
   for (const k of Object.keys(AREA_COORDS)) {
@@ -516,14 +546,14 @@ export const liveBusinesses: Business[] = [
   {
     id: 2001,
     name: "福美超市",
-    contactPerson: "",
-    wechat: "",
+    contactPerson: "刘女士",
+    wechat: "kazlxy",
     phone: "",
-    area: "金沙萨 Commune de Kinshasa · Avenue du Progrès",
+    area: "Avenue Likasi, Kinshasa",
     mainService: "综合食品超市：中国食品、粮油调味、方便面、零食饮料、冷冻食品、日用百货",
     hasStore: "有 — 临街超市门店",
     serviceScope: "金沙萨市区",
-    intro: "福美超市位于 Avenue du Progrès，是华人常去的综合型食品超市。中国粮油、调味料、方便面、速冻饺子、零食饮料、日用杂货齐全，适合日常采买。",
+    intro: "福美超市位于 Avenue Likasi，是华人常去的综合型食品超市。中国粮油、调味料、方便面、速冻饺子、零食饮料、日用杂货齐全，适合日常采买。",
     image: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=800&h=600&fit=crop",
     category: "goods",
     subcategory: "食品",

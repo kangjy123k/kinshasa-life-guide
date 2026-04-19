@@ -40,26 +40,31 @@ import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
 interface AdSlide {
   title: string;
   subtitle: string;
-  bg: string;
+  bg?: string;       // tailwind 渐变 class 片段
+  image?: string;    // 图片背景（优先于 bg）
   emoji: string;
   phone?: string;
   address?: string;
+  darkText?: boolean; // 浅底时用深字
+  adTag?: boolean;    // 右上角"广告"角标
 }
 
 const ads: AdSlide[] = [
   {
     title: "欢迎商家入驻名录",
     subtitle: "免费收录 · 让客户更快找到你",
-    bg: "from-sky-400 via-sky-500 to-blue-500",
+    bg: "from-red-100 via-rose-100 to-red-200",
     emoji: "🏪",
+    darkText: true,
   },
   {
     title: "混凝土搅拌站",
     subtitle: "工程建材一站供应 · 价格实惠",
-    bg: "from-amber-400 via-yellow-400 to-orange-400",
+    image: "/images/concrete-plant.jpg",
     emoji: "🏗️",
     phone: "+243823170887",
     address: "中国城",
+    adTag: true,
   },
 ];
 
@@ -227,7 +232,6 @@ export default function GuidePage() {
           biz={detailBiz}
           onBack={() => setView("home")}
           onFocusMap={() => focusOnMap(detailBiz.id)}
-          onViewAllMap={() => focusOnMap(null)}
         />
       )}
 
@@ -564,13 +568,45 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
   const next = () => onChange((index + 1) % ads.length);
   const prev = () => onChange((index - 1 + ads.length) % ads.length);
 
+  const darkText = !!slide.darkText;
+  const bgGradient = slide.bg ? `bg-gradient-to-r ${slide.bg}` : "";
+  const textClass = darkText ? "text-gray-900" : "text-white";
+  const subtitleClass = darkText ? "text-gray-700" : "text-white/90";
+  const navBtnClass = darkText
+    ? "bg-black/15 hover:bg-black/25 text-gray-800"
+    : "bg-white/20 hover:bg-white/30 text-white";
+  const dotActive = darkText ? "bg-gray-900" : "bg-white";
+  const dotInactive = darkText ? "bg-gray-400/60" : "bg-white/50";
+  const phoneChipClass = darkText
+    ? "bg-white/80 hover:bg-white text-red-700"
+    : "bg-white/25 hover:bg-white/40 text-white";
+
   return (
-    <div className={`relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r ${slide.bg} min-h-[108px] md:min-h-[128px]`}>
-      <div key={index} className="animate-slide-in absolute inset-0 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 text-white">
-        <span className="text-4xl md:text-5xl shrink-0">{slide.emoji}</span>
+    <div className={`relative rounded-2xl overflow-hidden shadow-lg min-h-[108px] md:min-h-[128px] ${bgGradient}`}>
+      {slide.image && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={slide.image}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/40 to-black/55" />
+        </>
+      )}
+
+      {slide.adTag && (
+        <span className="absolute top-2 right-2 z-10 px-1.5 py-0.5 bg-black/55 text-white text-[10px] font-semibold rounded tracking-[0.2em] border border-white/50">
+          广告
+        </span>
+      )}
+
+      <div key={index} className={`animate-slide-in absolute inset-0 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 ${textClass}`}>
+        <span className="text-4xl md:text-5xl shrink-0 drop-shadow">{slide.emoji}</span>
         <div className="flex-1 min-w-0">
           <p className="text-base md:text-xl font-bold leading-snug truncate">{slide.title}</p>
-          <p className="text-xs md:text-sm text-white/90 mt-0.5 leading-snug">
+          <p className={`text-xs md:text-sm ${subtitleClass} mt-0.5 leading-snug`}>
             {slide.subtitle}
             {slide.address && (
               <>
@@ -583,7 +619,7 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
             <a
               href={`tel:${slide.phone.replace(/\s+/g, "")}`}
               onClick={(e) => e.stopPropagation()}
-              className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur text-xs md:text-sm font-semibold"
+              className={`mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full backdrop-blur text-xs md:text-sm font-semibold ${phoneChipClass}`}
             >
               <Phone size={12} /> {slide.phone}
             </a>
@@ -594,14 +630,14 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
       <button
         onClick={prev}
         aria-label="上一条"
-        className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur flex items-center justify-center text-white"
+        className={`absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full backdrop-blur flex items-center justify-center ${navBtnClass}`}
       >
         <ChevronLeft size={16} />
       </button>
       <button
         onClick={next}
         aria-label="下一条"
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur flex items-center justify-center text-white"
+        className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full backdrop-blur flex items-center justify-center ${navBtnClass}`}
       >
         <ChevronRight size={16} />
       </button>
@@ -613,7 +649,7 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
             onClick={() => onChange(i)}
             aria-label={`广告 ${i + 1}`}
             className={`h-1.5 rounded-full transition-all ${
-              i === index ? "w-6 bg-white" : "w-1.5 bg-white/50"
+              i === index ? `w-6 ${dotActive}` : `w-1.5 ${dotInactive}`
             }`}
           />
         ))}
@@ -803,12 +839,10 @@ function BusinessDetailView({
   biz,
   onBack,
   onFocusMap,
-  onViewAllMap,
 }: {
   biz: Business;
   onBack: () => void;
   onFocusMap: () => void;
-  onViewAllMap: () => void;
 }) {
   const cat = categories.find((c) => c.key === biz.category);
 
@@ -840,36 +874,33 @@ function BusinessDetailView({
             <img src={biz.image} alt={biz.name} className="w-full h-full object-cover" />
             {biz.featured && (
               <span className="absolute top-3 left-3 px-2.5 py-1 bg-yellow-400 text-white text-xs font-bold rounded-full shadow flex items-center gap-1">
-                <Star size={12} fill="white" /> 推荐
+                <Star size={12} fill="white" /> 热门
               </span>
             )}
           </div>
           <div className="p-5">
-            <div className="flex items-start gap-2">
-              <h2 className="flex-1 text-xl font-bold text-gray-900">{biz.name}</h2>
-              <SpeakButton
-                text={`Je veux aller à cette adresse, ${biz.area}`}
-                cacheKey={`biz-${biz.id}`}
-              />
-            </div>
+            <h2 className="text-xl font-bold text-gray-900">{biz.name}</h2>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                onClick={onFocusMap}
-                className="flex items-center justify-center gap-1.5 py-2.5 bg-red-400 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors"
-              >
-                <MapPin size={16} /> 在地图上查看
-              </button>
-              <button
-                onClick={onViewAllMap}
-                className="flex items-center justify-center gap-1.5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-xl transition-colors"
-              >
-                🗺️ 查看全部地图
-              </button>
-            </div>
+            <button
+              onClick={onFocusMap}
+              className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 bg-red-400 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              <MapPin size={16} /> 在地图上查看
+            </button>
 
             <div className="mt-5 space-y-3 text-sm">
-              <Field label="所在区域" value={biz.area} />
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <p className="text-gray-400 text-xs tracking-wide">所在区域</p>
+                  <SpeakButton
+                    text={`Je veux aller à cette adresse, ${biz.area}`}
+                    cacheKey={`biz-${biz.id}`}
+                  />
+                </div>
+                <p className={`leading-relaxed ${biz.area?.trim() ? "text-gray-700" : "text-gray-400 italic"}`}>
+                  {biz.area?.trim() ? biz.area : "待补充"}
+                </p>
+              </div>
               <Field label="联系人" value={biz.contactPerson} />
               <Field label="微信号" value={biz.wechat} />
               <Field label="电话 / WhatsApp" value={biz.phone} />

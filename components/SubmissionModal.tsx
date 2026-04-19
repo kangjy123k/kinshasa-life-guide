@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, CheckCircle2, Loader2 } from "lucide-react";
-import { categories } from "@/lib/businesses";
+import { categories, KINSHASA_COMMUNES } from "@/lib/businesses";
 
 type FieldType = "text" | "textarea" | "select";
 interface FormField {
@@ -26,9 +26,10 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
       { name: "phone",         label: "电话 / WhatsApp",  type: "text", required: true },
       { name: "category",      label: "所属分类",         type: "select", required: true,
         options: categories.map((c) => c.label) },
-      { name: "subcategory",   label: "子分类",           type: "text", placeholder: "如：中国餐厅、生活用品 …" },
-      { name: "area",          label: "所在区域",         type: "text", placeholder: "如：金沙萨 Gombe区" },
-      { name: "hasStore",      label: "是否有门店",       type: "select", options: ["有", "无"] },
+      { name: "subcategory",   label: "子分类",           type: "text", required: true, placeholder: "如：中国餐厅、生活用品 …" },
+      { name: "area",          label: "所在区域（金沙萨）", type: "select", required: true,
+        options: KINSHASA_COMMUNES },
+      { name: "hasStore",      label: "是否有门店",       type: "select", required: true, options: ["有", "无"] },
       { name: "mainService",   label: "主营产品或服务",   type: "textarea", required: true },
       { name: "serviceScope",  label: "服务范围",         type: "textarea" },
       { name: "intro",         label: "商家简介",         type: "textarea" },
@@ -132,40 +133,39 @@ export function SubmissionModal({ formKey, onClose }: { formKey: FormKey; onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 p-0 md:p-4">
-      <div className="w-full md:max-w-lg bg-white rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-sky-100 shrink-0">
-          <h3 className="text-lg font-bold text-gray-800">{def.title}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4">
+      <div className="w-full max-w-[22rem] md:max-w-sm bg-white rounded-2xl shadow-xl max-h-[80vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
+          <h3 className="text-[15px] font-semibold text-gray-800">{def.title}</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-sky-50 flex items-center justify-center"
+            className="w-7 h-7 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center"
             aria-label="关闭"
           >
-            <X size={18} className="text-gray-500" />
+            <X size={16} className="text-gray-500" />
           </button>
         </div>
 
         {done ? (
-          <div className="px-6 py-12 text-center flex-1">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-100 mb-4 animate-pulse-red">
-              <CheckCircle2 size={36} className="text-red-400" />
+          <div className="px-5 py-8 text-center flex-1">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 mb-3">
+              <CheckCircle2 size={26} className="text-red-400" />
             </div>
-            <p className="text-lg font-bold text-gray-800 mb-1">提交成功</p>
-            <p className="text-sm text-gray-500 mb-2">您的信息已进入</p>
-            <p className="inline-block px-3 py-1 rounded-full bg-yellow-50 text-yellow-700 text-sm font-medium">
+            <p className="text-base font-semibold text-gray-800 mb-1">提交成功</p>
+            <p className="inline-block px-2.5 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs font-medium">
               ⏳ 审核中
             </p>
-            <p className="text-xs text-gray-400 mt-4">审核通过后会展示在对应分类页面</p>
+            <p className="text-[11px] text-gray-400 mt-3">审核通过后会展示在对应分类页面</p>
             <button
               onClick={onClose}
-              className="mt-6 px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-xl"
+              className="mt-5 px-5 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded-full"
             >
               完成
             </button>
           </div>
         ) : (
           <>
-            <div className="overflow-y-auto px-5 py-4 space-y-4 flex-1">
+            <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
               {def.fields.map((f) => (
                 <FormFieldInput
                   key={f.name}
@@ -175,18 +175,18 @@ export function SubmissionModal({ formKey, onClose }: { formKey: FormKey; onClos
                 />
               ))}
               {error && (
-                <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+                <p className="text-xs text-red-500 bg-red-50 px-2.5 py-1.5 rounded-lg">{error}</p>
               )}
             </div>
-            <div className="px-5 py-3 border-t border-sky-100 shrink-0">
+            <div className="px-4 py-2.5 border-t border-gray-100 shrink-0">
               <button
                 onClick={submit}
                 disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-sky-500 to-blue-500 hover:from-red-400 hover:to-rose-500 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-900 hover:bg-black text-white text-[13px] font-semibold rounded-full transition-all disabled:opacity-60"
               >
                 {submitting ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> 提交中…
+                    <Loader2 size={14} className="animate-spin" /> 提交中…
                   </>
                 ) : (
                   "提交申请"
@@ -210,20 +210,20 @@ function FormFieldInput({
   onChange: (v: string) => void;
 }) {
   const base =
-    "w-full px-3 py-2.5 bg-sky-50 border border-sky-100 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-sky-400 focus:bg-white";
+    "w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:bg-white";
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+      <label className="block text-[12px] font-medium text-gray-600 mb-1">
         {field.label}
-        {field.required && <span className="text-red-400 ml-1">*</span>}
+        {field.required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {field.type === "textarea" ? (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
-          rows={3}
+          rows={2}
           className={base}
         />
       ) : field.type === "select" ? (

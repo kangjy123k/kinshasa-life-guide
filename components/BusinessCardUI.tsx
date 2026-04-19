@@ -6,8 +6,6 @@ import {
   Phone,
   MessageCircle,
   Store,
-  ChevronDown,
-  ChevronUp,
   ChevronRight,
   Star,
   Volume2,
@@ -21,17 +19,29 @@ export function BusinessCard({
   biz: Business;
   onOpen?: (id: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const cat = categories.find((c) => c.key === biz.category);
+  const handleOpen = () => onOpen?.(biz.id);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all hover:shadow-md hover:border-red-200">
+    <div
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={onOpen ? handleOpen : undefined}
+      onKeyDown={(e) => {
+        if (!onOpen) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleOpen();
+        }
+      }}
+      className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all hover:shadow-md hover:border-red-200 active:scale-[0.99] cursor-pointer"
+    >
       <div className="relative h-44">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={biz.image} alt={biz.name} className="w-full h-full object-cover" loading="lazy" />
         {biz.featured && (
           <span className="absolute top-3 left-3 px-2.5 py-1 bg-yellow-400 text-white text-xs font-bold rounded-full shadow flex items-center gap-1">
-            <Star size={12} fill="white" /> 推荐
+            <Star size={12} fill="white" /> 热门
           </span>
         )}
         <span className="absolute top-3 right-3 px-2.5 py-1 bg-sky-500 text-white text-xs font-semibold rounded-full shadow">
@@ -54,35 +64,9 @@ export function BusinessCard({
           <Row icon={<Store size={15} className="text-sky-400" />} text={biz.mainService} clamp />
         </div>
 
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-sm text-sky-600 font-medium hover:text-red-500 transition-colors"
-          >
-            {expanded ? "收起" : "快速预览"}
-            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-          {onOpen && (
-            <button
-              onClick={() => onOpen(biz.id)}
-              className="ml-auto flex items-center gap-1 text-sm text-red-500 font-medium hover:text-red-600 transition-colors"
-            >
-              进入详情页 <ChevronRight size={14} />
-            </button>
-          )}
-        </div>
-
-        {expanded && (
-          <div className="mt-3 pt-3 border-t border-sky-100 space-y-3 text-sm">
-            <Field label="联系人" value={biz.contactPerson} />
-            <Field label="微信号" value={biz.wechat} />
-            <Field label="电话 / WhatsApp" value={biz.phone} />
-            <Field label="门店/仓库" value={biz.hasStore} />
-            <Field label="服务范围" value={biz.serviceScope} />
-            <Field label="主营产品或服务" value={biz.mainService} />
-            <Field label="商家简介" value={biz.intro} />
-
-            <ContactButtons biz={biz} className="pt-2" />
+        {onOpen && (
+          <div className="mt-3 flex items-center justify-end text-sm text-red-500 font-medium">
+            进入详情页 <ChevronRight size={14} className="ml-0.5" />
           </div>
         )}
       </div>
