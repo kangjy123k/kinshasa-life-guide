@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X, CheckCircle2, Loader2 } from "lucide-react";
 import { categories, KINSHASA_COMMUNES } from "@/lib/businesses";
 
-type FieldType = "text" | "textarea" | "select";
+type FieldType = "text" | "textarea" | "select" | "subcategory";
 interface FormField {
   name: string;
   label: string;
@@ -26,7 +26,7 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
       { name: "phone",         label: "电话 / WhatsApp",  type: "text", required: true },
       { name: "category",      label: "所属分类",         type: "select", required: true,
         options: categories.map((c) => c.label) },
-      { name: "subcategory",   label: "子分类",           type: "text", required: true, placeholder: "如：中国餐厅、生活用品 …" },
+      { name: "subcategory",   label: "子分类（可多选）",  type: "subcategory", required: true },
       { name: "area",          label: "所在区域（金沙萨）", type: "select", required: true,
         options: KINSHASA_COMMUNES },
       { name: "hasStore",      label: "是否有门店",       type: "select", required: true, options: ["有", "无"] },
@@ -106,10 +106,25 @@ export function SubmissionModal({ formKey, onClose }: { formKey: FormKey; onClos
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const update = (name: string, v: string) => setValues((prev) => ({ ...prev, [name]: v }));
+  const update = (name: string, v: string) =>
+    setValues((prev) => {
+      const next = { ...prev, [name]: v };
+      // 切换分类时清掉子分类，避免残留旧分类下的选项
+      if (name === "category" && prev.category !== v) next.subcategory = "";
+      return next;
+    });
 
   const submit = async () => {
     for (const f of def.fields) {
+      if (f.type === "subcategory") {
+        // 子分类仅当分类有 sub 列表时才必填
+        const cat = categories.find((c) => c.label === values.category);
+        if (f.required && cat && cat.sub.length > 0 && !values[f.name]?.trim()) {
+          setError(`请选择「${f.label}」`);
+          return;
+        }
+        continue;
+      }
       if (f.required && !values[f.name]?.trim()) {
         setError(`请填写「${f.label}」`);
         return;
@@ -166,14 +181,29 @@ export function SubmissionModal({ formKey, onClose }: { formKey: FormKey; onClos
         ) : (
           <>
             <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
-              {def.fields.map((f) => (
-                <FormFieldInput
-                  key={f.name}
-                  field={f}
-                  value={values[f.name] ?? ""}
-                  onChange={(v) => update(f.name, v)}
-                />
-              ))}
+              {def.fields.map((f) => {
+                if (f.type === "subcategory") {
+                  const cat = categories.find((c) => c.label === values.category);
+                  if (!cat || cat.sub.length === 0) return null;
+                  return (
+                    <SubcategoryPicker
+                      key={f.name}
+                      field={f}
+                      options={cat.sub}
+                      value={values[f.name] ?? ""}
+                      onChange={(v) => update(f.name, v)}
+                    />
+                  );
+                }
+                return (
+                  <FormFieldInput
+                    key={f.name}
+                    field={f}
+                    value={values[f.name] ?? ""}
+                    onChange={(v) => update(f.name, v)}
+                  />
+                );
+              })}
               {error && (
                 <p className="text-xs text-red-500 bg-red-50 px-2.5 py-1.5 rounded-lg">{error}</p>
               )}
@@ -195,6 +225,55 @@ export function SubmissionModal({ formKey, onClose }: { formKey: FormKey; onClos
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SubcategoryPicker({
+  field,
+  options,
+  value,
+  onChange,
+}: {
+  field: FormField;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const selected = new Set(
+    value.split("、").map((s) => s.trim()).filter(Boolean)
+  );
+  const toggle = (opt: string) => {
+    if (selected.has(opt)) selected.delete(opt);
+    else selected.add(opt);
+    const ordered = options.filter((o) => selected.has(o));
+    onChange(ordered.join("、"));
+  };
+  return (
+    <div>
+      <label className="block text-[12px] font-medium text-gray-600 mb-1">
+        {field.label}
+        {field.required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const on = selected.has(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              className={`px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
+                on
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

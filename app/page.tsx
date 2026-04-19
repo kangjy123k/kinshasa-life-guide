@@ -53,7 +53,7 @@ const ads: AdSlide[] = [
   {
     title: "欢迎商家入驻名录",
     subtitle: "免费收录 · 让客户更快找到你",
-    bg: "from-red-100 via-rose-100 to-red-200",
+    bg: "from-red-300 via-rose-300 to-red-400",
     emoji: "🏪",
     darkText: true,
   },
@@ -568,63 +568,86 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
   const next = () => onChange((index + 1) % ads.length);
   const prev = () => onChange((index - 1 + ads.length) % ads.length);
 
+  // 首次挂载时预取带图片的广告，避免第一次切到时文字先出、图片后出的错位感
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    ads.forEach((a) => {
+      if (a.image) {
+        const img = new window.Image();
+        img.src = a.image;
+      }
+    });
+  }, []);
+
   const darkText = !!slide.darkText;
   const bgGradient = slide.bg ? `bg-gradient-to-r ${slide.bg}` : "";
-  const textClass = darkText ? "text-gray-900" : "text-white";
-  const subtitleClass = darkText ? "text-gray-700" : "text-white/90";
-  const navBtnClass = darkText
-    ? "bg-black/15 hover:bg-black/25 text-gray-800"
-    : "bg-white/20 hover:bg-white/30 text-white";
-  const dotActive = darkText ? "bg-gray-900" : "bg-white";
-  const dotInactive = darkText ? "bg-gray-400/60" : "bg-white/50";
-  const phoneChipClass = darkText
-    ? "bg-white/80 hover:bg-white text-red-700"
-    : "bg-white/25 hover:bg-white/40 text-white";
+  const textClass = slide.image ? "text-white" : darkText ? "text-gray-900" : "text-white";
+  const subtitleClass = slide.image
+    ? "text-white/90"
+    : darkText
+      ? "text-gray-700"
+      : "text-white/90";
+  const navBtnClass =
+    !slide.image && darkText
+      ? "bg-black/15 hover:bg-black/25 text-gray-800"
+      : "bg-white/20 hover:bg-white/30 text-white";
+  const dotActive = !slide.image && darkText ? "bg-gray-900" : "bg-white";
+  const dotInactive = !slide.image && darkText ? "bg-gray-400/60" : "bg-white/60";
+  const phoneChipClass = slide.image
+    ? "bg-white/25 hover:bg-white/40 text-white"
+    : darkText
+      ? "bg-white/80 hover:bg-white text-red-700"
+      : "bg-white/25 hover:bg-white/40 text-white";
 
   return (
     <div className={`relative rounded-2xl overflow-hidden shadow-lg min-h-[108px] md:min-h-[128px] ${bgGradient}`}>
-      {slide.image && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={slide.image}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/40 to-black/55" />
-        </>
-      )}
+      {/* 切换时整块内容一起淡入，图/字同步出现 */}
+      <div key={index} className="absolute inset-0 animate-slide-in">
+        {slide.image && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={slide.image}
+              alt=""
+              aria-hidden
+              fetchPriority="high"
+              loading="eager"
+              className="absolute inset-0 w-full h-full object-cover scale-110 blur-[4px]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/60" />
+          </>
+        )}
 
-      {slide.adTag && (
-        <span className="absolute top-2 right-2 z-10 px-1.5 py-0.5 bg-black/55 text-white text-[10px] font-semibold rounded tracking-[0.2em] border border-white/50">
-          广告
-        </span>
-      )}
-
-      <div key={index} className={`animate-slide-in absolute inset-0 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 ${textClass}`}>
-        <span className="text-4xl md:text-5xl shrink-0 drop-shadow">{slide.emoji}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-base md:text-xl font-bold leading-snug truncate">{slide.title}</p>
-          <p className={`text-xs md:text-sm ${subtitleClass} mt-0.5 leading-snug`}>
-            {slide.subtitle}
-            {slide.address && (
-              <>
-                <span className="mx-1 opacity-60">·</span>
-                <MapPin size={11} className="inline -mt-0.5" /> {slide.address}
-              </>
+        <div className={`absolute inset-0 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 ${textClass}`}>
+          <span className="text-4xl md:text-5xl shrink-0 drop-shadow">{slide.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-base md:text-xl font-bold leading-snug truncate drop-shadow">{slide.title}</p>
+            <p className={`text-xs md:text-sm ${subtitleClass} mt-0.5 leading-snug drop-shadow`}>
+              {slide.subtitle}
+              {slide.address && (
+                <>
+                  <span className="mx-1 opacity-60">·</span>
+                  <MapPin size={11} className="inline -mt-0.5" /> {slide.address}
+                </>
+              )}
+            </p>
+            {slide.phone && (
+              <a
+                href={`tel:${slide.phone.replace(/\s+/g, "")}`}
+                onClick={(e) => e.stopPropagation()}
+                className={`mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full backdrop-blur text-xs md:text-sm font-semibold ${phoneChipClass}`}
+              >
+                <Phone size={12} /> {slide.phone}
+              </a>
             )}
-          </p>
-          {slide.phone && (
-            <a
-              href={`tel:${slide.phone.replace(/\s+/g, "")}`}
-              onClick={(e) => e.stopPropagation()}
-              className={`mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full backdrop-blur text-xs md:text-sm font-semibold ${phoneChipClass}`}
-            >
-              <Phone size={12} /> {slide.phone}
-            </a>
-          )}
+          </div>
         </div>
+
+        {slide.adTag && (
+          <span className="absolute top-1.5 right-2 text-[9px] font-normal text-white/55 tracking-[0.2em] leading-none select-none">
+            广告
+          </span>
+        )}
       </div>
 
       <button
@@ -715,7 +738,10 @@ function CategoryView({
 
   const filtered = allBusinesses.filter((b) => {
     if (b.category !== cat.key) return false;
-    if (activeSub !== "全部" && b.subcategory !== activeSub) return false;
+    if (activeSub !== "全部") {
+      const subs = (b.subcategory ?? "").split("、").map((s) => s.trim()).filter(Boolean);
+      if (!subs.includes(activeSub)) return false;
+    }
     const q = searchQuery.toLowerCase();
     if (!q) return true;
     return (
@@ -880,6 +906,9 @@ function BusinessDetailView({
           </div>
           <div className="p-5">
             <h2 className="text-xl font-bold text-gray-900">{biz.name}</h2>
+            {biz.englishName && (
+              <p className="text-xs text-gray-500 mt-0.5">{biz.englishName}</p>
+            )}
 
             <button
               onClick={onFocusMap}

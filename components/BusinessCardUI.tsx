@@ -52,7 +52,14 @@ export function BusinessCard({
 
       <div className="p-4">
         <div className="flex items-start gap-2">
-          <h3 className="flex-1 text-lg font-bold text-gray-900 leading-snug">{biz.name}</h3>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-bold text-gray-900 leading-snug">{biz.name}</h3>
+            {biz.englishName && (
+              <p className="text-[11px] text-gray-500 leading-snug mt-0.5 truncate" title={biz.englishName}>
+                {biz.englishName}
+              </p>
+            )}
+          </div>
           <SpeakButton
             text={`Je veux aller à cette adresse, ${biz.area}`}
             cacheKey={`biz-${biz.id}`}

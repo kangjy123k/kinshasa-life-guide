@@ -15,6 +15,7 @@ import type React from "react";
 export interface Business {
   id: number;
   name: string;
+  englishName?: string;
   contactPerson: string;
   wechat: string;
   phone: string;
@@ -104,11 +105,11 @@ export interface CategoryDef {
 export const categories: CategoryDef[] = [
   { key: "goods",      label: "商品",     icon: ShoppingBag,     sub: ["生活用品", "食品", "建材", "交通工具", "能源产品"], color: "#f59e0b", emoji: "🛍️" },
   { key: "restaurant", label: "餐厅",     icon: UtensilsCrossed, sub: ["中国餐厅", "西餐厅", "刚果风味餐厅", "酒吧", "咖啡厅"], color: "#ef4444", emoji: "🍜" },
-  { key: "lodging",    label: "住宿",     icon: Hotel,           sub: ["中国酒店短租", "中国公寓长租", "国际级酒店", "本地酒店公寓"], color: "#8b5cf6", emoji: "🏨" },
-  { key: "life",       label: "生活服务", icon: HeartPulse,      sub: ["健康", "教育", "安保"], color: "#10b981", emoji: "💗" },
-  { key: "business",   label: "商业服务", icon: Briefcase,       sub: ["工程承包商", "建筑相关服务商", "装修队", "物流清关", "商业咨询"], color: "#3b82f6", emoji: "💼" },
+  { key: "lodging",    label: "住宿",     icon: Hotel,           sub: ["中国酒店", "中国公寓", "国际级酒店", "本地酒店公寓"], color: "#8b5cf6", emoji: "🏨" },
+  { key: "life",       label: "生活服务", icon: HeartPulse,      sub: ["健康", "教育", "安保", "金融", "运动"], color: "#10b981", emoji: "💗" },
+  { key: "business",   label: "商业服务", icon: Briefcase,       sub: ["工程承包商", "建筑相关服务商", "装修队", "物流清关"], color: "#3b82f6", emoji: "💼" },
   { key: "leisure",    label: "休闲娱乐", icon: PartyPopper,     sub: [], color: "#ec4899", emoji: "🎉" },
-  { key: "rental",     label: "租赁设备", icon: Wrench,          sub: ["脚手架", "电气设备", "运输设备", "汽修设备"], color: "#64748b", emoji: "🔧" },
+  { key: "rental",     label: "租赁设备", icon: Wrench,          sub: ["脚手架", "电气设备", "运输设备"], color: "#64748b", emoji: "🔧" },
   { key: "jobs",       label: "招聘求职", icon: Users,           sub: ["招聘", "求职"], color: "#14b8a6", emoji: "👥" },
   { key: "secondhand", label: "二手专区", icon: Tag,             sub: [], color: "#f97316", emoji: "🏷️" },
 ];
@@ -238,7 +239,7 @@ export const seedBusinesses: Business[] = [
     intro: "专为华人出差短期商务客打造的中式公寓，配备中式厨房、烧水壶、转换插头、中文电视。24小时中文前台，可代订餐、协助办事。日租 80-150 USD，周租可享 8 折。",
     image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop",
     category: "lodging",
-    subcategory: "中国酒店短租",
+    subcategory: "中国酒店",
     featured: true,
   },
   {
@@ -254,7 +255,7 @@ export const seedBusinesses: Business[] = [
     intro: "覆盖单身公寓到家庭三居室，月租 1200-3500 USD。所有房源含家具家电、Wi-Fi、24小时备用发电、安保。专为驻外华人企业、个体经营者设计，签约灵活、押一付三起。新到客户免费机场接送。",
     image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&h=600&fit=crop",
     category: "lodging",
-    subcategory: "中国公寓长租",
+    subcategory: "中国公寓",
   },
   {
     id: 23,
@@ -412,7 +413,6 @@ export const seedBusinesses: Business[] = [
     intro: "由资深华人律师团队组建的商务咨询公司，专门服务中资企业和个体投资者。可办理 SARL 公司注册、ANR 安全审查、外籍员工劳工证、年度税务合规等。中法英三语团队，与各部委有稳定渠道。",
     image: "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&h=600&fit=crop",
     category: "business",
-    subcategory: "商业咨询",
   },
 
   /* ---------- 休闲娱乐 ---------- */
@@ -491,7 +491,6 @@ export const seedBusinesses: Business[] = [
     intro: "面向汽修店、车队的专业汽修设备租赁。设备来自国内顶级品牌，定期校准。日租 30 USD 起，月租可享 7 折。配套技术指导、操作培训。可提供整套小型汽修店设备打包租赁方案。",
     image: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=600&fit=crop",
     category: "rental",
-    subcategory: "汽修设备",
   },
 
   /* ---------- 招聘求职（示例：实际由表单发布） ---------- */
@@ -546,6 +545,7 @@ export const liveBusinesses: Business[] = [
   {
     id: 2001,
     name: "福美超市",
+    englishName: "Royal Shopping - Art Shops Market",
     contactPerson: "刘女士",
     wechat: "kazlxy",
     phone: "",
@@ -556,7 +556,7 @@ export const liveBusinesses: Business[] = [
     intro: "福美超市位于 Avenue Likasi，是华人常去的综合型食品超市。中国粮油、调味料、方便面、速冻饺子、零食饮料、日用杂货齐全，适合日常采买。",
     image: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=800&h=600&fit=crop",
     category: "goods",
-    subcategory: "食品",
+    subcategory: "生活用品、食品",
     featured: true,
     lat: -4.3500,
     lng: 15.3050,
