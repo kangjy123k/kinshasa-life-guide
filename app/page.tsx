@@ -529,12 +529,12 @@ function HomeView({
         />
 
         <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur rounded-full text-sm font-medium mb-4">
-            <MapPin size={14} /> 刚果金 · 金沙萨
-          </div>
-          <h1 className="text-3xl md:text-4xl font-black mb-3 leading-tight">
+          <h1 className="text-3xl md:text-4xl font-black mb-2 leading-tight">
             刚果金华人生活服务指南
           </h1>
+          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white/20 backdrop-blur rounded-full text-xs font-medium mb-3">
+            <MapPin size={12} /> 金沙萨
+          </div>
           <p className="font-handwriting text-xl md:text-2xl text-yellow-200 mb-1.5 tracking-wide">
             帮助刚果金华人更快找到本地服务
           </p>
@@ -747,29 +747,28 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
   const prev = () => onChange((index - 1 + ads.length) % ads.length);
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r ${slide.bg} min-h-[132px] md:min-h-[156px]`}>
-      <div key={index} className="animate-slide-in absolute inset-0 flex items-center gap-4 p-5 md:p-7 text-white">
-        <span className="text-5xl md:text-6xl shrink-0">{slide.emoji}</span>
+    <div className={`relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r ${slide.bg} min-h-[108px] md:min-h-[128px]`}>
+      <div key={index} className="animate-slide-in absolute inset-0 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 text-white">
+        <span className="text-4xl md:text-5xl shrink-0">{slide.emoji}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-lg md:text-2xl font-bold leading-snug">{slide.title}</p>
-          <p className="text-sm md:text-base text-white/90 mt-1">{slide.subtitle}</p>
-          {(slide.phone || slide.address) && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {slide.phone && (
-                <a
-                  href={`tel:${slide.phone.replace(/\s+/g, "")}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur text-sm font-semibold"
-                >
-                  <Phone size={14} /> {slide.phone}
-                </a>
-              )}
-              {slide.address && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-sm font-medium">
-                  <MapPin size={14} /> {slide.address}
-                </span>
-              )}
-            </div>
+          <p className="text-base md:text-xl font-bold leading-snug truncate">{slide.title}</p>
+          <p className="text-xs md:text-sm text-white/90 mt-0.5 leading-snug">
+            {slide.subtitle}
+            {slide.address && (
+              <>
+                <span className="mx-1 opacity-60">·</span>
+                <MapPin size={11} className="inline -mt-0.5" /> {slide.address}
+              </>
+            )}
+          </p>
+          {slide.phone && (
+            <a
+              href={`tel:${slide.phone.replace(/\s+/g, "")}`}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur text-xs md:text-sm font-semibold"
+            >
+              <Phone size={12} /> {slide.phone}
+            </a>
           )}
         </div>
       </div>
