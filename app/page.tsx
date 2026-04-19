@@ -93,17 +93,45 @@ export default function GuidePage() {
     sessionStorage.setItem("poster-tts-seen", "1");
   }, []);
 
-  // 从 URL 读 ?biz=<id>（/map 点详情跳过来的），自动打开商家详情页
+  // 初始化浏览器历史 + ?biz=<id> 支持
+  // 把 home 当作栈底 state，之后 openCategory / openBusiness 各 push 一层，
+  // 这样 iOS 边缘右滑、Android 手势返回就能一步步退回，而不是直接退出站点
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const raw = params.get("biz");
+    const cleanPath = window.location.pathname;
+    // 栈底：home state
+    window.history.replaceState({ klgView: "home" }, "", cleanPath);
     if (!raw) return;
     const id = Number(raw);
     if (!Number.isFinite(id)) return;
+    // /?biz=xx 进入：在 home 之上再压一层 business，保证返回能回到 home
+    window.history.pushState({ klgView: "business", bizId: id }, "", cleanPath);
     setDetailBizId(id);
     setView("business");
-    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+
+  // popstate：浏览器后退（含手势滑动返回）时根据 state 恢复视图
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPop = (e: PopStateEvent) => {
+      const s = (e.state ?? null) as
+        | { klgView?: View; categoryKey?: string; bizId?: number }
+        | null;
+      const next: View = s?.klgView ?? "home";
+      if (next === "category") {
+        if (s?.categoryKey) setActiveCategory(s.categoryKey);
+        setActiveSub("全部");
+        setSearchQuery("");
+      } else if (next === "business" && typeof s?.bizId === "number") {
+        setDetailBizId(s.bizId);
+      }
+      setView(next);
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   // 记录访问量
@@ -180,14 +208,25 @@ export default function GuidePage() {
     setActiveCategory(key);
     setActiveSub("全部");
     setSearchQuery("");
+    if (typeof window !== "undefined") {
+      window.history.pushState({ klgView: "category", categoryKey: key }, "");
+      window.scrollTo({ top: 0 });
+    }
     setView("category");
-    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
 
   const openBusiness = (id: number) => {
     setDetailBizId(id);
+    if (typeof window !== "undefined") {
+      window.history.pushState({ klgView: "business", bizId: id }, "");
+      window.scrollTo({ top: 0 });
+    }
     setView("business");
-    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  };
+
+  const goBack = () => {
+    if (typeof window !== "undefined") window.history.back();
+    else setView("home");
   };
 
   const focusOnMap = (id: number | null) => {
@@ -223,14 +262,14 @@ export default function GuidePage() {
           setSearchQuery={setSearchQuery}
           showSearch={showSearch}
           setShowSearch={setShowSearch}
-          onBack={() => setView("home")}
+          onBack={goBack}
           onOpenBusiness={openBusiness}
         />
       )}
       {view === "business" && detailBiz && (
         <BusinessDetailView
           biz={detailBiz}
-          onBack={() => setView("home")}
+          onBack={goBack}
           onFocusMap={() => focusOnMap(detailBiz.id)}
         />
       )}
