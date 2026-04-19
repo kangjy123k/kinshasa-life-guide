@@ -23,10 +23,6 @@ import {
   Users,
   Tag,
   X,
-  Megaphone,
-  UserPlus,
-  UserSearch,
-  Recycle,
   ArrowLeft,
   CheckCircle2,
   Loader2,
@@ -237,6 +233,20 @@ export default function GuidePage() {
   const [approvedExtras, setApprovedExtras] = useState<Business[]>([]);
   const [luggageRecords, setLuggageRecords] = useState<LuggageRecord[]>([]);
   const [detailBizId, setDetailBizId] = useState<number | null>(null);
+  const [posterOpen, setPosterOpen] = useState(false);
+
+  // 首次访问显示语音播报海报，3 秒后消失
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (sessionStorage.getItem("poster-tts-seen")) return;
+    setPosterOpen(true);
+    sessionStorage.setItem("poster-tts-seen", "1");
+  }, []);
+  useEffect(() => {
+    if (!posterOpen) return;
+    const t = setTimeout(() => setPosterOpen(false), 3000);
+    return () => clearTimeout(t);
+  }, [posterOpen]);
 
   // 从 URL 读 ?biz=<id>（/map 点详情跳过来的），自动打开商家详情页
   useEffect(() => {
@@ -398,6 +408,55 @@ export default function GuidePage() {
           onClose={() => setFormOpen(null)}
         />
       )}
+
+      {posterOpen && <PosterPopup onClose={() => setPosterOpen(false)} />}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Poster Popup — 可复用的海报式弹窗广告位（3s 自动消失）             */
+/* ------------------------------------------------------------------ */
+function PosterPopup({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-5 animate-[fadeIn_0.2s_ease-out]"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-sm aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          aria-label="关闭"
+          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/25 backdrop-blur flex items-center justify-center text-white"
+        >
+          <X size={18} />
+        </button>
+
+        {/* 装饰圆 */}
+        <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/15" />
+        <div className="absolute bottom-10 -right-8 w-32 h-32 rounded-full bg-white/15" />
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
+          <div className="text-6xl mb-3 drop-shadow">🔊</div>
+          <div className="text-2xl font-black leading-snug mb-4 drop-shadow tracking-wide">
+            快试试告诉司机<br />你要去哪儿吧！
+          </div>
+          <div className="text-sm font-semibold opacity-95 mb-3">
+            商家线下地址
+          </div>
+          <div className="inline-block px-4 py-1.5 bg-white text-rose-600 rounded-full text-sm font-black shadow">
+            法语语音播报 · 上线
+          </div>
+        </div>
+
+        {/* 倒计时进度条 */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30">
+          <div className="h-full bg-white origin-left animate-[shrink_3s_linear_forwards]" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -429,6 +488,7 @@ function HomeView({
 
   // 分类区搜索
   const [homeQuery, setHomeQuery] = useState("");
+  const [utilExpanded, setUtilExpanded] = useState(false);
   const searchResults = useMemo(() => {
     const q = homeQuery.trim().toLowerCase();
     if (!q) return [];
@@ -479,7 +539,9 @@ function HomeView({
             帮助刚果金华人更快找到本地服务
           </p>
           <p className="text-sm md:text-base text-sky-50 max-w-md mx-auto">
-            买商品 · 找餐厅 · 找住宿 · 找服务 · 租赁设备 · 招聘求职 · 二手专区
+            买商品 · 找餐厅 · 找住宿 · 找服务
+            <br />
+            租赁设备 · 招聘求职 · 二手专区
           </p>
         </div>
       </section>
@@ -489,41 +551,33 @@ function HomeView({
         <Carousel index={adIndex} onChange={setAdIndex} />
       </section>
 
-      {/* ---- 商家分类 + 搜索 ---- */}
+      {/* ---- 我要找…… + 搜索 ---- */}
       <section className="mt-5">
         <div className="px-4 max-w-4xl mx-auto flex items-center gap-2 mb-3">
-          <span className="w-1 h-5 bg-red-400 rounded-full" />
-          <h2 className="text-base font-bold text-gray-800">商家分类</h2>
-          <span className="text-xs text-gray-400">{categories.length} 大类</span>
-          {!showResults && (
-            <span className="ml-auto text-xs text-gray-400">← 左右滑动 →</span>
-          )}
-        </div>
-
-        {/* 搜索框 */}
-        <div className="px-4 max-w-4xl mx-auto mb-3">
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 border border-sky-100 shadow-sm focus-within:border-red-300">
-            <Search size={18} className="text-sky-400 shrink-0" />
+          <span className="w-1 h-5 bg-red-400 rounded-full shrink-0" />
+          <h2 className="text-base font-bold text-gray-800 shrink-0">我要找……</h2>
+          <div className="flex-1 min-w-0 flex items-center gap-2 bg-white rounded-full px-3 py-1.5 border border-sky-100 shadow-sm focus-within:border-red-300">
+            <Search size={16} className="text-sky-400 shrink-0" />
             <input
               value={homeQuery}
               onChange={(e) => setHomeQuery(e.target.value)}
-              placeholder="搜索商家 · 菜品 · 服务 · 区域…"
-              className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+              className="flex-1 min-w-0 bg-transparent text-sm text-gray-900 focus:outline-none"
             />
             {homeQuery && (
               <button onClick={() => setHomeQuery("")} aria-label="清空" className="shrink-0">
-                <X size={16} className="text-gray-400" />
+                <X size={14} className="text-gray-400" />
               </button>
             )}
           </div>
-          {showResults && (
-            <p className="text-xs text-gray-500 mt-2">
-              {searchResults.length > 0
-                ? `共找到 ${searchResults.length} 条匹配`
-                : "没找到匹配结果，试试其他关键词"}
-            </p>
-          )}
         </div>
+
+        {showResults && (
+          <p className="px-4 max-w-4xl mx-auto text-xs text-gray-500 mb-3">
+            {searchResults.length > 0
+              ? `共找到 ${searchResults.length} 条匹配`
+              : "没找到匹配结果，试试其他关键词"}
+          </p>
+        )}
 
         {/* 有搜索词 → 显示结果；无 → 显示分类图标 */}
         {showResults ? (
@@ -564,47 +618,61 @@ function HomeView({
         )}
       </section>
 
-      {/* ---- 快捷入口：天气 / 地图 / 充值 / 需求榜 ---- */}
-      <section className="max-w-4xl mx-auto px-4 mt-4">
+      {/* ---- 实用信息 ---- */}
+      <section className="max-w-4xl mx-auto px-4 mt-5">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-5 bg-sky-400 rounded-full" />
+          <h2 className="text-base font-bold text-gray-800">实用信息</h2>
+          <button
+            onClick={() => setUtilExpanded((v) => !v)}
+            className="ml-auto text-xs text-sky-600 font-medium flex items-center gap-0.5"
+          >
+            {utilExpanded ? (
+              <>收起 <ChevronUp size={12} /></>
+            ) : (
+              <>更多 <ChevronDown size={12} /></>
+            )}
+          </button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Link
             href="/weather"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 active:scale-95 transition"
+            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
           >
             <span className="text-2xl leading-none">🌦️</span>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-gray-800">金沙萨天气</div>
-              <div className="text-[10px] text-gray-500 truncate">24h + 雨预警</div>
+              <div className="text-xs font-bold">金沙萨天气</div>
+              <div className="text-[10px] text-gray-600 truncate">24h + 雨预警</div>
             </div>
           </Link>
           <Link
             href="/map"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 active:scale-95 transition"
+            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
           >
             <span className="text-2xl leading-none">🗺️</span>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-gray-800">商家地图</div>
-              <div className="text-[10px] text-gray-500 truncate">定位 · 图钉</div>
+              <div className="text-xs font-bold">商家地图</div>
+              <div className="text-[10px] text-gray-600 truncate">定位 · 图钉</div>
             </div>
           </Link>
           <Link
             href="/guides/recharge"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 active:scale-95 transition"
+            className={`flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition ${utilExpanded ? "" : "hidden md:flex"}`}
           >
             <span className="text-2xl leading-none">📱</span>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-gray-800">话费充值</div>
-              <div className="text-[10px] text-gray-500 truncate">4 家运营商</div>
+              <div className="text-xs font-bold">话费充值</div>
+              <div className="text-[10px] text-gray-600 truncate">4 家运营商</div>
             </div>
           </Link>
           <Link
             href="/demand"
-            className="relative flex items-center gap-2 p-3 rounded-2xl bg-gradient-to-br from-sky-600 via-cyan-500 to-teal-500 text-white shadow active:scale-95 transition"
+            className={`relative items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition ${utilExpanded ? "flex" : "hidden md:flex"}`}
           >
             <span className="text-2xl leading-none">🪷</span>
             <div className="min-w-0">
               <div className="text-xs font-bold">许愿池</div>
-              <div className="text-[10px] text-white/90 truncate">拨水泡·双击许愿</div>
+              <div className="text-[10px] text-gray-600 truncate">拨水泡·双击许愿</div>
             </div>
             <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[9px] font-black bg-yellow-300 text-rose-600 rounded-full shadow">
               新
@@ -619,41 +687,30 @@ function HomeView({
           <span className="w-1 h-5 bg-yellow-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">信息发布通道</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-5 gap-1.5 md:gap-3">
           <PublishCard
             label="顺风捎带"
-            sub="可盈利 💰"
             color="bg-gradient-to-br from-orange-400 to-rose-500"
-            icon={<Plane size={22} />}
             onClick={() => onOpenForm("luggage")}
-            badge="热"
           />
           <PublishCard
             label="商家入驻"
-            sub="加入名录"
             color="bg-gradient-to-br from-sky-400 to-blue-500"
-            icon={<Megaphone size={22} />}
             onClick={() => onOpenForm("merchant")}
           />
           <PublishCard
             label="发布招聘"
-            sub="找合适人才"
             color="bg-gradient-to-br from-red-400 to-rose-500"
-            icon={<UserPlus size={22} />}
             onClick={() => onOpenForm("hiring")}
           />
           <PublishCard
             label="发布求职"
-            sub="找心仪工作"
             color="bg-gradient-to-br from-amber-400 to-yellow-500"
-            icon={<UserSearch size={22} />}
             onClick={() => onOpenForm("jobseeker")}
           />
           <PublishCard
             label="二手物品"
-            sub="转手快出"
             color="bg-gradient-to-br from-teal-400 to-sky-500"
-            icon={<Recycle size={22} />}
             onClick={() => onOpenForm("secondhand")}
           />
         </div>
@@ -690,8 +747,8 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
   const prev = () => onChange((index - 1 + ads.length) % ads.length);
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r ${slide.bg}`}>
-      <div key={index} className="animate-slide-in flex items-center gap-4 p-5 md:p-7 text-white">
+    <div className={`relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r ${slide.bg} min-h-[132px] md:min-h-[156px]`}>
+      <div key={index} className="animate-slide-in absolute inset-0 flex items-center gap-4 p-5 md:p-7 text-white">
         <span className="text-5xl md:text-6xl shrink-0">{slide.emoji}</span>
         <div className="flex-1 min-w-0">
           <p className="text-lg md:text-2xl font-bold leading-snug">{slide.title}</p>
@@ -806,32 +863,23 @@ function GuideCard({
 /* ------------------------------------------------------------------ */
 function PublishCard({
   label,
-  sub,
   color,
-  icon,
   onClick,
-  badge,
 }: {
   label: string;
-  sub: string;
   color: string;
-  icon: React.ReactNode;
   onClick: () => void;
-  badge?: string;
 }) {
+  const top = label.slice(0, 2);
+  const bottom = label.slice(2, 4);
   return (
     <button
       onClick={onClick}
-      className={`relative ${color} text-white rounded-2xl p-4 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all`}
+      aria-label={label}
+      className={`${color} text-white aspect-square rounded-full shadow-md hover:shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center font-black leading-tight ring-[3px] ring-white/40 ring-inset`}
     >
-      <span className="absolute top-3 right-3 opacity-80">{icon}</span>
-      {badge && (
-        <span className="absolute -top-1.5 -left-1.5 px-1.5 py-0.5 text-[10px] font-black bg-yellow-300 text-rose-600 rounded-full shadow">
-          {badge}
-        </span>
-      )}
-      <p className="text-base font-bold">{label}</p>
-      <p className="text-xs text-white/85 mt-0.5">{sub}</p>
+      <span className="text-sm md:text-xl tracking-wider">{top}</span>
+      <span className="text-sm md:text-xl tracking-wider mt-0.5">{bottom}</span>
     </button>
   );
 }
