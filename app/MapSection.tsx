@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { Minus, Plus } from "lucide-react";
 
 export interface MapBusiness {
   id: number;
@@ -61,6 +62,45 @@ function FocusController({
     }
   }, [lat, lng, zoom, map]);
   return null;
+}
+
+function HorizontalZoomControl() {
+  const map = useMap();
+  const zoom = (delta: number) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    map.setZoom(map.getZoom() + delta);
+  };
+  return (
+    <div
+      className="leaflet-bottom leaflet-left"
+      style={{ pointerEvents: "none" }}
+    >
+      <div
+        className="leaflet-control m-3 flex gap-2"
+        style={{ pointerEvents: "auto" }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={zoom(-1)}
+          aria-label="缩小"
+          className="w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center text-sky-600 active:bg-sky-50 ring-1 ring-sky-100"
+        >
+          <Minus size={18} strokeWidth={3} />
+        </button>
+        <button
+          type="button"
+          onClick={zoom(1)}
+          aria-label="放大"
+          className="w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center text-sky-600 active:bg-sky-50 ring-1 ring-sky-100"
+        >
+          <Plus size={18} strokeWidth={3} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function MapResizer() {
@@ -140,9 +180,11 @@ export default function MapSection({
       zoom={12}
       minZoom={10}
       scrollWheelZoom
+      zoomControl={false}
       style={{ height: "100%", width: "100%" }}
     >
       <MapResizer />
+      <HorizontalZoomControl />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

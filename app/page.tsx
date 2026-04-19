@@ -273,17 +273,20 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
         className="relative w-full max-w-sm aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 右上角倒计时兼关闭 */}
+        {/* 左上角倒计时指示 */}
+        <div
+          aria-hidden
+          className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-black/25 backdrop-blur flex items-center justify-center text-white font-black shadow ring-2 ring-white/30"
+        >
+          <span className="text-base leading-none">{remaining > 0 ? remaining : 0}</span>
+        </div>
+        {/* 右上角手动关闭 */}
         <button
           onClick={onClose}
-          aria-label={remaining > 0 ? `${remaining} 秒后自动关闭 · 点击立即关闭` : "关闭"}
-          className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-white/25 backdrop-blur flex items-center justify-center text-white font-black shadow-lg ring-2 ring-white/40"
+          aria-label="关闭"
+          className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-white/25 backdrop-blur flex items-center justify-center text-white shadow-lg ring-2 ring-white/40 active:scale-95"
         >
-          {remaining > 0 ? (
-            <span className="text-base leading-none">{remaining}</span>
-          ) : (
-            <X size={18} />
-          )}
+          <X size={18} />
         </button>
 
         <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/15" />
