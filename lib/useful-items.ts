@@ -1,0 +1,60 @@
+export type UsefulItem = {
+  key: string;
+  title: string;
+  desc: string;
+  emoji: string;
+  href: string;
+  keywords: string[];
+};
+
+export const usefulItems: UsefulItem[] = [
+  {
+    key: "weather",
+    title: "天气预报·金沙萨",
+    desc: "极端天气早知道",
+    emoji: "🌦️",
+    href: "/weather",
+    keywords: ["天气", "weather", "雨", "温度", "金沙萨", "气象", "降水"],
+  },
+  {
+    key: "map",
+    title: "商家地图",
+    desc: "内置语音告诉司机地点",
+    emoji: "🗺️",
+    href: "/map",
+    keywords: ["地图", "map", "商家", "司机", "taxi", "位置", "地点"],
+  },
+  {
+    key: "recharge",
+    title: "手机服务指南",
+    desc: "运营商信息查询",
+    emoji: "📱",
+    href: "/guides/recharge",
+    keywords: ["手机", "充值", "recharge", "运营商", "vodacom", "airtel", "orange", "卡", "流量"],
+  },
+  {
+    key: "first-time",
+    title: "首次来刚果金",
+    desc: "行李及注意事项",
+    emoji: "🧳",
+    href: "/guides/first-time",
+    keywords: ["首次", "新手", "行李", "签证", "刚果", "入境", "第一次"],
+  },
+  {
+    key: "construction-french",
+    title: "工地常用法语",
+    desc: "真人发音教学",
+    emoji: "👷",
+    href: "/guides/construction-french",
+    keywords: ["工地", "法语", "发音", "français", "construction", "施工", "语言"],
+  },
+];
+
+export function filterUseful(query: string): UsefulItem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return usefulItems.filter((it) => {
+    const hay = [it.title, it.desc, ...it.keywords].join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+}

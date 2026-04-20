@@ -43,6 +43,7 @@ import {
   WhatsAppChip,
 } from "@/components/BusinessCardUI";
 import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
+import { filterUseful, usefulItems } from "@/lib/useful-items";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -409,6 +410,9 @@ function HomeView({
     router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
   };
 
+  const [usefulQuery, setUsefulQuery] = useState("");
+  const usefulMatches = useMemo(() => filterUseful(usefulQuery), [usefulQuery]);
+
   return (
     <>
       {/* ---- 顶部横幅 ---- */}
@@ -540,59 +544,75 @@ function HomeView({
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-5 bg-sky-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">实用信息</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <Link
-            href="/weather"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
+            href="/useful"
+            className="ml-auto inline-flex items-center gap-0.5 text-xs font-semibold text-sky-600 hover:text-sky-700 active:scale-95 transition"
           >
-            <span className="text-2xl leading-none">🌦️</span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold">天气预报·金沙萨</div>
-              <div className="text-[10px] text-gray-600 truncate">极端天气早知道</div>
-            </div>
-          </Link>
-          <Link
-            href="/map"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
-          >
-            <span className="text-2xl leading-none">🗺️</span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold">商家地图</div>
-              <div className="text-[10px] text-gray-600 truncate">内置语音告诉司机地点</div>
-            </div>
-          </Link>
-          <Link
-            href="/guides/recharge"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
-          >
-            <span className="text-2xl leading-none">📱</span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold">手机服务指南</div>
-              <div className="text-[10px] text-gray-600 truncate">运营商信息查询</div>
-            </div>
-          </Link>
-          <Link
-            href="/guides/first-time"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
-          >
-            <span className="text-2xl leading-none">🧳</span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold">首次来刚果金</div>
-              <div className="text-[10px] text-gray-600 truncate">行李及注意事项</div>
-            </div>
-          </Link>
-          <Link
-            href="/guides/construction-french"
-            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
-          >
-            <span className="text-2xl leading-none">👷</span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold">工地常用法语</div>
-              <div className="text-[10px] text-gray-600 truncate">真人发音教学</div>
-            </div>
+            全部<ChevronRight size={14} />
           </Link>
         </div>
+
+        <div className="relative mb-3">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={usefulQuery}
+            onChange={(e) => setUsefulQuery(e.target.value)}
+            placeholder="搜索实用信息 (天气 / 地图 / 工地法语…)"
+            className="w-full pl-8 pr-8 py-2 rounded-xl bg-white border border-sky-200 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-300"
+          />
+          {usefulQuery && (
+            <button
+              type="button"
+              onClick={() => setUsefulQuery("")}
+              aria-label="清空搜索"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 active:scale-95 transition"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {usefulQuery.trim() ? (
+          <div className="space-y-2">
+            {usefulMatches.length === 0 ? (
+              <div className="text-xs text-gray-500 text-center py-4 bg-sky-50 rounded-xl border border-dashed border-sky-200">
+                没有匹配的实用信息
+              </div>
+            ) : (
+              usefulMatches.map((it) => (
+                <Link
+                  key={it.key}
+                  href={it.href}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
+                >
+                  <span className="text-2xl leading-none">{it.emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold">{it.title}</div>
+                    <div className="text-[11px] text-gray-600 truncate">{it.desc}</div>
+                  </div>
+                  <ChevronRight size={16} className="text-gray-400 shrink-0" />
+                </Link>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {usefulItems.map((it) => (
+              <Link
+                key={it.key}
+                href={it.href}
+                className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
+              >
+                <span className="text-2xl leading-none">{it.emoji}</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold">{it.title}</div>
+                  <div className="text-[10px] text-gray-600 truncate">{it.desc}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ---- 信息发布通道 ---- */}
