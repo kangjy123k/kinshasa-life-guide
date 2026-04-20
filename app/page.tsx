@@ -580,7 +580,7 @@ function HomeView({
           </Link>
           <Link
             href="/guides/construction-french"
-            className="col-span-2 md:col-span-1 flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
+            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
           >
             <span className="text-2xl leading-none">👷</span>
             <div className="min-w-0">
