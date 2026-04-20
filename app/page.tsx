@@ -7,8 +7,6 @@ import {
   Search,
   MapPin,
   Phone,
-  ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Star,
@@ -16,6 +14,9 @@ import {
   ArrowLeft,
   QrCode,
   AlertTriangle,
+  Megaphone,
+  Plane,
+  Sparkles,
 } from "lucide-react";
 
 import {
@@ -28,9 +29,12 @@ import {
 } from "@/lib/businesses";
 import {
   BusinessCard,
+  CallChip,
   ContactButtons,
+  CopyChip,
   Field,
   SpeakButton,
+  WhatsAppChip,
 } from "@/components/BusinessCardUI";
 import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
 
@@ -374,10 +378,9 @@ function HomeView({
   const featured = allBusinesses
     .slice()
     .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-    .slice(0, 6);
+    .slice(0, 3);
 
   const [homeQuery, setHomeQuery] = useState("");
-  const [utilExpanded, setUtilExpanded] = useState(false);
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -458,6 +461,19 @@ function HomeView({
 
         <div className="max-w-4xl mx-auto overflow-x-auto scrollbar-none pb-2">
           <div className="grid grid-rows-2 grid-flow-col auto-cols-[76px] gap-2 px-4 w-max">
+            {/* 需求大厅 — 置顶，淡亮橙色 */}
+            <button
+              onClick={() => router.push("/demand")}
+              className="h-20 flex flex-col items-center justify-center gap-1 bg-gradient-to-br from-orange-50 to-amber-100 rounded-2xl shadow-sm border border-orange-300 ring-1 ring-orange-200 hover:border-orange-400 active:scale-95 transition"
+            >
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-orange-200/70">
+                <Megaphone size={20} className="text-orange-600" />
+              </span>
+              <span className="text-[11px] font-bold text-orange-700">
+                需求大厅
+              </span>
+            </button>
+
             {categories.map((cat) => {
               const Icon = cat.icon;
               return (
@@ -478,6 +494,22 @@ function HomeView({
                 </button>
               );
             })}
+
+            {/* 顺风捎带 — 独立 /luggage 页 */}
+            <button
+              onClick={() => router.push("/luggage")}
+              className="h-20 flex flex-col items-center justify-center gap-1 bg-white rounded-2xl shadow-sm border border-sky-100 hover:border-red-300 active:scale-95 transition"
+            >
+              <span
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: "#fb923c1A" }}
+              >
+                <Plane size={20} style={{ color: "#fb923c" }} />
+              </span>
+              <span className="text-[11px] font-medium text-gray-700">
+                顺风捎带
+              </span>
+            </button>
           </div>
         </div>
       </section>
@@ -487,18 +519,8 @@ function HomeView({
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-5 bg-sky-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">实用信息</h2>
-          <button
-            onClick={() => setUtilExpanded((v) => !v)}
-            className="ml-auto text-xs text-sky-600 font-medium flex items-center gap-0.5"
-          >
-            {utilExpanded ? (
-              <>收起 <ChevronUp size={12} /></>
-            ) : (
-              <>更多 <ChevronDown size={12} /></>
-            )}
-          </button>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <Link
             href="/weather"
             className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
@@ -521,7 +543,7 @@ function HomeView({
           </Link>
           <Link
             href="/guides/recharge"
-            className={`flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition ${utilExpanded ? "" : "hidden md:flex"}`}
+            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
           >
             <span className="text-2xl leading-none">📱</span>
             <div className="min-w-0">
@@ -530,17 +552,24 @@ function HomeView({
             </div>
           </Link>
           <Link
-            href="/demand"
-            className={`relative items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition ${utilExpanded ? "flex" : "hidden md:flex"}`}
+            href="/guides/first-time"
+            className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
           >
-            <span className="text-2xl leading-none">🪷</span>
+            <span className="text-2xl leading-none">🧳</span>
             <div className="min-w-0">
-              <div className="text-xs font-bold">许愿池</div>
-              <div className="text-[10px] text-gray-600 truncate">在刚果金最想要什么？</div>
+              <div className="text-xs font-bold">首次来刚果金</div>
+              <div className="text-[10px] text-gray-600 truncate">行李及注意事项</div>
             </div>
-            <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[9px] font-black bg-yellow-300 text-rose-600 rounded-full shadow">
-              新
-            </span>
+          </Link>
+          <Link
+            href="/guides/construction-french"
+            className="col-span-2 md:col-span-1 flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
+          >
+            <span className="text-2xl leading-none">👷</span>
+            <div className="min-w-0">
+              <div className="text-xs font-bold">工地常用法语</div>
+              <div className="text-[10px] text-gray-600 truncate">真人发音教学</div>
+            </div>
           </Link>
         </div>
       </section>
@@ -551,11 +580,11 @@ function HomeView({
           <span className="w-1 h-5 bg-yellow-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">信息发布通道</h2>
         </div>
-        <div className="grid grid-cols-5 gap-1.5 md:gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 md:gap-3">
           <PublishCard
-            label="顺风捎带"
-            color="bg-gradient-to-br from-orange-400 to-rose-500"
-            onClick={() => router.push("/luggage")}
+            label="求购信息"
+            color="bg-gradient-to-br from-orange-400 to-red-500"
+            onClick={() => router.push("/demand")}
           />
           <PublishCard
             label="商家入驻"
@@ -577,6 +606,11 @@ function HomeView({
             color="bg-gradient-to-br from-teal-400 to-sky-500"
             onClick={() => onOpenForm("secondhand")}
           />
+          <PublishCard
+            label="顺风捎带"
+            color="bg-gradient-to-br from-fuchsia-400 to-rose-500"
+            onClick={() => router.push("/luggage")}
+          />
         </div>
       </section>
 
@@ -586,12 +620,15 @@ function HomeView({
           <span className="w-1 h-5 bg-red-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">热门商家</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {featured.map((biz) => (
             <BusinessCard key={biz.id} biz={biz} onOpen={onOpenBusiness} />
           ))}
         </div>
       </section>
+
+      {/* ---- 许愿池专区 ---- */}
+      <WishingPoolBanner />
 
       {/* ---- 微信群入口 ---- */}
       <WeChatGroupBanner />
@@ -651,9 +688,11 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
               aria-hidden
               fetchPriority="high"
               loading="eager"
-              className="absolute inset-0 w-full h-full object-cover scale-110 blur-[4px]"
+              className="absolute inset-0 w-full h-full object-cover scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/60" />
+            {/* 左侧深一点保证文字可读，右侧几乎透明让图主体看得清 */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-black/10" />
+            <div className="absolute inset-0 bg-black/10" />
           </>
         )}
 
@@ -957,21 +996,32 @@ function BusinessDetailView({
             </button>
 
             <div className="mt-5 space-y-3 text-sm">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-0.5">
-                  <p className="text-gray-400 text-xs tracking-wide">所在区域</p>
+              <Field
+                label="所在区域"
+                value={biz.area}
+                action={
                   <SpeakButton
                     text={`Je veux aller à cette adresse, ${biz.area}`}
                     cacheKey={`biz-${biz.id}`}
                   />
-                </div>
-                <p className={`leading-relaxed ${biz.area?.trim() ? "text-gray-700" : "text-gray-400 italic"}`}>
-                  {biz.area?.trim() ? biz.area : "待补充"}
-                </p>
-              </div>
+                }
+              />
               <Field label="联系人" value={biz.contactPerson} />
-              <Field label="微信号" value={biz.wechat} />
-              <Field label="电话 / WhatsApp" value={biz.phone} />
+              <Field
+                label="微信号"
+                value={biz.wechat}
+                action={<CopyChip text={biz.wechat} label="复制微信号" doneLabel="已复制" />}
+              />
+              <Field
+                label="电话 / WhatsApp"
+                value={biz.phone}
+                action={
+                  <span className="flex gap-1.5">
+                    <CallChip phone={biz.phone} />
+                    <WhatsAppChip phone={biz.phone} />
+                  </span>
+                }
+              />
               <Field label="门店/仓库" value={biz.hasStore} />
               <Field label="服务范围" value={biz.serviceScope} />
               <Field label="主营产品或服务" value={biz.mainService} />
@@ -983,6 +1033,45 @@ function BusinessDetailView({
         </div>
       </div>
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  许愿池专区 — 热门商家之后、群聊二维码之前                              */
+/* ------------------------------------------------------------------ */
+function WishingPoolBanner() {
+  return (
+    <section className="max-w-4xl mx-auto px-4 mt-8">
+      <Link
+        href="/demand"
+        className="relative block rounded-3xl overflow-hidden shadow-lg bg-gradient-to-br from-sky-400 via-cyan-400 to-teal-400 text-white active:scale-[0.99] transition"
+      >
+        <div className="absolute -top-8 -left-8 w-32 h-32 rounded-full bg-white/15" />
+        <div className="absolute -bottom-10 -right-6 w-40 h-40 rounded-full bg-white/10" />
+        <div className="absolute top-8 right-20 w-3 h-3 rounded-full bg-white/40" />
+        <div className="absolute bottom-10 left-24 w-2 h-2 rounded-full bg-white/50" />
+
+        <div className="relative flex items-center gap-3 px-4 py-4 md:px-6 md:py-5">
+          <span className="text-5xl md:text-6xl drop-shadow shrink-0">🪷</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <h3 className="text-lg md:text-xl font-black leading-tight drop-shadow">
+                许愿池
+              </h3>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-yellow-300 text-rose-600 text-[10px] font-black rounded-full shadow">
+                <Sparkles size={10} fill="currentColor" /> 新
+              </span>
+            </div>
+            <p className="text-xs md:text-sm text-white/95 leading-snug drop-shadow">
+              在刚果金最想要什么？投一颗愿望泡泡，双击给别人愿望助力
+            </p>
+            <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 bg-white/25 backdrop-blur rounded-full text-[11px] md:text-xs font-semibold">
+              去许愿 <ChevronRight size={12} />
+            </span>
+          </div>
+        </div>
+      </Link>
+    </section>
   );
 }
 

@@ -9,6 +9,8 @@ import {
   ChevronRight,
   Star,
   Volume2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { type Business, categories } from "@/lib/businesses";
 
@@ -241,14 +243,114 @@ export function Row({ icon, text, clamp }: { icon: React.ReactNode; text: string
   );
 }
 
-export function Field({ label, value }: { label: string; value: string }) {
+export function Field({
+  label,
+  value,
+  action,
+}: {
+  label: string;
+  value: string;
+  action?: React.ReactNode;
+}) {
   const empty = !value || !value.trim();
   return (
     <div>
       <p className="text-gray-400 text-xs tracking-wide mb-0.5">{label}</p>
-      <p className={`leading-relaxed ${empty ? "text-gray-400 italic" : "text-gray-700"}`}>
-        {empty ? "待补充" : value}
-      </p>
+      <div className="flex items-center gap-2">
+        <p
+          className={`flex-1 min-w-0 leading-relaxed ${
+            empty ? "text-gray-400 italic" : "text-gray-700"
+          }`}
+        >
+          {empty ? "待补充" : value}
+        </p>
+        {action && !empty && <div className="shrink-0">{action}</div>}
+      </div>
     </div>
+  );
+}
+
+export function CopyChip({
+  text,
+  label = "复制",
+  doneLabel = "已复制",
+}: {
+  text: string;
+  label?: string;
+  doneLabel?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  const doCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } catch {}
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={doCopy}
+      aria-label={copied ? doneLabel : label}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors active:scale-95 ${
+        copied
+          ? "bg-emerald-100 text-emerald-600"
+          : "bg-sky-100 text-sky-600 hover:bg-sky-200"
+      }`}
+    >
+      {copied ? <Check size={13} /> : <Copy size={13} />}
+      <span>{copied ? doneLabel : label}</span>
+    </button>
+  );
+}
+
+export function WhatsAppChip({ phone }: { phone: string }) {
+  const digits = phone.replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  return (
+    <a
+      href={`https://wa.me/${digits}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 text-xs font-semibold transition-colors active:scale-95"
+      aria-label="WhatsApp 联系"
+    >
+      <MessageCircle size={13} />
+      <span>WhatsApp</span>
+    </a>
+  );
+}
+
+export function CallChip({ phone }: { phone: string }) {
+  const digits = phone.replace(/[^0-9+]/g, "");
+  if (!digits) return null;
+  return (
+    <a
+      href={`tel:${digits}`}
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 text-rose-600 hover:bg-rose-200 text-xs font-semibold transition-colors active:scale-95"
+      aria-label="拨打电话"
+    >
+      <Phone size={13} />
+      <span>拨号</span>
+    </a>
   );
 }
