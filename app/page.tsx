@@ -319,17 +319,14 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center px-4 pointer-events-none animate-[fadeIn_0.2s_ease-out]"
+      className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/10 animate-[fadeIn_0.2s_ease-out]"
       aria-live="polite"
+      onClick={onClose}
     >
-      {/* 透明点击层：点空白也能关，不遮住页面 */}
-      <button
-        type="button"
-        aria-label="关闭提示"
-        onClick={onClose}
-        className="absolute inset-0 pointer-events-auto cursor-default"
-      />
-      <div className="relative pointer-events-auto w-52 h-52 rounded-3xl shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white overflow-hidden">
+      <div
+        className="relative w-52 h-52 rounded-3xl shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 装饰泡泡 */}
         <div className="absolute -top-4 -left-4 w-16 h-16 rounded-full bg-white/15" />
         <div className="absolute -bottom-6 -right-4 w-20 h-20 rounded-full bg-white/15" />
