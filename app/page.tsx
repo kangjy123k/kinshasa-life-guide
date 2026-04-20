@@ -330,7 +330,7 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/55 backdrop-blur-md transition-[opacity,backdrop-filter] duration-300 ease-out ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/50 backdrop-blur-md transition-[opacity,backdrop-filter] duration-300 ease-out ${
         closing ? "opacity-0 backdrop-blur-0" : "opacity-100"
       }`}
       aria-live="polite"
