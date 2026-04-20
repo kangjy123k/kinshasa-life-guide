@@ -14,9 +14,24 @@ interface FormField {
   options?: string[];
 }
 
-export type FormKey = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage";
+export type FormKey = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage" | "purchase";
 
 export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
+  purchase: {
+    title: "求购信息发布",
+    fields: [
+      { name: "itemName",     label: "我想求购",         type: "text", required: true, placeholder: "如：发电机 / 笔记本 / 二手皮卡 …" },
+      { name: "quantity",     label: "数量",             type: "text", placeholder: "如：1 台 / 10 袋 / 500kg" },
+      { name: "budget",       label: "预算（USD）",      type: "text", placeholder: "如：≤800 · 面议" },
+      { name: "deadline",     label: "希望何时拿到",     type: "text", placeholder: "如：本周内 · 月底前" },
+      { name: "area",         label: "所在区域",         type: "text", placeholder: "如：金沙萨 Gombe" },
+      { name: "description",  label: "详细描述",         type: "textarea", required: true,
+        placeholder: "型号、功能要求、新旧程度、特殊要求 …" },
+      { name: "contactPerson",label: "发布人",           type: "text", required: true },
+      { name: "phone",        label: "电话 / WhatsApp",  type: "text", required: true },
+      { name: "wechat",       label: "微信号",           type: "text" },
+    ],
+  },
   merchant: {
     title: "商家入驻申请",
     fields: [

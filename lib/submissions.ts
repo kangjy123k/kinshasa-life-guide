@@ -1,6 +1,6 @@
 import { put, list } from "@vercel/blob";
 
-export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage";
+export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage" | "purchase";
 
 export interface SubmissionRecord {
   id: string;

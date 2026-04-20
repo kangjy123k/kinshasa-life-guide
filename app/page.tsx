@@ -17,7 +17,13 @@ import {
   Megaphone,
   Plane,
   Sparkles,
+  ShoppingCart,
+  Store,
+  Briefcase,
+  UserPlus,
+  Tag,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import {
   type Business,
@@ -463,7 +469,7 @@ function HomeView({
           <div className="grid grid-rows-2 grid-flow-col auto-cols-[76px] gap-2 px-4 w-max">
             {/* 需求大厅 — 置顶，淡亮橙色 */}
             <button
-              onClick={() => router.push("/demand")}
+              onClick={() => router.push("/requests")}
               className="h-20 flex flex-col items-center justify-center gap-1 bg-gradient-to-br from-orange-50 to-amber-100 rounded-2xl shadow-sm border border-orange-300 ring-1 ring-orange-200 hover:border-orange-400 active:scale-95 transition"
             >
               <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-orange-200/70">
@@ -580,34 +586,40 @@ function HomeView({
           <span className="w-1 h-5 bg-yellow-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">信息发布通道</h2>
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 md:gap-3">
+        <div className="grid grid-cols-6 gap-1 md:gap-3 justify-items-center">
           <PublishCard
             label="求购信息"
+            icon={ShoppingCart}
             color="bg-gradient-to-br from-orange-400 to-red-500"
-            onClick={() => router.push("/demand")}
+            onClick={() => onOpenForm("purchase")}
           />
           <PublishCard
             label="商家入驻"
+            icon={Store}
             color="bg-gradient-to-br from-sky-400 to-blue-500"
             onClick={() => onOpenForm("merchant")}
           />
           <PublishCard
             label="发布招聘"
+            icon={Briefcase}
             color="bg-gradient-to-br from-red-400 to-rose-500"
             onClick={() => onOpenForm("hiring")}
           />
           <PublishCard
             label="发布求职"
+            icon={UserPlus}
             color="bg-gradient-to-br from-amber-400 to-yellow-500"
             onClick={() => onOpenForm("jobseeker")}
           />
           <PublishCard
             label="二手物品"
+            icon={Tag}
             color="bg-gradient-to-br from-teal-400 to-sky-500"
             onClick={() => onOpenForm("secondhand")}
           />
           <PublishCard
             label="顺风捎带"
+            icon={Plane}
             color="bg-gradient-to-br from-fuchsia-400 to-rose-500"
             onClick={() => router.push("/luggage")}
           />
@@ -764,23 +776,29 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
 /* ------------------------------------------------------------------ */
 function PublishCard({
   label,
+  icon: Icon,
   color,
   onClick,
 }: {
   label: string;
+  icon: LucideIcon;
   color: string;
   onClick: () => void;
 }) {
-  const top = label.slice(0, 2);
-  const bottom = label.slice(2, 4);
   return (
     <button
       onClick={onClick}
       aria-label={label}
-      className={`${color} text-white aspect-square rounded-full shadow-md hover:shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center font-black leading-tight ring-[3px] ring-white/40 ring-inset`}
+      className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform"
     >
-      <span className="text-sm md:text-xl tracking-wider">{top}</span>
-      <span className="text-sm md:text-xl tracking-wider mt-0.5">{bottom}</span>
+      <span
+        className={`${color} text-white w-11 h-11 md:w-14 md:h-14 rounded-full shadow-md group-hover:shadow-lg flex items-center justify-center ring-1 ring-white/70 ring-inset`}
+      >
+        <Icon size={18} strokeWidth={2.2} className="md:w-[22px] md:h-[22px] drop-shadow-sm" />
+      </span>
+      <span className="text-[10px] md:text-xs font-medium text-gray-700 leading-none whitespace-nowrap">
+        {label}
+      </span>
     </button>
   );
 }

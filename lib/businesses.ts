@@ -603,7 +603,7 @@ export const businesses: Business[] = [
   ...seedBusinesses.map((b) => ({ ...b, hidden: true })),
   ...liveBusinesses,
 ];
-export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage";
+export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage" | "purchase";
 export interface RawSubmission {
   id: string;
   type: SubmissionType;
