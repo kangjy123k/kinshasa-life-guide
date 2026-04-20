@@ -319,44 +319,42 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-5 animate-[fadeIn_0.2s_ease-out]"
-      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-24 px-4 pointer-events-none animate-[fadeIn_0.2s_ease-out]"
+      aria-live="polite"
     >
+      {/* 透明点击层：点空白也能关，不遮住页面 */}
+      <button
+        type="button"
+        aria-label="关闭提示"
+        onClick={onClose}
+        className="absolute inset-0 pointer-events-auto cursor-default"
+      />
       <div
-        className="relative w-full max-w-sm aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500"
-        onClick={(e) => e.stopPropagation()}
+        className="relative pointer-events-auto rounded-2xl shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white px-4 py-3 pr-10 max-w-[18rem]"
       >
-        {/* 左上角倒计时指示 */}
-        <div
-          aria-hidden
-          className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-black/25 backdrop-blur flex items-center justify-center text-white font-black shadow ring-2 ring-white/30"
-        >
-          <span className="text-base leading-none">{remaining > 0 ? remaining : 0}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-3xl drop-shadow shrink-0">🔊</span>
+          <div className="min-w-0">
+            <p className="text-[15px] font-black leading-snug drop-shadow">
+              快试试告诉司机<br />你要去哪儿吧！
+            </p>
+            <span className="mt-1 inline-block px-2 py-0.5 bg-white text-rose-600 rounded-full text-[10px] font-black shadow-sm">
+              法语语音播报 · 上线
+            </span>
+          </div>
         </div>
-        {/* 右上角手动关闭 */}
+        {/* 右上角合并：关闭 + 倒计时 */}
         <button
           onClick={onClose}
-          aria-label="关闭"
-          className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-white/25 backdrop-blur flex items-center justify-center text-white shadow-lg ring-2 ring-white/40 active:scale-95"
+          aria-label={`关闭（${remaining > 0 ? remaining : 0} 秒后自动关闭）`}
+          className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur flex items-center justify-center text-white ring-1 ring-white/40 active:scale-95"
         >
-          <X size={18} />
+          {remaining > 0 ? (
+            <span className="text-[11px] font-black leading-none">{remaining}</span>
+          ) : (
+            <X size={14} />
+          )}
         </button>
-
-        <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/15" />
-        <div className="absolute bottom-10 -right-8 w-32 h-32 rounded-full bg-white/15" />
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
-          <div className="text-6xl mb-3 drop-shadow">🔊</div>
-          <div className="text-2xl font-black leading-snug mb-4 drop-shadow tracking-wide">
-            快试试告诉司机<br />你要去哪儿吧！
-          </div>
-          <div className="text-sm font-semibold opacity-95 mb-3">
-            商家线下地址
-          </div>
-          <div className="inline-block px-4 py-1.5 bg-white text-rose-600 rounded-full text-sm font-black shadow">
-            法语语音播报 · 上线
-          </div>
-        </div>
       </div>
     </div>
   );
