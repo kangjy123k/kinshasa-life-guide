@@ -300,6 +300,16 @@ export default function GuidePage() {
 /* ------------------------------------------------------------------ */
 function PosterPopup({ onClose }: { onClose: () => void }) {
   const [remaining, setRemaining] = useState(3);
+  const [closing, setClosing] = useState(false);
+
+  const handleClose = () => {
+    setClosing((c) => {
+      if (c) return c;
+      setTimeout(onClose, 320);
+      return true;
+    });
+  };
+
   useEffect(() => {
     const tick = setInterval(() => {
       setRemaining((r) => {
@@ -310,21 +320,26 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
         return r - 1;
       });
     }, 1000);
-    const done = setTimeout(onClose, 3000);
+    const done = setTimeout(handleClose, 3000);
     return () => {
       clearInterval(tick);
       clearTimeout(done);
     };
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/10 animate-[fadeIn_0.2s_ease-out]"
+      className={`fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/55 backdrop-blur-md transition-[opacity,backdrop-filter] duration-300 ease-out ${
+        closing ? "opacity-0 backdrop-blur-0" : "opacity-100"
+      }`}
       aria-live="polite"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
-        className="relative w-52 h-52 rounded-3xl shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white overflow-hidden"
+        className={`relative w-52 h-52 rounded-3xl shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white overflow-hidden transition-all duration-300 ease-out ${
+          closing ? "opacity-0 scale-90" : "opacity-100 scale-100"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 装饰泡泡 */}
@@ -343,7 +358,7 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
 
         {/* 右上角合并：关闭 + 倒计时 */}
         <button
-          onClick={onClose}
+          onClick={handleClose}
           aria-label={`关闭（${remaining > 0 ? remaining : 0} 秒后自动关闭）`}
           className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur flex items-center justify-center text-white ring-1 ring-white/40 active:scale-95"
         >
