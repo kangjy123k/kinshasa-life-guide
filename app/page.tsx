@@ -356,17 +356,21 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
           </span>
         </div>
 
-        {/* 右上角合并：关闭 + 倒计时 */}
+        {/* 左上：倒计时徽章（纯展示，不可点） */}
+        <div
+          aria-hidden
+          className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-white/25 backdrop-blur flex items-center justify-center text-white ring-1 ring-white/40 text-[11px] font-black leading-none select-none"
+        >
+          {remaining > 0 ? remaining : 0}
+        </div>
+
+        {/* 右上：立即关闭按钮（始终可点） */}
         <button
           onClick={handleClose}
-          aria-label={`关闭（${remaining > 0 ? remaining : 0} 秒后自动关闭）`}
+          aria-label="关闭"
           className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur flex items-center justify-center text-white ring-1 ring-white/40 active:scale-95"
         >
-          {remaining > 0 ? (
-            <span className="text-[11px] font-black leading-none">{remaining}</span>
-          ) : (
-            <X size={14} />
-          )}
+          <X size={14} />
         </button>
       </div>
     </div>
