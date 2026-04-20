@@ -5,6 +5,7 @@ export type UsefulItem = {
   emoji: string;
   href: string;
   keywords: string[];
+  homeHidden?: boolean;
 };
 
 export const usefulItems: UsefulItem[] = [
@@ -47,8 +48,11 @@ export const usefulItems: UsefulItem[] = [
     emoji: "👷",
     href: "/guides/construction-french",
     keywords: ["工地", "法语", "发音", "français", "construction", "施工", "语言"],
+    homeHidden: true,
   },
 ];
+
+export const homeUsefulItems = usefulItems.filter((it) => !it.homeHidden);
 
 export function filterUseful(query: string): UsefulItem[] {
   const q = query.trim().toLowerCase();

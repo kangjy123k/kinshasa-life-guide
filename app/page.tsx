@@ -43,7 +43,7 @@ import {
   WhatsAppChip,
 } from "@/components/BusinessCardUI";
 import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
-import { filterUseful, usefulItems } from "@/lib/useful-items";
+import { homeUsefulItems } from "@/lib/useful-items";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -410,8 +410,6 @@ function HomeView({
     router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
   };
 
-  const [usefulQuery, setUsefulQuery] = useState("");
-  const usefulMatches = useMemo(() => filterUseful(usefulQuery), [usefulQuery]);
 
   return (
     <>
@@ -552,67 +550,21 @@ function HomeView({
           </Link>
         </div>
 
-        <div className="relative mb-3">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={usefulQuery}
-            onChange={(e) => setUsefulQuery(e.target.value)}
-            placeholder="搜索实用信息 (天气 / 地图 / 工地法语…)"
-            className="w-full pl-8 pr-8 py-2 rounded-xl bg-white border border-sky-200 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-300"
-          />
-          {usefulQuery && (
-            <button
-              type="button"
-              onClick={() => setUsefulQuery("")}
-              aria-label="清空搜索"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 active:scale-95 transition"
+        <div className="grid grid-cols-2 gap-2">
+          {homeUsefulItems.map((it) => (
+            <Link
+              key={it.key}
+              href={it.href}
+              className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
             >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-
-        {usefulQuery.trim() ? (
-          <div className="space-y-2">
-            {usefulMatches.length === 0 ? (
-              <div className="text-xs text-gray-500 text-center py-4 bg-sky-50 rounded-xl border border-dashed border-sky-200">
-                没有匹配的实用信息
+              <span className="text-2xl leading-none">{it.emoji}</span>
+              <div className="min-w-0">
+                <div className="text-xs font-bold">{it.title}</div>
+                <div className="text-[10px] text-gray-600 truncate">{it.desc}</div>
               </div>
-            ) : (
-              usefulMatches.map((it) => (
-                <Link
-                  key={it.key}
-                  href={it.href}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
-                >
-                  <span className="text-2xl leading-none">{it.emoji}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold">{it.title}</div>
-                    <div className="text-[11px] text-gray-600 truncate">{it.desc}</div>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-400 shrink-0" />
-                </Link>
-              ))
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            {usefulItems.map((it) => (
-              <Link
-                key={it.key}
-                href={it.href}
-                className="flex items-center gap-2 p-3 rounded-2xl bg-sky-100 border border-sky-200 text-gray-800 active:scale-95 transition"
-              >
-                <span className="text-2xl leading-none">{it.emoji}</span>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold">{it.title}</div>
-                  <div className="text-[10px] text-gray-600 truncate">{it.desc}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* ---- 信息发布通道 ---- */}
