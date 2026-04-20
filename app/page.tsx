@@ -319,7 +319,7 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-24 px-4 pointer-events-none animate-[fadeIn_0.2s_ease-out]"
+      className="fixed inset-0 z-[100] flex items-center justify-center px-4 pointer-events-none animate-[fadeIn_0.2s_ease-out]"
       aria-live="polite"
     >
       {/* 透明点击层：点空白也能关，不遮住页面 */}
@@ -329,20 +329,21 @@ function PosterPopup({ onClose }: { onClose: () => void }) {
         onClick={onClose}
         className="absolute inset-0 pointer-events-auto cursor-default"
       />
-      <div
-        className="relative pointer-events-auto rounded-2xl shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white px-4 py-3 pr-10 max-w-[18rem]"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-3xl drop-shadow shrink-0">🔊</span>
-          <div className="min-w-0">
-            <p className="text-[15px] font-black leading-snug drop-shadow">
-              快试试告诉司机<br />你要去哪儿吧！
-            </p>
-            <span className="mt-1 inline-block px-2 py-0.5 bg-white text-rose-600 rounded-full text-[10px] font-black shadow-sm">
-              法语语音播报 · 上线
-            </span>
-          </div>
+      <div className="relative pointer-events-auto w-52 h-52 rounded-3xl shadow-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white overflow-hidden">
+        {/* 装饰泡泡 */}
+        <div className="absolute -top-4 -left-4 w-16 h-16 rounded-full bg-white/15" />
+        <div className="absolute -bottom-6 -right-4 w-20 h-20 rounded-full bg-white/15" />
+
+        <div className="relative h-full w-full flex flex-col items-center justify-center text-center px-4">
+          <div className="text-4xl mb-2 drop-shadow">🔊</div>
+          <p className="text-[15px] font-black leading-snug drop-shadow">
+            快试试告诉司机<br />你要去哪儿吧！
+          </p>
+          <span className="mt-2 inline-block px-2 py-0.5 bg-white text-rose-600 rounded-full text-[10px] font-black shadow-sm">
+            法语语音播报 · 上线
+          </span>
         </div>
+
         {/* 右上角合并：关闭 + 倒计时 */}
         <button
           onClick={onClose}
