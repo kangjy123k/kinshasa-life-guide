@@ -629,21 +629,30 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
   const baseId = 1_000_000 + idx;
   const get = (k: string) => (d[k] ?? "").trim();
 
+  const rangeSummary = (name: string) => {
+    const lo = get(`${name}Min`);
+    const hi = get(`${name}Max`);
+    if (lo && hi) return `${lo}-${hi}`;
+    return lo || hi || "";
+  };
+
   if (s.type === "merchant") {
     const catLabel = get("category");
     const cat = categories.find((c) => c.label === catLabel);
     if (!cat) return null;
+    const name = get("nameZh") || get("name");
+    const nameIntl = get("nameIntl");
     return {
       id: baseId,
-      name: get("name"),
+      name,
       contactPerson: get("contactPerson"),
       wechat: get("wechat"),
       phone: get("phone"),
       area: get("area"),
       mainService: get("mainService"),
       hasStore: get("hasStore"),
-      serviceScope: get("serviceScope"),
-      intro: get("intro"),
+      serviceScope: get("storeAddress") || get("serviceScope"),
+      intro: nameIntl || get("intro"),
       image: DEFAULT_IMG[cat.key] ?? DEFAULT_IMG.business,
       category: cat.key,
       subcategory: get("subcategory") || undefined,
@@ -651,19 +660,28 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
   }
 
   if (s.type === "hiring") {
-    const company = get("company");
+    const companyPublic = get("companyPublic");
+    const company =
+      companyPublic === "暂时保密"
+        ? "暂时保密"
+        : get("companyZh") || get("company") || "";
     const position = get("position");
+    const salary = rangeSummary("salary") || get("salary");
+    const area = get("workCity") || get("area");
+    const contact = get("recruiterContact");
     return {
       id: baseId,
       name: `招聘：${position}${company ? ` · ${company}` : ""}`,
-      contactPerson: get("contactPerson"),
-      wechat: get("wechat"),
+      contactPerson: get("recruiterName") || get("contactPerson"),
+      wechat: contact || get("wechat"),
       phone: get("phone"),
-      area: get("area"),
-      mainService: `${position}${get("salary") ? ` | ${get("salary")}` : ""}`,
-      hasStore: get("salary"),
-      serviceScope: get("area"),
-      intro: [get("requirement"), get("description")].filter(Boolean).join("\n\n"),
+      area,
+      mainService: `${position}${salary ? ` | ${salary} USD` : ""}`,
+      hasStore: salary,
+      serviceScope: area,
+      intro: [get("jobContent"), get("requirement"), get("benefits"), get("description")]
+        .filter(Boolean)
+        .join("\n\n"),
       image: DEFAULT_IMG.jobs,
       category: "jobs",
       subcategory: "招聘",
@@ -671,21 +689,30 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
   }
 
   if (s.type === "jobseeker") {
+    const phone = get("phone") || get("contact_phone") || get("contact_whatsapp");
+    const wechat = get("wechat") || get("contact_wechat");
+    const expectArea = get("expectCity") || get("expectArea");
+    const expectSalary = rangeSummary("expectSalary") || get("expectSalary");
     return {
       id: baseId,
       name: `求职：${get("targetPosition")}`,
       contactPerson: get("name"),
-      wechat: get("wechat"),
-      phone: get("phone"),
-      area: get("expectArea"),
-      mainService: `${get("targetPosition")}${get("expectSalary") ? ` | 期望 ${get("expectSalary")}` : ""}`,
-      hasStore: get("expectSalary"),
-      serviceScope: get("expectArea"),
+      wechat,
+      phone,
+      area: expectArea,
+      mainService: `${get("targetPosition")}${expectSalary ? ` | 期望 ${expectSalary} USD` : ""}`,
+      hasStore: expectSalary,
+      serviceScope: expectArea,
       intro: [
+        get("experienceYears") && `工作年限：${get("experienceYears")}`,
         get("experience") && `工作经验：${get("experience")}`,
         get("skills") && `技能：${get("skills")}`,
+        get("achievements") && `过往成就：${get("achievements")}`,
+        get("unacceptable") && `不可接受：${get("unacceptable")}`,
         get("intro"),
-      ].filter(Boolean).join("\n\n"),
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       image: DEFAULT_IMG.jobs,
       category: "jobs",
       subcategory: "求职",
@@ -693,16 +720,20 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
   }
 
   if (s.type === "secondhand") {
+    const category = get("categoryKey") || get("category");
+    const area = get("address") || get("area");
+    const phone = get("phone") || get("contact_phone") || get("contact_whatsapp");
+    const wechat = get("wechat") || get("contact_wechat");
     return {
       id: baseId,
       name: `${get("itemName")}${get("condition") ? `（${get("condition")}）` : ""}`,
       contactPerson: get("contactPerson"),
-      wechat: get("wechat"),
-      phone: get("phone"),
-      area: get("area"),
-      mainService: `${get("category")}${get("price") ? ` | 售价 ${get("price")} USD` : ""}`,
+      wechat,
+      phone,
+      area,
+      mainService: `${category}${get("price") ? ` | 售价 ${get("price")} USD` : ""}`,
       hasStore: get("condition"),
-      serviceScope: get("area"),
+      serviceScope: area,
       intro: get("description"),
       image: DEFAULT_IMG.secondhand,
       category: "secondhand",

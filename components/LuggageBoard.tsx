@@ -34,17 +34,23 @@ export function rawToLuggage(r: RawSubmission): LuggageRecord | null {
   if (r.type !== "luggage") return null;
   const d = r.data || {};
   const dir = (d.direction ?? "").trim();
-  const direction: LuggageDir = dir.includes("回国") || dir.startsWith("回") ? "home" : "congo";
+  const direction: LuggageDir =
+    dir.includes("回国") || dir.startsWith("回") || dir.startsWith("刚果金")
+      ? "home"
+      : "congo";
+  const phone = d.phone || d.contact_phone || d.contact_whatsapp || "";
+  const wechat = d.wechat || d.contact_wechat || "";
+  const availableWeight = d.availableWeight || d.capacity || "";
   return {
     id: r.id,
     direction,
     name: d.name ?? "",
-    phone: d.phone ?? "",
-    wechat: d.wechat ?? "",
+    phone,
+    wechat,
     fromCity: d.fromCity ?? "",
     toCity: d.toCity ?? "",
     departureDate: d.departureDate ?? "",
-    availableWeight: d.availableWeight ?? "",
+    availableWeight,
     price: d.price ?? "",
     goodsType: d.goodsType ?? "",
     restrictions: d.restrictions ?? "",
@@ -95,11 +101,11 @@ export function LuggageBoard({
               📦 顺风捎带 · 中刚往返
             </h2>
             <p className="font-handwriting text-base md:text-lg text-yellow-100 mt-0.5">
-              出门不空行李 · 每公斤都能变现
+              中刚两地 · 顺路互助
             </p>
             <p className="text-xs md:text-sm text-white/90 mt-1.5 leading-snug">
-              <Flame size={13} className="inline -mt-0.5" /> 每月 2 次回国？
-              发一次接一次单 · 托运余额 = 零花钱
+              <Flame size={13} className="inline -mt-0.5" /> 信息互通，约定自取
+              · 请当面核实物品，禁带违禁品
             </p>
           </div>
         </div>

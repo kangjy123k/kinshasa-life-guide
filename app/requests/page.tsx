@@ -24,11 +24,22 @@ interface DemandCard {
   quantity: string;
   budget: string;
   deadline: string;
+  paymentMethod: string;
   area: string;
   description: string;
   contactPerson: string;
   phone: string;
   wechat: string;
+}
+
+function formatBudget(data: Record<string, string>): string {
+  const legacy = (data.budget ?? "").trim();
+  if (legacy) return legacy;
+  const lo = (data.budgetMin ?? "").trim();
+  const hi = (data.budgetMax ?? "").trim();
+  if (!lo && !hi) return "";
+  if (lo && hi) return `${lo} – ${hi} USD`;
+  return `${lo || hi} USD`;
 }
 
 function relativeTime(iso: string): string {
@@ -77,8 +88,9 @@ export default function RequestsPage() {
         timestamp: r.timestamp,
         itemName: (r.data.itemName ?? "").trim(),
         quantity: (r.data.quantity ?? "").trim(),
-        budget: (r.data.budget ?? "").trim(),
+        budget: formatBudget(r.data),
         deadline: (r.data.deadline ?? "").trim(),
+        paymentMethod: (r.data.paymentMethod ?? "").trim(),
         area: (r.data.area ?? "").trim(),
         description: (r.data.description ?? "").trim(),
         contactPerson: (r.data.contactPerson ?? "").trim(),
@@ -176,6 +188,9 @@ function DemandCardView({ d }: { d: DemandCard }) {
         )}
         {d.deadline && (
           <Chip icon={<Clock size={11} />} text={d.deadline} tone="sky" />
+        )}
+        {d.paymentMethod && (
+          <Chip icon={<Wallet size={11} />} text={d.paymentMethod} tone="amber" />
         )}
         {d.area && (
           <Chip icon={<MapPin size={11} />} text={d.area} tone="emerald" />
