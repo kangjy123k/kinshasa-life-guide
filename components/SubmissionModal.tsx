@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { X, CheckCircle2, Loader2, ArrowRight, ExternalLink } from "lucide-react";
 import { categories, KINSHASA_COMMUNES } from "@/lib/businesses";
+import { getOwnerToken, setOwnerToken } from "@/lib/owner-token-client";
 
 type FieldType =
   | "text"
@@ -383,12 +384,20 @@ export function SubmissionModal({
           payload[f.name] = values[f.name] ?? "";
         }
       }
+      const token = getOwnerToken();
       const res = await fetch("/api/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "x-owner-token": token } : {}),
+        },
         body: JSON.stringify({ type: formKey, data: payload }),
       });
       if (!res.ok) throw new Error("submit failed");
+      const json = (await res.json().catch(() => null)) as
+        | { ownerToken?: string }
+        | null;
+      if (json?.ownerToken) setOwnerToken(json.ownerToken);
       setDone(true);
     } catch {
       setError("提交失败，请稍后再试");
@@ -441,12 +450,21 @@ export function SubmissionModal({
             <p className="text-[11px] text-gray-400 mt-3">
               审核通过后会展示在对应分类页面
             </p>
-            <button
-              onClick={handleClose}
-              className="mt-5 px-5 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded-full active:scale-95 transition"
-            >
-              完成
-            </button>
+            <div className="mt-5 flex items-center justify-center gap-2">
+              <Link
+                href="/my"
+                onClick={handleClose}
+                className="inline-flex items-center gap-1 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-full active:scale-95 transition"
+              >
+                查看我发布的
+              </Link>
+              <button
+                onClick={handleClose}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-full active:scale-95 transition"
+              >
+                完成
+              </button>
+            </div>
           </div>
         ) : (
           <>

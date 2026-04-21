@@ -1,0 +1,366 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Loader2,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Megaphone,
+  UserPlus,
+  UserSearch,
+  Recycle,
+  Plane,
+  ShoppingCart,
+  Trash2,
+  Inbox,
+  RefreshCw,
+  Info,
+} from "lucide-react";
+import { getOwnerToken } from "@/lib/owner-token-client";
+
+type SubmissionType =
+  | "merchant"
+  | "hiring"
+  | "jobseeker"
+  | "secondhand"
+  | "luggage"
+  | "purchase";
+type Status = "pending" | "approved" | "rejected";
+
+interface SubmissionRecord {
+  id: string;
+  type: SubmissionType;
+  timestamp: string;
+  status: Status;
+  data: Record<string, string>;
+  ownerToken?: string | null;
+}
+
+const TYPE_META: Record<
+  SubmissionType,
+  { label: string; Icon: React.ComponentType<{ size?: number; className?: string }>; color: string; bg: string }
+> = {
+  merchant:   { label: "商家入驻", Icon: Megaphone,    color: "text-sky-600",    bg: "bg-sky-100" },
+  hiring:     { label: "招聘",     Icon: UserPlus,     color: "text-red-500",    bg: "bg-red-100" },
+  jobseeker:  { label: "求职",     Icon: UserSearch,   color: "text-amber-600",  bg: "bg-amber-100" },
+  secondhand: { label: "二手物品", Icon: Recycle,      color: "text-teal-600",   bg: "bg-teal-100" },
+  luggage:    { label: "顺风捎带", Icon: Plane,        color: "text-orange-600", bg: "bg-orange-100" },
+  purchase:   { label: "求购信息", Icon: ShoppingCart, color: "text-rose-600",   bg: "bg-rose-100" },
+};
+
+const STATUS_META: Record<
+  Status,
+  { label: string; cls: string; Icon: React.ComponentType<{ size?: number; className?: string }>; hint: string }
+> = {
+  pending: {
+    label: "审核中",
+    cls: "bg-yellow-100 text-yellow-700",
+    Icon: Clock,
+    hint: "通常 24 小时内完成审核",
+  },
+  approved: {
+    label: "已通过",
+    cls: "bg-green-100 text-green-700",
+    Icon: CheckCircle2,
+    hint: "信息已公开展示",
+  },
+  rejected: {
+    label: "未通过",
+    cls: "bg-red-100 text-red-600",
+    Icon: XCircle,
+    hint: "如有疑问可重新发布或联系管理员",
+  },
+};
+
+function formatTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = Date.now();
+    const diff = now - d.getTime();
+    const min = 60 * 1000;
+    const hr = 60 * min;
+    const day = 24 * hr;
+    if (diff < min) return "刚刚";
+    if (diff < hr) return `${Math.floor(diff / min)} 分钟前`;
+    if (diff < day) return `${Math.floor(diff / hr)} 小时前`;
+    if (diff < 7 * day) return `${Math.floor(diff / day)} 天前`;
+    return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
+
+export default function MySubmissionsPage() {
+  const [loading, setLoading] = useState(true);
+  const [hasToken, setHasToken] = useState(false);
+  const [records, setRecords] = useState<SubmissionRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = getOwnerToken();
+      setHasToken(!!token);
+      const headers: Record<string, string> = {};
+      if (token) headers["x-owner-token"] = token;
+      const res = await fetch("/api/my/submissions", {
+        headers,
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("load failed");
+      const data = (await res.json()) as { records?: SubmissionRecord[] };
+      setRecords(data.records ?? []);
+    } catch {
+      setError("加载失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    const onFocus = () => load();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  const pending = records.filter((r) => r.status === "pending").length;
+  const approved = records.filter((r) => r.status === "approved").length;
+  const rejected = records.filter((r) => r.status === "rejected").length;
+
+  return (
+    <div className="min-h-screen bg-sky-50">
+      <header className="bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+          <Link
+            href="/"
+            aria-label="返回首页"
+            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center active:scale-95 transition"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-bold leading-tight">我发布的信息</h1>
+            <p className="text-[11px] text-white/80 mt-0.5">
+              {loading
+                ? "加载中…"
+                : records.length === 0
+                  ? "此设备暂无发布记录"
+                  : `共 ${records.length} 条 · 审核中 ${pending} · 已通过 ${approved} · 未通过 ${rejected}`}
+            </p>
+          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            aria-label="刷新"
+            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center active:scale-95 transition disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-5">
+        {/* 设备提示条 */}
+        <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-xl bg-sky-100/80 border border-sky-200 text-[11px] text-sky-800 leading-relaxed">
+          <Info size={13} className="mt-0.5 shrink-0" />
+          <span>
+            发布记录绑定当前浏览器。清除缓存、换设备或换浏览器都可能看不到,需重新发布。
+          </span>
+        </div>
+
+        {error && (
+          <div className="mb-4 px-3 py-2 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600">
+            {error}
+          </div>
+        )}
+
+        {!loading && records.length === 0 && (
+          <EmptyState hasToken={hasToken} />
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {records.map((r) => (
+            <RecordCard
+              key={r.id}
+              record={r}
+              onWithdrawn={(id) =>
+                setRecords((prev) => prev.filter((x) => x.id !== id))
+              }
+            />
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function EmptyState({ hasToken }: { hasToken: boolean }) {
+  return (
+    <div className="py-16 text-center">
+      <div className="inline-flex w-14 h-14 rounded-full bg-sky-100 items-center justify-center mb-3">
+        <Inbox size={26} className="text-sky-400" />
+      </div>
+      <p className="text-sm text-gray-700 font-medium">
+        {hasToken ? "此设备暂无发布记录" : "还没有在这台设备上发布过信息"}
+      </p>
+      <p className="text-xs text-gray-500 mt-1 leading-relaxed max-w-xs mx-auto">
+        回到首页点击「信息发布通道」发布后，
+        <br />
+        审核状态会出现在这里。
+      </p>
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1 mt-4 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-full active:scale-95 transition"
+      >
+        去首页发布
+      </Link>
+    </div>
+  );
+}
+
+function RecordCard({
+  record,
+  onWithdrawn,
+}: {
+  record: SubmissionRecord;
+  onWithdrawn: (id: string) => void;
+}) {
+  const meta = TYPE_META[record.type];
+  const status = STATUS_META[record.status];
+  const TIcon = meta.Icon;
+  const SIcon = status.Icon;
+
+  const [expanded, setExpanded] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  // 标题：优先取最显著的字段
+  const title =
+    record.data.nameZh ||
+    record.data.name ||
+    record.data.itemName ||
+    record.data.position ||
+    meta.label;
+
+  const entries = Object.entries(record.data).filter(([, v]) => v && v.trim());
+
+  async function withdraw() {
+    setWorking(true);
+    try {
+      const token = getOwnerToken();
+      const res = await fetch("/api/my/withdraw", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "x-owner-token": token } : {}),
+        },
+        body: JSON.stringify({ id: record.id }),
+      });
+      if (!res.ok) throw new Error("withdraw failed");
+      // 渐出 260ms 再从列表移除
+      setLeaving(true);
+      setTimeout(() => onWithdrawn(record.id), 260);
+    } catch {
+      alert("撤回失败，请稍后再试");
+      setWorking(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <div
+      className={`bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all duration-300 ease-out ${
+        leaving ? "opacity-0 scale-95" : "opacity-100 scale-100"
+      }`}
+    >
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
+      >
+        <span className={`w-9 h-9 rounded-xl ${meta.bg} flex items-center justify-center shrink-0`}>
+          <TIcon size={16} className={meta.color} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-gray-800 truncate">{title}</p>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {meta.label} · {formatTime(record.timestamp)}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${status.cls}`}
+        >
+          <SIcon size={11} /> {status.label}
+        </span>
+      </button>
+
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="px-3.5 pb-3 text-xs text-gray-600 space-y-1 border-t border-sky-50 pt-2.5">
+            <p className="text-[11px] text-gray-500 italic">{status.hint}</p>
+            {entries.length === 0 ? (
+              <p className="text-gray-400">（无详情）</p>
+            ) : (
+              entries.slice(0, 18).map(([k, v]) => (
+                <div key={k} className="flex gap-1.5">
+                  <span className="text-gray-400 shrink-0">{k}:</span>
+                  <span className="text-gray-700 break-words">{v}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-3.5 py-2.5 border-t border-sky-50 flex items-center justify-end gap-2">
+        {!confirming ? (
+          <button
+            onClick={() => setConfirming(true)}
+            disabled={working}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-red-500 active:scale-95 transition"
+          >
+            <Trash2 size={13} />
+            撤回
+          </button>
+        ) : (
+          <>
+            <span className="text-[11px] text-gray-500 mr-auto">确认撤回？</span>
+            <button
+              onClick={() => setConfirming(false)}
+              disabled={working}
+              className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg active:scale-95 transition"
+            >
+              取消
+            </button>
+            <button
+              onClick={withdraw}
+              disabled={working}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg active:scale-95 transition disabled:opacity-50"
+            >
+              {working ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+              {working ? "撤回中" : "确认撤回"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

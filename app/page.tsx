@@ -572,6 +572,12 @@ function HomeView({
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-5 bg-yellow-400 rounded-full" />
           <h2 className="text-base font-bold text-gray-800">信息发布通道</h2>
+          <Link
+            href="/my"
+            className="ml-auto inline-flex items-center gap-0.5 text-xs font-semibold text-sky-600 hover:text-sky-700 active:scale-95 transition"
+          >
+            我发布的<ChevronRight size={14} />
+          </Link>
         </div>
         <div className="grid grid-cols-6 gap-1 md:gap-3 justify-items-center">
           <PublishCard

@@ -1,4 +1,5 @@
-import { put, list } from "@vercel/blob";
+import { createClient, type Client } from "@libsql/client/web";
+import { list } from "@vercel/blob";
 
 export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage" | "purchase";
 
@@ -8,85 +9,200 @@ export interface SubmissionRecord {
   timestamp: string;
   status: "pending" | "approved" | "rejected";
   data: Record<string, string>;
+  ownerToken?: string | null;
 }
+
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS user_submission (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    status TEXT NOT NULL,
+    owner_token TEXT,
+    data_json TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_user_submission_owner
+    ON user_submission(owner_token, timestamp DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_user_submission_status_time
+    ON user_submission(status, timestamp DESC)`,
+  `CREATE TABLE IF NOT EXISTS kv_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`,
+];
 
 const BLOB_KEY = "submissions/all.json";
+const MIGRATE_KEY = "submissions_blob_migrated_at";
 
-interface SubmissionStore {
-  records: SubmissionRecord[];
+let client: Client | null = null;
+let schemaReady = false;
+
+function db(): Client {
+  if (!client) {
+    const url = process.env.DATABASE_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+    if (!url || !authToken) throw new Error("DATABASE_URL / TURSO_AUTH_TOKEN not configured");
+    client = createClient({ url, authToken });
+  }
+  return client;
 }
 
-async function readStore(): Promise<SubmissionStore> {
-  const empty: SubmissionStore = { records: [] };
-  try {
-    const { blobs } = await list({ prefix: "submissions/" });
-    const existing = blobs.find((b) => b.pathname === BLOB_KEY);
-    if (!existing) return empty;
-    const res = await fetch(`${existing.downloadUrl}?_=${Date.now()}`, {
-      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-      cache: "no-store",
-    });
-    if (!res.ok) return empty;
-    return (await res.json()) as SubmissionStore;
-  } catch {
-    return empty;
+async function importFromBlob(): Promise<number> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return 0;
+  const { blobs } = await list({ prefix: "submissions/" });
+  const existing = blobs.find((b) => b.pathname === BLOB_KEY);
+  if (!existing) return 0;
+  const res = await fetch(`${existing.downloadUrl}?_=${Date.now()}`, {
+    headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return 0;
+  const store = (await res.json()) as {
+    records?: Array<{ id: string; type: string; timestamp: string; status: string; data: Record<string, string> }>;
+  };
+  const records = store?.records ?? [];
+  let imported = 0;
+  for (const r of records) {
+    if (!r?.id || !r?.type) continue;
+    try {
+      await db().execute({
+        sql: `INSERT OR IGNORE INTO user_submission
+              (id, type, timestamp, status, owner_token, data_json)
+              VALUES (?, ?, ?, ?, NULL, ?)`,
+        args: [
+          String(r.id),
+          String(r.type),
+          String(r.timestamp ?? new Date().toISOString()),
+          String(r.status ?? "pending"),
+          JSON.stringify(r.data ?? {}),
+        ],
+      });
+      imported++;
+    } catch {
+      /* skip broken row */
+    }
   }
+  return imported;
+}
+
+async function ensureSchema() {
+  if (schemaReady) return;
+  for (const sql of SCHEMA) {
+    await db().execute(sql);
+  }
+
+  const { rows } = await db().execute({
+    sql: "SELECT value FROM kv_meta WHERE key = ?",
+    args: [MIGRATE_KEY],
+  });
+  if (rows.length === 0) {
+    try {
+      await importFromBlob();
+      await db().execute({
+        sql: "INSERT OR REPLACE INTO kv_meta (key, value) VALUES (?, ?)",
+        args: [MIGRATE_KEY, new Date().toISOString()],
+      });
+    } catch (e) {
+      console.error("[submissions] blob migration failed (will retry next request):", e);
+      // 不写 MIGRATE_KEY，下次再试
+    }
+  }
+
+  schemaReady = true;
+}
+
+function rowToRecord(r: Record<string, unknown>): SubmissionRecord {
+  let data: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(String(r.data_json ?? "{}"));
+    if (parsed && typeof parsed === "object") data = parsed as Record<string, string>;
+  } catch {
+    /* ignore */
+  }
+  return {
+    id: String(r.id),
+    type: String(r.type) as SubmissionType,
+    timestamp: String(r.timestamp),
+    status: String(r.status) as SubmissionRecord["status"],
+    data,
+    ownerToken: r.owner_token == null ? null : String(r.owner_token),
+  };
 }
 
 export async function addSubmission(
   type: SubmissionType,
-  data: Record<string, string>
+  data: Record<string, string>,
+  ownerToken: string | null = null,
 ): Promise<SubmissionRecord> {
-  const store = await readStore();
-  const record: SubmissionRecord = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    type,
-    timestamp: new Date().toISOString(),
-    status: "pending",
-    data,
-  };
-  const records = [...store.records, record].slice(-2000);
-  await put(BLOB_KEY, JSON.stringify({ records }), {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
+  await ensureSchema();
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const timestamp = new Date().toISOString();
+  await db().execute({
+    sql: `INSERT INTO user_submission
+          (id, type, timestamp, status, owner_token, data_json)
+          VALUES (?, ?, ?, 'pending', ?, ?)`,
+    args: [id, type, timestamp, ownerToken, JSON.stringify(data)],
   });
-  return record;
+  return { id, type, timestamp, status: "pending", data, ownerToken };
 }
 
 export async function listSubmissions(): Promise<SubmissionRecord[]> {
-  const store = await readStore();
-  return store.records.slice().reverse();
+  await ensureSchema();
+  const { rows } = await db().execute({
+    sql: `SELECT id, type, timestamp, status, owner_token, data_json
+          FROM user_submission
+          ORDER BY timestamp DESC`,
+    args: [],
+  });
+  return rows.map((r) => rowToRecord(r as unknown as Record<string, unknown>));
 }
 
 export async function updateSubmissionStatus(
   id: string,
-  status: SubmissionRecord["status"]
+  status: SubmissionRecord["status"],
 ): Promise<SubmissionRecord | null> {
-  const store = await readStore();
-  const idx = store.records.findIndex((r) => r.id === id);
-  if (idx === -1) return null;
-  store.records[idx].status = status;
-  await put(BLOB_KEY, JSON.stringify(store), {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
+  await ensureSchema();
+  await db().execute({
+    sql: "UPDATE user_submission SET status = ? WHERE id = ?",
+    args: [status, id],
   });
-  return store.records[idx];
+  const { rows } = await db().execute({
+    sql: `SELECT id, type, timestamp, status, owner_token, data_json
+          FROM user_submission WHERE id = ?`,
+    args: [id],
+  });
+  if (rows.length === 0) return null;
+  return rowToRecord(rows[0] as unknown as Record<string, unknown>);
 }
 
 export async function deleteSubmission(id: string): Promise<boolean> {
-  const store = await readStore();
-  const before = store.records.length;
-  store.records = store.records.filter((r) => r.id !== id);
-  if (store.records.length === before) return false;
-  await put(BLOB_KEY, JSON.stringify(store), {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
+  await ensureSchema();
+  const res = await db().execute({
+    sql: "DELETE FROM user_submission WHERE id = ?",
+    args: [id],
   });
-  return true;
+  return (res.rowsAffected ?? 0) > 0;
+}
+
+export async function listByOwner(ownerToken: string): Promise<SubmissionRecord[]> {
+  await ensureSchema();
+  if (!ownerToken || ownerToken.length < 8 || ownerToken.length > 128) return [];
+  const { rows } = await db().execute({
+    sql: `SELECT id, type, timestamp, status, owner_token, data_json
+          FROM user_submission
+          WHERE owner_token = ?
+          ORDER BY timestamp DESC`,
+    args: [ownerToken],
+  });
+  return rows.map((r) => rowToRecord(r as unknown as Record<string, unknown>));
+}
+
+export async function deleteByOwner(id: string, ownerToken: string): Promise<boolean> {
+  await ensureSchema();
+  if (!ownerToken || !id) return false;
+  const res = await db().execute({
+    sql: "DELETE FROM user_submission WHERE id = ? AND owner_token = ?",
+    args: [id, ownerToken],
+  });
+  return (res.rowsAffected ?? 0) > 0;
 }
