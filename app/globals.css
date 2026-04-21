@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* 移动端给底部 nav 留出空间(56px nav + iOS safe-area + 小 buffer) */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+}
+
 /* Hide scrollbar for category tabs */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

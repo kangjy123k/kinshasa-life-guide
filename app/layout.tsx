@@ -42,7 +42,7 @@ export default function RootLayout({
         />
         <script dangerouslySetInnerHTML={{ __html: swRegister }} />
       </head>
-      <body className="min-h-full bg-sky-50 pb-20 md:pb-0">
+      <body className="min-h-full bg-sky-50">
         {children}
         <BottomNav />
       </body>
