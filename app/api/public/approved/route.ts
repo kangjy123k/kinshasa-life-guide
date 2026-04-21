@@ -11,9 +11,8 @@ export async function GET() {
       { ok: true, records: approved },
       {
         headers: {
-          // 边缘 CDN 缓存 60s；过期后仍可用 10 分钟旧数据，后台再刷新
-          "Cache-Control":
-            "public, s-maxage=60, stale-while-revalidate=600",
+          // 撤回 / 审核变更必须立刻可见,不走 CDN 缓存
+          "Cache-Control": "no-store",
         },
       }
     );
