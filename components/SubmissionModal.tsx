@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { X, CheckCircle2, Loader2, ArrowRight, ExternalLink } from "lucide-react";
+import { X, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { categories, KINSHASA_COMMUNES } from "@/lib/businesses";
 import { getOwnerToken, setOwnerToken } from "@/lib/owner-token-client";
 
@@ -272,15 +272,6 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
   },
 };
 
-const BOARD_URL: Record<FormKey, string> = {
-  purchase: "/requests",
-  merchant: "/",
-  hiring: "/hiring",
-  jobseeker: "/jobs",
-  secondhand: "/secondhand",
-  luggage: "/luggage",
-};
-
 export function SubmissionModal({
   formKey,
   onClose,
@@ -289,7 +280,6 @@ export function SubmissionModal({
   onClose: () => void;
 }) {
   const def = FORMS[formKey];
-  const boardHref = BOARD_URL[formKey];
   const [values, setValues] = useState<Record<string, string>>(() => {
     const seed: Record<string, string> = {};
     def.fields.forEach((f) => {
@@ -421,14 +411,6 @@ export function SubmissionModal({
           <h3 className="text-[15px] font-semibold text-gray-800 flex-1 min-w-0 truncate">
             {def.title}
           </h3>
-          <Link
-            href={boardHref}
-            onClick={handleClose}
-            className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-sky-600 hover:text-sky-700 px-2 py-1 rounded-full bg-sky-50 active:scale-95 transition"
-          >
-            看看已发布
-            <ExternalLink size={10} />
-          </Link>
           <button
             onClick={handleClose}
             className="w-7 h-7 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center active:scale-95 transition"
@@ -456,7 +438,7 @@ export function SubmissionModal({
                 onClick={handleClose}
                 className="inline-flex items-center gap-1 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-full active:scale-95 transition"
               >
-                查看我发布的
+                查看我的发布
               </Link>
               <button
                 onClick={handleClose}
@@ -555,15 +537,10 @@ function SubcategoryPicker({
     const ordered = options.filter((o) => selected.has(o));
     onChange(ordered.join("、"));
   };
-  const missing = field.required && selected.size === 0;
   return (
     <div>
       <FieldLabel field={field} />
-      <div
-        className={`flex flex-wrap gap-1.5 rounded-lg p-1.5 ${
-          missing ? "bg-red-50 ring-1 ring-red-200" : ""
-        }`}
-      >
+      <div className="flex flex-wrap gap-1.5 rounded-lg p-1.5">
         {options.map((opt) => {
           const on = selected.has(opt);
           return (
@@ -611,18 +588,8 @@ function FormFieldInput({
   if (field.type === "range-usd") {
     const lo = values[`${field.name}_min`] ?? "";
     const hi = values[`${field.name}_max`] ?? "";
-    const loOk = filled(lo);
-    const hiOk = filled(hi);
-    const loCls = `${baseInput} ${
-      field.required && !loOk
-        ? "bg-red-50 border-red-200"
-        : "bg-gray-50 border-gray-200"
-    }`;
-    const hiCls = `${baseInput} ${
-      field.required && !hiOk
-        ? "bg-red-50 border-red-200"
-        : "bg-gray-50 border-gray-200"
-    }`;
+    const loCls = `${baseInput} bg-gray-50 border-gray-200`;
+    const hiCls = `${baseInput} bg-gray-50 border-gray-200`;
     return (
       <div>
         <FieldLabel field={field} />
@@ -656,19 +623,13 @@ function FormFieldInput({
       { k: "wechat", label: "微信号" },
       { k: "email", label: "邮箱" },
     ];
-    const anyFilled = keys.some((x) => filled(values[`${field.name}_${x.k}`] ?? ""));
     return (
       <div>
         <FieldLabel field={field} />
         <div className="grid grid-cols-2 gap-2">
           {keys.map(({ k, label }) => {
             const v = values[`${field.name}_${k}`] ?? "";
-            const needHighlight = field.required && !anyFilled;
-            const cls = `${baseInput} ${
-              needHighlight
-                ? "bg-red-50 border-red-200"
-                : "bg-gray-50 border-gray-200"
-            }`;
+            const cls = `${baseInput} bg-gray-50 border-gray-200`;
             return (
               <input
                 key={k}
@@ -687,15 +648,10 @@ function FormFieldInput({
 
   if (field.type === "radio") {
     const v = values[field.name] ?? "";
-    const missing = field.required && !v;
     return (
       <div>
         <FieldLabel field={field} />
-        <div
-          className={`flex flex-wrap gap-1.5 rounded-lg p-1.5 ${
-            missing ? "bg-red-50 ring-1 ring-red-200" : ""
-          }`}
-        >
+        <div className="flex flex-wrap gap-1.5 rounded-lg p-1.5">
           {field.options?.map((opt) => {
             const on = v === opt;
             return (
@@ -719,10 +675,7 @@ function FormFieldInput({
   }
 
   const v = values[field.name] ?? "";
-  const needRed = field.required && !filled(v);
-  const cls = `${baseInput} ${
-    needRed ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"
-  }`;
+  const cls = `${baseInput} bg-gray-50 border-gray-200`;
 
   return (
     <div>

@@ -574,16 +574,16 @@ function HomeView({
           <h2 className="text-base font-bold text-gray-800">信息发布通道</h2>
           <Link
             href="/my"
-            className="ml-auto inline-flex items-center gap-0.5 text-xs font-semibold text-sky-600 hover:text-sky-700 active:scale-95 transition"
+            className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold active:scale-95 transition"
           >
-            我发布的<ChevronRight size={14} />
+            查看我的发布<ChevronRight size={12} />
           </Link>
         </div>
         <div className="grid grid-cols-6 gap-1 md:gap-3 justify-items-center">
           <PublishCard
             label="求购信息"
             icon={ShoppingCart}
-            color="bg-gradient-to-br from-orange-400 to-red-500"
+            color="bg-gradient-to-br from-orange-400 to-amber-500"
             onClick={() => onOpenForm("purchase")}
           />
           <PublishCard

@@ -17,7 +17,6 @@ import {
   Trash2,
   Inbox,
   RefreshCw,
-  Info,
 } from "lucide-react";
 import { getOwnerToken } from "@/lib/owner-token-client";
 
@@ -151,12 +150,12 @@ export default function MySubmissionsPage() {
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold leading-tight">我发布的信息</h1>
+            <h1 className="text-base font-bold leading-tight">我的发布</h1>
             <p className="text-[11px] text-white/80 mt-0.5">
               {loading
                 ? "加载中…"
                 : records.length === 0
-                  ? "此设备暂无发布记录"
+                  ? "暂无发布记录"
                   : `共 ${records.length} 条 · 审核中 ${pending} · 已通过 ${approved} · 未通过 ${rejected}`}
             </p>
           </div>
@@ -172,14 +171,6 @@ export default function MySubmissionsPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-5">
-        {/* 设备提示条 */}
-        <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-xl bg-sky-100/80 border border-sky-200 text-[11px] text-sky-800 leading-relaxed">
-          <Info size={13} className="mt-0.5 shrink-0" />
-          <span>
-            发布记录绑定当前浏览器。清除缓存、换设备或换浏览器都可能看不到,需重新发布。
-          </span>
-        </div>
-
         {error && (
           <div className="mb-4 px-3 py-2 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600">
             {error}
@@ -213,7 +204,7 @@ function EmptyState({ hasToken }: { hasToken: boolean }) {
         <Inbox size={26} className="text-sky-400" />
       </div>
       <p className="text-sm text-gray-700 font-medium">
-        {hasToken ? "此设备暂无发布记录" : "还没有在这台设备上发布过信息"}
+        {hasToken ? "暂无发布记录" : "还没有发布过信息"}
       </p>
       <p className="text-xs text-gray-500 mt-1 leading-relaxed max-w-xs mx-auto">
         回到首页点击「信息发布通道」发布后，
