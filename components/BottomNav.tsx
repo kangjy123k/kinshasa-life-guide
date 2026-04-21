@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Sparkles,
+  Home,
+  Megaphone,
   User,
+  Plus,
   X,
   ShoppingCart,
   Store,
@@ -32,16 +34,28 @@ const PUBLISH_OPTIONS: Option[] = [
   { key: "luggage",    label: "顺风捎带", icon: Plane,        color: "bg-gradient-to-br from-fuchsia-400 to-rose-500" },
 ];
 
-export default function MobileDock() {
+type Tab = {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
+};
+
+const LEFT_TABS: Tab[] = [
+  { href: "/", label: "首页", Icon: Home },
+  { href: "/requests", label: "需求大厅", Icon: Megaphone },
+];
+const RIGHT_TABS: Tab[] = [
+  { href: "/my", label: "我的", Icon: User },
+];
+
+export default function BottomNav() {
+  const pathname = usePathname();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerClosing, setPickerClosing] = useState(false);
   const [formKey, setFormKey] = useState<FormKey | null>(null);
-  const pathname = usePathname();
 
-  // admin 页不显示(避免和后台自己的工具条打架)
+  // admin 页不挂
   if (pathname?.startsWith("/admin")) return null;
-
-  const isMyActive = pathname === "/my";
 
   const openPicker = () => {
     setPickerClosing(false);
@@ -57,42 +71,48 @@ export default function MobileDock() {
       return true;
     });
   };
-
   const pickType = (k: FormKey) => {
     closePicker();
-    // 等底部 sheet 收起再拉起 modal,动画不打架
     setTimeout(() => setFormKey(k), 200);
   };
 
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname?.startsWith(href + "/");
+
   return (
     <>
-      {/* 移动端悬浮胶囊 dock */}
-      <div
-        className="md:hidden fixed left-1/2 -translate-x-1/2 z-40 flex gap-2 px-3 py-2 rounded-full bg-white/85 backdrop-blur border border-gray-200 shadow-xl"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
-        aria-label="发布与我的发布"
+      {/* 底部 tab bar — 仅移动端 */}
+      <nav
+        className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-gray-100"
+        style={{
+          boxShadow: "0 -2px 14px rgba(15, 23, 42, 0.05)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+        aria-label="底部导航"
       >
-        <button
-          onClick={openPicker}
-          className="flex items-center gap-1.5 pl-3.5 pr-4 py-2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-bold rounded-full shadow-md active:scale-95 transition"
-        >
-          <Sparkles size={15} fill="currentColor" />
+        <div className="relative flex items-center h-14 px-1">
+          {LEFT_TABS.map((t) => (
+            <TabLink key={t.href} tab={t} active={isActive(t.href)} />
+          ))}
+          <div className="flex-1 flex items-center justify-center">
+            <button
+              onClick={openPicker}
+              aria-label="发布"
+              className="-mt-8 w-14 h-14 rounded-full bg-gradient-to-br from-rose-500 to-red-500 text-white flex items-center justify-center shadow-[0_8px_24px_rgba(244,63,94,0.45)] ring-4 ring-white active:scale-95 transition"
+            >
+              <Plus size={26} strokeWidth={2.5} />
+            </button>
+          </div>
+          {RIGHT_TABS.map((t) => (
+            <TabLink key={t.href} tab={t} active={isActive(t.href)} />
+          ))}
+        </div>
+        <p className="absolute left-1/2 -translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom,0px)+2px)] text-[10px] font-semibold text-gray-500 select-none pointer-events-none">
           发布
-        </button>
-        <Link
-          href="/my"
-          className={`flex items-center gap-1.5 pl-3.5 pr-4 py-2 text-sm font-bold rounded-full transition active:scale-95 ${
-            isMyActive
-              ? "bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md"
-              : "bg-white text-gray-800 border border-gray-200"
-          }`}
-        >
-          <User size={15} />
-          我的发布
-        </Link>
-      </div>
+        </p>
+      </nav>
 
-      {/* 底部 sheet:选择发布类型 */}
+      {/* 底部 sheet:选发布类型 */}
       {pickerOpen && (
         <div
           className={`fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out ${
@@ -143,10 +163,31 @@ export default function MobileDock() {
         </div>
       )}
 
-      {/* 表单 modal */}
+      {/* 具体表单 */}
       {formKey && (
         <SubmissionModal formKey={formKey} onClose={() => setFormKey(null)} />
       )}
     </>
+  );
+}
+
+function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
+  const { Icon, label, href } = tab;
+  return (
+    <Link
+      href={href}
+      className={`flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition ${
+        active ? "text-red-500" : "text-gray-500"
+      }`}
+    >
+      <Icon
+        size={22}
+        strokeWidth={active ? 2.4 : 1.8}
+        className={active ? "drop-shadow-sm" : ""}
+      />
+      <span className={`text-[10px] font-semibold ${active ? "" : "text-gray-500"}`}>
+        {label}
+      </span>
+    </Link>
   );
 }

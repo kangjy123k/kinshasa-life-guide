@@ -574,7 +574,7 @@ function HomeView({
           <h2 className="text-base font-bold text-gray-800">信息发布通道</h2>
           <Link
             href="/my"
-            className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold active:scale-95 transition"
+            className="ml-auto hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold active:scale-95 transition"
           >
             查看我的发布<ChevronRight size={12} />
           </Link>
