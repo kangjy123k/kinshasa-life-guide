@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
-  Megaphone,
   User,
   Plus,
   X,
@@ -42,7 +41,6 @@ type Tab = {
 
 const LEFT_TABS: Tab[] = [
   { href: "/", label: "首页", Icon: Home },
-  { href: "/requests", label: "需求大厅", Icon: Megaphone },
 ];
 const RIGHT_TABS: Tab[] = [
   { href: "/my", label: "我的", Icon: User },

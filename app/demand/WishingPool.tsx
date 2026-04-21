@@ -465,7 +465,7 @@ export default function WishingPool() {
       )}
 
       {toast && (
-        <div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-40">
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-6 z-40">
           <div
             className={`px-4 py-2 rounded-xl text-sm font-medium shadow-lg backdrop-blur ${
               toast.type === "ok"
