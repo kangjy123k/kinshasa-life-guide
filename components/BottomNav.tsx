@@ -88,26 +88,24 @@ export default function BottomNav() {
         }}
         aria-label="底部导航"
       >
-        <div className="relative flex items-center h-14 px-1">
+        <div className="flex items-end h-14 px-1">
           {LEFT_TABS.map((t) => (
             <TabLink key={t.href} tab={t} active={isActive(t.href)} />
           ))}
-          <div className="flex-1 flex items-center justify-center">
-            <button
-              onClick={openPicker}
-              aria-label="发布"
-              className="-mt-8 w-14 h-14 rounded-full bg-gradient-to-br from-rose-500 to-red-500 text-white flex items-center justify-center shadow-[0_8px_24px_rgba(244,63,94,0.45)] ring-4 ring-white active:scale-95 transition"
-            >
-              <Plus size={26} strokeWidth={2.5} />
-            </button>
-          </div>
+          <button
+            onClick={openPicker}
+            aria-label="发布"
+            className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition"
+          >
+            <span className="-mt-4 w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-red-500 text-white flex items-center justify-center shadow-[0_6px_18px_rgba(244,63,94,0.45)] ring-4 ring-white">
+              <Plus size={20} strokeWidth={2.8} />
+            </span>
+            <span className="text-[10px] font-semibold text-gray-500">发布</span>
+          </button>
           {RIGHT_TABS.map((t) => (
             <TabLink key={t.href} tab={t} active={isActive(t.href)} />
           ))}
         </div>
-        <p className="absolute left-1/2 -translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom,0px)+2px)] text-[10px] font-semibold text-gray-500 select-none pointer-events-none">
-          发布
-        </p>
       </nav>
 
       {/* 底部 sheet:选发布类型 */}

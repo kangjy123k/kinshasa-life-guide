@@ -17,13 +17,7 @@ import {
   Megaphone,
   Plane,
   Sparkles,
-  ShoppingCart,
-  Store,
-  Briefcase,
-  UserPlus,
-  Tag,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 import {
   type Business,
@@ -42,7 +36,6 @@ import {
   SpeakButton,
   WhatsAppChip,
 } from "@/components/BusinessCardUI";
-import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
 import { homeUsefulItems } from "@/lib/useful-items";
 
 /* ------------------------------------------------------------------ */
@@ -91,7 +84,6 @@ export default function GuidePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [adIndex, setAdIndex] = useState(0);
-  const [formOpen, setFormOpen] = useState<FormKey | null>(null);
   const [approvedExtras, setApprovedExtras] = useState<Business[]>([]);
   const [detailBizId, setDetailBizId] = useState<number | null>(null);
   const [posterOpen, setPosterOpen] = useState(false);
@@ -259,7 +251,6 @@ export default function GuidePage() {
           onOpenCategory={openCategory}
           adIndex={adIndex}
           setAdIndex={setAdIndex}
-          onOpenForm={setFormOpen}
           onOpenBusiness={openBusiness}
         />
       )}
@@ -286,10 +277,6 @@ export default function GuidePage() {
       )}
 
       <Footer />
-
-      {formOpen && (
-        <SubmissionModal formKey={formOpen} onClose={() => setFormOpen(null)} />
-      )}
 
       {posterOpen && <PosterPopup onClose={() => setPosterOpen(false)} />}
     </div>
@@ -386,14 +373,12 @@ function HomeView({
   onOpenCategory,
   adIndex,
   setAdIndex,
-  onOpenForm,
   onOpenBusiness,
 }: {
   businesses: Business[];
   onOpenCategory: (k: string) => void;
   adIndex: number;
   setAdIndex: (n: number) => void;
-  onOpenForm: (k: FormKey) => void;
   onOpenBusiness: (id: number) => void;
 }) {
   const router = useRouter();
@@ -567,58 +552,6 @@ function HomeView({
         </div>
       </section>
 
-      {/* ---- 信息发布通道 ---- */}
-      <section className="max-w-4xl mx-auto px-4 mt-8">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="w-1 h-5 bg-yellow-400 rounded-full" />
-          <h2 className="text-base font-bold text-gray-800">信息发布通道</h2>
-          <Link
-            href="/my"
-            className="ml-auto hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold active:scale-95 transition"
-          >
-            查看我的发布<ChevronRight size={12} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-6 gap-1 md:gap-3 justify-items-center">
-          <PublishCard
-            label="求购信息"
-            icon={ShoppingCart}
-            color="bg-gradient-to-br from-orange-400 to-amber-500"
-            onClick={() => onOpenForm("purchase")}
-          />
-          <PublishCard
-            label="商家入驻"
-            icon={Store}
-            color="bg-gradient-to-br from-sky-400 to-blue-500"
-            onClick={() => onOpenForm("merchant")}
-          />
-          <PublishCard
-            label="发布招聘"
-            icon={Briefcase}
-            color="bg-gradient-to-br from-red-400 to-rose-500"
-            onClick={() => onOpenForm("hiring")}
-          />
-          <PublishCard
-            label="发布求职"
-            icon={UserPlus}
-            color="bg-gradient-to-br from-amber-400 to-yellow-500"
-            onClick={() => onOpenForm("jobseeker")}
-          />
-          <PublishCard
-            label="二手物品"
-            icon={Tag}
-            color="bg-gradient-to-br from-teal-400 to-sky-500"
-            onClick={() => onOpenForm("secondhand")}
-          />
-          <PublishCard
-            label="顺风捎带"
-            icon={Plane}
-            color="bg-gradient-to-br from-fuchsia-400 to-rose-500"
-            onClick={() => router.push("/luggage")}
-          />
-        </div>
-      </section>
-
       {/* ---- 热门商家 ---- */}
       <section className="max-w-4xl mx-auto px-4 mt-8 pb-4">
         <div className="flex items-center gap-2 mb-3">
@@ -761,38 +694,6 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
         ))}
       </div>
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Publish Card                                                       */
-/* ------------------------------------------------------------------ */
-function PublishCard({
-  label,
-  icon: Icon,
-  color,
-  onClick,
-}: {
-  label: string;
-  icon: LucideIcon;
-  color: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform"
-    >
-      <span
-        className={`${color} text-white w-11 h-11 md:w-14 md:h-14 rounded-full shadow-md group-hover:shadow-lg flex items-center justify-center ring-1 ring-white/70 ring-inset`}
-      >
-        <Icon size={18} strokeWidth={2.2} className="md:w-[22px] md:h-[22px] drop-shadow-sm" />
-      </span>
-      <span className="text-[10px] md:text-xs font-medium text-gray-700 leading-none whitespace-nowrap">
-        {label}
-      </span>
-    </button>
   );
 }
 
