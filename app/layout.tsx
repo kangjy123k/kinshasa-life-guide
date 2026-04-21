@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import MobileDock from "@/components/MobileDock";
 
 export const metadata: Metadata = {
   title: "刚果金华人生活服务指南",
@@ -41,7 +42,10 @@ export default function RootLayout({
         />
         <script dangerouslySetInnerHTML={{ __html: swRegister }} />
       </head>
-      <body className="min-h-full bg-sky-50">{children}</body>
+      <body className="min-h-full bg-sky-50 pb-24 md:pb-0">
+        {children}
+        <MobileDock />
+      </body>
     </html>
   );
 }
