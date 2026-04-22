@@ -10,6 +10,30 @@ export type UsefulItem = {
 
 export const usefulItems: UsefulItem[] = [
   {
+    key: "french-word",
+    title: "每日法语一词",
+    desc: "悄悄学 · 惊艳所有人",
+    emoji: "🇫🇷",
+    href: "/guides/french-word",
+    keywords: ["法语", "français", "每日", "单词", "学习", "发音"],
+  },
+  {
+    key: "surveys",
+    title: "参与调研 · 奖品多多",
+    desc: "答题帮商家 · 好礼拿回家",
+    emoji: "🎁",
+    href: "/surveys",
+    keywords: ["调研", "问卷", "survey", "奖品", "外卖", "市场调查"],
+  },
+  {
+    key: "events",
+    title: "线下活动",
+    desc: "在刚果金也有丰富生活",
+    emoji: "🎉",
+    href: "/events",
+    keywords: ["活动", "event", "聚会", "线下", "party", "华人"],
+  },
+  {
     key: "weather",
     title: "天气预报·金沙萨",
     desc: "极端天气早知道",

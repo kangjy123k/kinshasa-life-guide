@@ -13,7 +13,6 @@ import {
   Briefcase,
   UserPlus,
   Tag,
-  Plane,
 } from "lucide-react";
 import { SubmissionModal, type FormKey } from "./SubmissionModal";
 
@@ -30,7 +29,6 @@ const PUBLISH_OPTIONS: Option[] = [
   { key: "hiring",     label: "发布招聘", icon: Briefcase,    color: "bg-gradient-to-br from-red-400 to-rose-500" },
   { key: "jobseeker",  label: "发布求职", icon: UserPlus,     color: "bg-gradient-to-br from-amber-400 to-yellow-500" },
   { key: "secondhand", label: "二手物品", icon: Tag,          color: "bg-gradient-to-br from-teal-400 to-sky-500" },
-  { key: "luggage",    label: "顺风捎带", icon: Plane,        color: "bg-gradient-to-br from-fuchsia-400 to-rose-500" },
 ];
 
 type Tab = {

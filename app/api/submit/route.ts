@@ -8,8 +8,8 @@ const VALID_TYPES: SubmissionType[] = [
   "hiring",
   "jobseeker",
   "secondhand",
-  "luggage",
   "purchase",
+  "survey",
 ];
 
 const OWNER_COOKIE = "klg_owner";

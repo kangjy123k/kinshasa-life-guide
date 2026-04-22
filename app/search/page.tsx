@@ -33,7 +33,7 @@ function SearchInner() {
         if (cancelled) return;
         const items: Business[] = [];
         (d.records ?? []).forEach((r, i) => {
-          if (r.type === "luggage") return;
+          if ((r.type as string) === "luggage") return;
           const b = submissionToBusiness(r, i);
           if (b) items.push(b);
         });

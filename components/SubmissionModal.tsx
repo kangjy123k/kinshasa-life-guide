@@ -32,7 +32,6 @@ export type FormKey =
   | "hiring"
   | "jobseeker"
   | "secondhand"
-  | "luggage"
   | "purchase";
 
 const WORK_CITIES = [
@@ -50,9 +49,6 @@ const JOBSEEKER_CITIES = [
   "科卢韦齐 (Kolwezi)",
   "刚果金所有地区不限",
 ];
-
-const LUGGAGE_CITIES_FROM_DRC = ["金沙萨", "卢本巴希", "科卢韦齐", "马塔迪", "戈马"];
-const LUGGAGE_CITIES_FROM_CN = ["北京", "上海", "广州", "深圳", "香港", "成都"];
 
 const todayISO = () => {
   const d = new Date();
@@ -133,6 +129,20 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
         type: "textarea",
         required: true,
         placeholder: "前 60 个字符将显示在商家卡片页上",
+      },
+      {
+        name: "coverImageUrl",
+        label: "页面首图 URL（可选）",
+        type: "text",
+        placeholder: "https://...",
+        helpText: "首图会显示在卡片和详情页顶部；建议横图 ≥ 800×600。支持 https 图床链接。",
+      },
+      {
+        name: "galleryUrls",
+        label: "相册 URL（可选 · 每行一张）",
+        type: "textarea",
+        placeholder: "https://...\nhttps://...",
+        helpText: "最多 12 张；可用于展示门店 / 产品 / 服务现场照。填过之后在详情页会出现相册。",
       },
     ],
   },
@@ -231,45 +241,6 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
       { name: "contact", label: "联系方式", type: "contact-group", required: true },
     ],
   },
-  luggage: {
-    title: "顺风捎带 · 发布信息",
-    fields: [
-      {
-        name: "direction",
-        label: "方向",
-        type: "radio",
-        required: true,
-        options: ["刚果金 → 中国", "中国 → 刚果金"],
-      },
-      { name: "name", label: "带货人称呼", type: "text", required: true },
-      { name: "contact", label: "联系方式", type: "contact-group", required: true },
-      {
-        name: "fromCity",
-        label: "出发城市",
-        type: "select",
-        required: true,
-        options: LUGGAGE_CITIES_FROM_DRC,
-        conditional: { field: "direction", equals: "刚果金 → 中国" },
-      },
-      {
-        name: "fromCity",
-        label: "出发城市",
-        type: "select",
-        required: true,
-        options: LUGGAGE_CITIES_FROM_CN,
-        conditional: { field: "direction", equals: "中国 → 刚果金" },
-      },
-      { name: "departureDate", label: "出发时间", type: "date", required: true },
-      { name: "capacity", label: "可捎带重量/空间", type: "text", required: true },
-      {
-        name: "_reminder",
-        label: "小程序温馨提醒",
-        type: "textarea",
-        helpText:
-          "请务必当面确认物品合法合规，不捎带任何禁运/违禁/受管制物品；交接请保留凭证；本小程序仅提供信息对接，不参与任何运输纠纷与赔付。",
-      },
-    ],
-  },
 };
 
 export function SubmissionModal({
@@ -304,7 +275,6 @@ export function SubmissionModal({
     setValues((prev) => {
       const next = { ...prev, [name]: v };
       if (name === "category" && prev.category !== v) next.subcategory = "";
-      if (name === "direction" && prev.direction !== v) next.fromCity = "";
       if (name === "hasStore" && prev.hasStore !== v && v !== "有") {
         next.storeAddress = "";
       }

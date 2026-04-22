@@ -12,8 +12,16 @@ import {
 } from "lucide-react";
 import type React from "react";
 
+export interface BusinessUpdate {
+  id: string;
+  at: string; // ISO timestamp
+  text: string;
+  images?: string[];
+}
+
 export interface Business {
   id: number;
+  submissionId?: string; // 对应 user_submission.id (仅用户提交的商家有)
   name: string;
   englishName?: string;
   contactPerson: string;
@@ -25,6 +33,8 @@ export interface Business {
   serviceScope: string;
   intro: string;
   image: string;
+  gallery?: string[];
+  updates?: BusinessUpdate[];
   category: string;
   subcategory?: string;
   featured?: boolean;
@@ -603,7 +613,13 @@ export const businesses: Business[] = [
   ...seedBusinesses.map((b) => ({ ...b, hidden: true })),
   ...liveBusinesses,
 ];
-export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage" | "purchase";
+export type SubmissionType =
+  | "merchant"
+  | "hiring"
+  | "jobseeker"
+  | "secondhand"
+  | "purchase"
+  | "survey";
 export interface RawSubmission {
   id: string;
   type: SubmissionType;
@@ -642,8 +658,39 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
     if (!cat) return null;
     const name = get("nameZh") || get("name");
     const nameIntl = get("nameIntl");
+    const cover = get("coverImageUrl");
+    const galleryRaw = get("galleryUrls");
+    const gallery = galleryRaw
+      ? galleryRaw
+          .split(/\r?\n/)
+          .map((u) => u.trim())
+          .filter((u) => /^https?:\/\//i.test(u))
+          .slice(0, 12)
+      : [];
+    const updatesRaw = get("updates");
+    let updates: BusinessUpdate[] = [];
+    if (updatesRaw) {
+      try {
+        const parsed = JSON.parse(updatesRaw);
+        if (Array.isArray(parsed)) {
+          updates = parsed
+            .filter(
+              (u): u is BusinessUpdate =>
+                !!u &&
+                typeof u === "object" &&
+                typeof (u as BusinessUpdate).id === "string" &&
+                typeof (u as BusinessUpdate).at === "string" &&
+                typeof (u as BusinessUpdate).text === "string",
+            )
+            .slice(0, 20);
+        }
+      } catch {
+        /* 破损数据忽略 */
+      }
+    }
     return {
       id: baseId,
+      submissionId: s.id,
       name,
       contactPerson: get("contactPerson"),
       wechat: get("wechat"),
@@ -653,7 +700,9 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
       hasStore: get("hasStore"),
       serviceScope: get("storeAddress") || get("serviceScope"),
       intro: nameIntl || get("intro"),
-      image: DEFAULT_IMG[cat.key] ?? DEFAULT_IMG.business,
+      image: /^https?:\/\//i.test(cover) ? cover : DEFAULT_IMG[cat.key] ?? DEFAULT_IMG.business,
+      gallery: gallery.length ? gallery : undefined,
+      updates: updates.length ? updates : undefined,
       category: cat.key,
       subcategory: get("subcategory") || undefined,
     };

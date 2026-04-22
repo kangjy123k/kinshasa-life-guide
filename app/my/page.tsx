@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,11 +12,14 @@ import {
   UserPlus,
   UserSearch,
   Recycle,
-  Plane,
   ShoppingCart,
+  ClipboardList,
   Trash2,
   Inbox,
   RefreshCw,
+  Sparkles,
+  X,
+  ImagePlus,
 } from "lucide-react";
 import { getOwnerToken } from "@/lib/owner-token-client";
 
@@ -25,8 +28,8 @@ type SubmissionType =
   | "hiring"
   | "jobseeker"
   | "secondhand"
-  | "luggage"
-  | "purchase";
+  | "purchase"
+  | "survey";
 type Status = "pending" | "approved" | "rejected";
 
 interface SubmissionRecord {
@@ -46,8 +49,8 @@ const TYPE_META: Record<
   hiring:     { label: "招聘",     Icon: UserPlus,     color: "text-red-500",    bg: "bg-red-100" },
   jobseeker:  { label: "求职",     Icon: UserSearch,   color: "text-amber-600",  bg: "bg-amber-100" },
   secondhand: { label: "二手物品", Icon: Recycle,      color: "text-teal-600",   bg: "bg-teal-100" },
-  luggage:    { label: "顺风捎带", Icon: Plane,        color: "text-orange-600", bg: "bg-orange-100" },
   purchase:   { label: "求购信息", Icon: ShoppingCart, color: "text-rose-600",   bg: "bg-rose-100" },
+  survey:     { label: "问卷调研", Icon: ClipboardList,color: "text-indigo-600", bg: "bg-indigo-100" },
 };
 
 const STATUS_META: Record<
@@ -189,6 +192,7 @@ export default function MySubmissionsPage() {
               onWithdrawn={(id) =>
                 setRecords((prev) => prev.filter((x) => x.id !== id))
               }
+              onUpdatesChanged={load}
             />
           ))}
         </div>
@@ -224,9 +228,11 @@ function EmptyState({ hasToken }: { hasToken: boolean }) {
 function RecordCard({
   record,
   onWithdrawn,
+  onUpdatesChanged,
 }: {
   record: SubmissionRecord;
   onWithdrawn: (id: string) => void;
+  onUpdatesChanged: () => void;
 }) {
   const meta = TYPE_META[record.type];
   const status = STATUS_META[record.status];
@@ -237,6 +243,19 @@ function RecordCard({
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
+
+  const canPostUpdate = record.type === "merchant" && record.status === "approved";
+  const existingUpdates = useMemo(() => {
+    const raw = record.data?.updates;
+    if (!raw) return 0;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0;
+    }
+  }, [record.data?.updates]);
 
   // 标题：优先取最显著的字段
   const title =
@@ -322,6 +341,21 @@ function RecordCard({
       </div>
 
       <div className="px-3.5 py-2.5 border-t border-sky-50 flex items-center justify-end gap-2">
+        {canPostUpdate && !confirming && (
+          <button
+            onClick={() => setUpdateOpen(true)}
+            disabled={working}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-rose-500 to-orange-500 text-white rounded-lg shadow-sm active:scale-95 transition"
+          >
+            <Megaphone size={13} />
+            发布新动态
+            {existingUpdates > 0 && (
+              <span className="ml-0.5 px-1.5 rounded-full bg-white/25 text-[10px] font-black">
+                {existingUpdates}
+              </span>
+            )}
+          </button>
+        )}
         {!confirming ? (
           <button
             onClick={() => setConfirming(true)}
@@ -351,6 +385,159 @@ function RecordCard({
             </button>
           </>
         )}
+      </div>
+
+      {updateOpen && (
+        <MerchantUpdateModal
+          submissionId={record.id}
+          onClose={() => setUpdateOpen(false)}
+          onPosted={() => {
+            setUpdateOpen(false);
+            onUpdatesChanged();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function MerchantUpdateModal({
+  submissionId,
+  onClose,
+  onPosted,
+}: {
+  submissionId: string;
+  onClose: () => void;
+  onPosted: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [imageUrls, setImageUrls] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+
+  const handleClose = () => {
+    setClosing((c) => {
+      if (c) return c;
+      setTimeout(onClose, 260);
+      return true;
+    });
+  };
+
+  const submit = async () => {
+    if (!text.trim()) {
+      setError("请填写动态内容");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const token = getOwnerToken();
+      const images = imageUrls
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter((s) => /^https?:\/\//i.test(s))
+        .slice(0, 6);
+      const res = await fetch("/api/merchant/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "x-owner-token": token } : {}),
+        },
+        body: JSON.stringify({ submissionId, text, images }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error || "发布失败");
+      }
+      onPosted();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "发布失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300 ease-out ${
+        closing ? "opacity-0" : "opacity-100"
+      }`}
+      onClick={handleClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-sm bg-white rounded-2xl shadow-xl max-h-[85vh] flex flex-col overflow-hidden transition-all duration-300 ease-out ${
+          closing ? "opacity-0 scale-95" : "opacity-100 scale-100"
+        }`}
+      >
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
+          <span className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+            <Sparkles size={14} />
+          </span>
+          <h3 className="text-[15px] font-semibold text-gray-800 flex-1 min-w-0 truncate">
+            发布新动态
+          </h3>
+          <button
+            onClick={handleClose}
+            aria-label="关闭"
+            className="w-7 h-7 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center active:scale-95 transition"
+          >
+            <X size={16} className="text-gray-500" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
+          <div>
+            <label className="block text-[12px] font-medium text-gray-600 mb-1">
+              动态内容 <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="新品到货 / 限时折扣 / 营业时间变更…"
+              className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400"
+            />
+            <p className="mt-0.5 text-[10.5px] text-gray-400">{text.length} / 500</p>
+          </div>
+          <div>
+            <label className="block text-[12px] font-medium text-gray-600 mb-1 flex items-center gap-1">
+              <ImagePlus size={12} /> 图片 URL（可选 · 每行一张 · 最多 6 张）
+            </label>
+            <textarea
+              value={imageUrls}
+              onChange={(e) => setImageUrls(e.target.value)}
+              rows={3}
+              placeholder="https://...\nhttps://..."
+              className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400"
+            />
+          </div>
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 px-2.5 py-1.5 rounded-lg">
+              {error}
+            </p>
+          )}
+          <p className="text-[10.5px] text-gray-400 leading-relaxed">
+            动态发布后立即显示在商家卡片和详情页，14 天内会出现"新动态"小标志。最多保留 20 条。
+          </p>
+        </div>
+        <div className="px-4 py-2.5 border-t border-gray-100 shrink-0">
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-rose-500 to-orange-500 text-white text-[13px] font-semibold rounded-full disabled:opacity-60 active:scale-95 transition"
+          >
+            {submitting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> 发布中…
+              </>
+            ) : (
+              "发布动态"
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

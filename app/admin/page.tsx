@@ -14,14 +14,20 @@ import {
   Clock,
   Trash2,
   LogOut,
-  Plane,
   QrCode,
   Upload,
   AlertTriangle,
   ShoppingCart,
+  ClipboardList,
 } from "lucide-react";
 
-type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage" | "purchase";
+type SubmissionType =
+  | "merchant"
+  | "hiring"
+  | "jobseeker"
+  | "secondhand"
+  | "purchase"
+  | "survey";
 type Status = "pending" | "approved" | "rejected";
 
 interface SubmissionRecord {
@@ -37,8 +43,8 @@ const TYPE_META: Record<SubmissionType, { label: string; icon: React.ComponentTy
   hiring:     { label: "招聘",     icon: UserPlus,     color: "bg-red-400" },
   jobseeker:  { label: "求职",     icon: UserSearch,   color: "bg-amber-400" },
   secondhand: { label: "二手物品", icon: Recycle,      color: "bg-teal-500" },
-  luggage:    { label: "顺风捎带", icon: Plane,        color: "bg-orange-500" },
   purchase:   { label: "求购信息", icon: ShoppingCart, color: "bg-red-500" },
+  survey:     { label: "问卷调研", icon: ClipboardList,color: "bg-indigo-500" },
 };
 
 const STATUS_META: Record<Status, { label: string; cls: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
@@ -163,8 +169,8 @@ export default function AdminPage() {
       hiring: 0,
       jobseeker: 0,
       secondhand: 0,
-      luggage: 0,
       purchase: 0,
+      survey: 0,
     };
     for (const r of records) c[r.type]++;
     return c;

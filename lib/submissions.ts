@@ -1,7 +1,13 @@
 import { createClient, type Client } from "@libsql/client/web";
 import { list } from "@vercel/blob";
 
-export type SubmissionType = "merchant" | "hiring" | "jobseeker" | "secondhand" | "luggage" | "purchase";
+export type SubmissionType =
+  | "merchant"
+  | "hiring"
+  | "jobseeker"
+  | "secondhand"
+  | "purchase"
+  | "survey";
 
 export interface SubmissionRecord {
   id: string;
@@ -205,4 +211,111 @@ export async function deleteByOwner(id: string, ownerToken: string): Promise<boo
     args: [id, ownerToken],
   });
   return (res.rowsAffected ?? 0) > 0;
+}
+
+export interface MerchantUpdate {
+  id: string;
+  at: string;
+  text: string;
+  images?: string[];
+}
+
+const MAX_UPDATES = 20;
+
+export async function appendMerchantUpdate(
+  submissionId: string,
+  ownerToken: string,
+  entry: { text: string; images?: string[] },
+): Promise<MerchantUpdate | null> {
+  await ensureSchema();
+  if (!submissionId || !ownerToken) return null;
+  const { rows } = await db().execute({
+    sql: `SELECT id, type, status, data_json
+          FROM user_submission
+          WHERE id = ? AND owner_token = ?`,
+    args: [submissionId, ownerToken],
+  });
+  if (rows.length === 0) return null;
+  const row = rows[0] as unknown as {
+    type: string;
+    status: string;
+    data_json: string;
+  };
+  if (row.type !== "merchant") return null;
+  // 只允许审核通过的商家发布动态
+  if (row.status !== "approved") return null;
+  let data: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(String(row.data_json ?? "{}"));
+    if (parsed && typeof parsed === "object") data = parsed as Record<string, string>;
+  } catch {
+    /* ignore */
+  }
+  let existing: MerchantUpdate[] = [];
+  if (data.updates) {
+    try {
+      const parsed = JSON.parse(data.updates);
+      if (Array.isArray(parsed)) existing = parsed.filter((u) => u && typeof u === "object");
+    } catch {
+      /* 破损就重置 */
+    }
+  }
+  const trimmedText = entry.text.trim().slice(0, 500);
+  if (!trimmedText) return null;
+  const cleanImages = (entry.images ?? [])
+    .map((u) => u.trim())
+    .filter((u) => /^https?:\/\//i.test(u))
+    .slice(0, 6);
+  const newEntry: MerchantUpdate = {
+    id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    at: new Date().toISOString(),
+    text: trimmedText,
+    ...(cleanImages.length ? { images: cleanImages } : {}),
+  };
+  const next = [newEntry, ...existing].slice(0, MAX_UPDATES);
+  const nextData = { ...data, updates: JSON.stringify(next) };
+  await db().execute({
+    sql: "UPDATE user_submission SET data_json = ? WHERE id = ? AND owner_token = ?",
+    args: [JSON.stringify(nextData), submissionId, ownerToken],
+  });
+  return newEntry;
+}
+
+export async function deleteMerchantUpdate(
+  submissionId: string,
+  ownerToken: string,
+  updateId: string,
+): Promise<boolean> {
+  await ensureSchema();
+  if (!submissionId || !ownerToken || !updateId) return false;
+  const { rows } = await db().execute({
+    sql: `SELECT data_json FROM user_submission
+          WHERE id = ? AND owner_token = ?`,
+    args: [submissionId, ownerToken],
+  });
+  if (rows.length === 0) return false;
+  const row = rows[0] as unknown as { data_json: string };
+  let data: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(String(row.data_json ?? "{}"));
+    if (parsed && typeof parsed === "object") data = parsed as Record<string, string>;
+  } catch {
+    return false;
+  }
+  if (!data.updates) return false;
+  let arr: MerchantUpdate[] = [];
+  try {
+    const parsed = JSON.parse(data.updates);
+    if (Array.isArray(parsed)) arr = parsed;
+  } catch {
+    return false;
+  }
+  const next = arr.filter((u) => u.id !== updateId);
+  if (next.length === arr.length) return false;
+  const nextData = { ...data, updates: JSON.stringify(next) };
+  await db().execute({
+    sql: "UPDATE user_submission SET data_json = ? WHERE id = ? AND owner_token = ?",
+    args: [JSON.stringify(nextData), submissionId, ownerToken],
+  });
+  return true;
 }

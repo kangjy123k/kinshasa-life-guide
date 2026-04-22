@@ -15,7 +15,6 @@ import {
   QrCode,
   AlertTriangle,
   Megaphone,
-  Plane,
   Sparkles,
 } from "lucide-react";
 
@@ -37,6 +36,7 @@ import {
   WhatsAppChip,
 } from "@/components/BusinessCardUI";
 import { homeUsefulItems } from "@/lib/useful-items";
+import { upcomingEvents } from "@/lib/events";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -88,12 +88,21 @@ export default function GuidePage() {
   const [detailBizId, setDetailBizId] = useState<number | null>(null);
   const [posterOpen, setPosterOpen] = useState(false);
 
-  // 首次访问显示语音播报海报，3 秒后消失
+  // 首次访问显示语音播报海报，3 秒后消失；同一浏览器 48h 内只弹一次
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (sessionStorage.getItem("poster-tts-seen")) return;
-    setPosterOpen(true);
-    sessionStorage.setItem("poster-tts-seen", "1");
+    const KEY = "poster-tts-seen-at";
+    const WINDOW_MS = 48 * 60 * 60 * 1000;
+    try {
+      const raw = localStorage.getItem(KEY);
+      const last = raw ? Number(raw) : 0;
+      if (Number.isFinite(last) && Date.now() - last < WINDOW_MS) return;
+      setPosterOpen(true);
+      localStorage.setItem(KEY, String(Date.now()));
+    } catch {
+      // localStorage 不可用时直接放弃抑制，最坏每次都弹一次
+      setPosterOpen(true);
+    }
   }, []);
 
   // 初始化浏览器历史 + ?biz=<id> 支持
@@ -166,7 +175,8 @@ export default function GuidePage() {
           const records = d.records ?? [];
           const items: Business[] = [];
           records.forEach((r, i) => {
-            if (r.type === "luggage") return;
+            // 旧的 luggage 提交已在 DB 中，统一忽略
+            if ((r.type as string) === "luggage") return;
             const b = submissionToBusiness(r, i);
             if (b) items.push(b);
           });
@@ -503,21 +513,6 @@ function HomeView({
               );
             })}
 
-            {/* 顺风捎带 — 独立 /luggage 页 */}
-            <button
-              onClick={() => router.push("/luggage")}
-              className="h-20 flex flex-col items-center justify-center gap-1 bg-white rounded-2xl shadow-sm border border-sky-100 hover:border-red-300 active:scale-95 transition"
-            >
-              <span
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: "#fb923c1A" }}
-              >
-                <Plane size={20} style={{ color: "#fb923c" }} />
-              </span>
-              <span className="text-[11px] font-medium text-gray-700">
-                顺风捎带
-              </span>
-            </button>
           </div>
         </div>
       </section>
@@ -567,6 +562,9 @@ function HomeView({
 
       {/* ---- 许愿池专区 ---- */}
       <WishingPoolBanner />
+
+      {/* ---- 线下活动 ---- */}
+      <EventsBanner />
 
       {/* ---- 微信群入口 ---- */}
       <WeChatGroupBanner />
@@ -943,6 +941,66 @@ function BusinessDetailView({
             <ContactButtons biz={biz} className="mt-5" />
           </div>
         </div>
+
+        {biz.gallery && biz.gallery.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4">
+            <h3 className="text-sm font-bold text-gray-800 mb-3">相册</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {biz.gallery.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={`${src}-${i}`}
+                  src={src}
+                  alt={`${biz.name} 相册 ${i + 1}`}
+                  loading="lazy"
+                  className="aspect-square w-full rounded-lg object-cover border border-sky-50"
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {biz.updates && biz.updates.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-1.5 mb-3">
+              <span>最新动态</span>
+              <span className="px-1.5 py-0.5 bg-rose-100 text-rose-600 rounded-full text-[10px] font-bold">
+                {biz.updates.length}
+              </span>
+            </h3>
+            <ul className="space-y-3">
+              {biz.updates.slice(0, 8).map((u) => (
+                <li key={u.id} className="border-l-2 border-rose-200 pl-3">
+                  <p className="text-[11px] text-gray-400">
+                    {new Date(u.at).toLocaleString("zh-CN", {
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <p className="text-sm text-gray-700 leading-relaxed mt-0.5 whitespace-pre-wrap">
+                    {u.text}
+                  </p>
+                  {u.images && u.images.length > 0 && (
+                    <div className="mt-2 flex gap-1.5 overflow-x-auto scrollbar-none">
+                      {u.images.map((src, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={`${src}-${i}`}
+                          src={src}
+                          alt={`动态图片 ${i + 1}`}
+                          loading="lazy"
+                          className="h-24 w-auto rounded-lg object-cover border border-sky-50 shrink-0"
+                        />
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </>
   );
@@ -979,6 +1037,60 @@ function WishingPoolBanner() {
             </p>
             <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 bg-white/25 backdrop-blur rounded-full text-[11px] md:text-xs font-semibold">
               去许愿 <ChevronRight size={12} />
+            </span>
+          </div>
+        </div>
+      </Link>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  线下活动横幅                                                         */
+/* ------------------------------------------------------------------ */
+function EventsBanner() {
+  const upcoming = upcomingEvents();
+  const next = upcoming[0];
+  const rest = upcoming.length - 1;
+
+  const dayLabel = (() => {
+    if (!next) return null;
+    const d = new Date(next.date + "T12:00:00");
+    return d.toLocaleDateString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+    });
+  })();
+
+  return (
+    <section className="max-w-4xl mx-auto px-4 mt-6">
+      <Link
+        href="/events"
+        className="relative block rounded-3xl overflow-hidden shadow-lg bg-gradient-to-br from-violet-600 via-indigo-500 to-sky-500 text-white active:scale-[0.99] transition"
+      >
+        <div className="absolute -top-10 -left-6 w-32 h-32 rounded-full bg-white/15" />
+        <div className="absolute -bottom-12 -right-6 w-40 h-40 rounded-full bg-white/10" />
+        <div className="absolute top-10 right-16 w-2.5 h-2.5 rounded-full bg-white/40" />
+
+        <div className="relative flex items-center gap-3 px-4 py-4 md:px-6 md:py-5">
+          <span className="text-5xl md:text-6xl drop-shadow shrink-0">🎉</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <h3 className="text-lg md:text-xl font-black leading-tight drop-shadow">
+                线下活动
+              </h3>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-300 text-violet-900 text-[10px] font-black rounded-full shadow">
+                <Sparkles size={10} fill="currentColor" /> 新
+              </span>
+            </div>
+            <p className="text-xs md:text-sm text-white/95 leading-snug drop-shadow">
+              {next
+                ? `下一场：${dayLabel} · ${next.title}${rest > 0 ? `（另 ${rest} 场在排） ` : ""}`
+                : "在刚果金也有丰富生活 —— 聚会、赛事、演出 集中展示"}
+            </p>
+            <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 bg-white/25 backdrop-blur rounded-full text-[11px] md:text-xs font-semibold">
+              查看全部 <ChevronRight size={12} />
             </span>
           </div>
         </div>
@@ -1043,7 +1155,7 @@ function WeChatGroupBanner() {
           </div>
           <div className="flex-1 min-w-0 text-center sm:text-left">
             <p className="text-sm md:text-base font-semibold text-gray-800">
-              扫码入群 · 同城资讯 · 互助 · 顺风捎带
+              扫码入群 · 同城资讯 · 互助 · 活动通知
             </p>
             <p className="text-xs text-gray-500 mt-1 leading-relaxed">
               商家上新、招聘求职、生活求助、代购代运、

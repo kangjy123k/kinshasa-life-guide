@@ -14,6 +14,17 @@ import {
 } from "lucide-react";
 import { type Business, categories } from "@/lib/businesses";
 
+const NEW_UPDATE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
+function hasFreshUpdate(biz: Business): boolean {
+  if (!biz.updates || biz.updates.length === 0) return false;
+  const latestAt = biz.updates[0]?.at;
+  if (!latestAt) return false;
+  const t = Date.parse(latestAt);
+  if (!Number.isFinite(t)) return false;
+  return Date.now() - t <= NEW_UPDATE_WINDOW_MS;
+}
+
 export function BusinessCard({
   biz,
   onOpen,
@@ -44,6 +55,14 @@ export function BusinessCard({
         {biz.featured && (
           <span className="absolute top-3 left-3 px-2.5 py-1 bg-yellow-400 text-white text-xs font-bold rounded-full shadow flex items-center gap-1">
             <Star size={12} fill="white" /> 热门
+          </span>
+        )}
+        {hasFreshUpdate(biz) && (
+          <span
+            className="absolute bottom-3 left-3 inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-rose-500 to-orange-500 text-white text-[10.5px] font-black rounded-full shadow-lg animate-pulse"
+            aria-label="有最新动态"
+          >
+            ✨ 新动态
           </span>
         )}
         <span className="absolute top-3 right-3 px-2.5 py-1 bg-sky-500 text-white text-xs font-semibold rounded-full shadow">
