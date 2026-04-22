@@ -153,14 +153,8 @@ export function SpeakButton({ text, cacheKey }: { text: string; cacheKey?: strin
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const reportError = (stage: string, extra?: unknown) => {
+    // 失败只打 console，不 alert 吓用户 — 按钮会自动恢复成可点状态
     console.error(`[SpeakButton] ${stage}`, extra);
-    alert(
-      `法语朗读失败（${stage}）。请检查：\n` +
-        `• 网络 / 后端 /api/speak 是否 200\n` +
-        `• GEMINI_API_KEY 是否已在 .env.local 配置并重启 dev\n` +
-        `• Gemini 配额是否耗尽\n` +
-        `（详细错误已打到控制台）`
-    );
   };
 
   const speak = async (e: React.MouseEvent) => {
