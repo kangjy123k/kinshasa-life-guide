@@ -658,13 +658,14 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
     if (!cat) return null;
     const name = get("nameZh") || get("name");
     const nameIntl = get("nameIntl");
+    const isValidImg = (u: string) => /^https?:\/\//i.test(u) || u.startsWith("/api/media/");
     const cover = get("coverImageUrl");
     const galleryRaw = get("galleryUrls");
     const gallery = galleryRaw
       ? galleryRaw
           .split(/\r?\n/)
           .map((u) => u.trim())
-          .filter((u) => /^https?:\/\//i.test(u))
+          .filter(isValidImg)
           .slice(0, 12)
       : [];
     const updatesRaw = get("updates");
@@ -700,7 +701,7 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
       hasStore: get("hasStore"),
       serviceScope: get("storeAddress") || get("serviceScope"),
       intro: nameIntl || get("intro"),
-      image: /^https?:\/\//i.test(cover) ? cover : DEFAULT_IMG[cat.key] ?? DEFAULT_IMG.business,
+      image: isValidImg(cover) ? cover : DEFAULT_IMG[cat.key] ?? DEFAULT_IMG.business,
       gallery: gallery.length ? gallery : undefined,
       updates: updates.length ? updates : undefined,
       category: cat.key,

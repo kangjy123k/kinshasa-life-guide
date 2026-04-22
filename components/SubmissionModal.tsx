@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { categories, KINSHASA_COMMUNES } from "@/lib/businesses";
 import { getOwnerToken, setOwnerToken } from "@/lib/owner-token-client";
+import { SingleImageUploader, MultiImageUploader } from "@/components/ImageUploader";
 
 type FieldType =
   | "text"
@@ -14,7 +15,9 @@ type FieldType =
   | "date"
   | "range-usd"
   | "radio"
-  | "contact-group";
+  | "contact-group"
+  | "image"
+  | "gallery";
 
 interface FormField {
   name: string;
@@ -132,17 +135,15 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
       },
       {
         name: "coverImageUrl",
-        label: "页面首图 URL（可选）",
-        type: "text",
-        placeholder: "https://...",
-        helpText: "首图会显示在卡片和详情页顶部；建议横图 ≥ 800×600。支持 https 图床链接。",
+        label: "页面首图（可选）",
+        type: "image",
+        helpText: "点击从手机相册选择；自动压缩。显示在商家卡片和详情页顶部，建议选横图。",
       },
       {
         name: "galleryUrls",
-        label: "相册 URL（可选 · 每行一张）",
-        type: "textarea",
-        placeholder: "https://...\nhttps://...",
-        helpText: "最多 12 张；可用于展示门店 / 产品 / 服务现场照。填过之后在详情页会出现相册。",
+        label: "相册（可选 · 最多 12 张）",
+        type: "gallery",
+        helpText: "从手机相册多选，展示门店 / 产品 / 服务现场照。在详情页以九宫格展示。",
       },
     ],
   },
@@ -612,6 +613,41 @@ function FormFieldInput({
             );
           })}
         </div>
+      </div>
+    );
+  }
+
+  if (field.type === "image") {
+    const v = values[field.name] ?? "";
+    return (
+      <div>
+        <FieldLabel field={field} />
+        <SingleImageUploader
+          value={v}
+          onChange={(url) => onChange(field.name, url)}
+          scope="merchant-cover"
+          placeholder="点击上传商家首图"
+        />
+        {field.helpText && (
+          <p className="mt-1 text-[10.5px] leading-snug text-gray-500">{field.helpText}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (field.type === "gallery") {
+    const v = values[field.name] ?? "";
+    const urls = v.split(/\r?\n/).map((s) => s.trim()).filter((s) => /^https?:\/\/|^\//.test(s));
+    return (
+      <div>
+        <FieldLabel field={field} />
+        <MultiImageUploader
+          values={urls}
+          onChange={(next) => onChange(field.name, next.join("\n"))}
+          scope="merchant-gallery"
+          max={12}
+          note={field.helpText}
+        />
       </div>
     );
   }

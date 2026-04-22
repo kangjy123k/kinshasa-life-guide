@@ -264,7 +264,7 @@ export async function appendMerchantUpdate(
   if (!trimmedText) return null;
   const cleanImages = (entry.images ?? [])
     .map((u) => u.trim())
-    .filter((u) => /^https?:\/\//i.test(u))
+    .filter((u) => /^https?:\/\//i.test(u) || u.startsWith("/api/media/"))
     .slice(0, 6);
   const newEntry: MerchantUpdate = {
     id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

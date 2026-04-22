@@ -19,9 +19,9 @@ import {
   RefreshCw,
   Sparkles,
   X,
-  ImagePlus,
 } from "lucide-react";
 import { getOwnerToken } from "@/lib/owner-token-client";
+import { MultiImageUploader } from "@/components/ImageUploader";
 
 type SubmissionType =
   | "merchant"
@@ -411,7 +411,7 @@ function MerchantUpdateModal({
   onPosted: () => void;
 }) {
   const [text, setText] = useState("");
-  const [imageUrls, setImageUrls] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
@@ -433,18 +433,14 @@ function MerchantUpdateModal({
     setSubmitting(true);
     try {
       const token = getOwnerToken();
-      const images = imageUrls
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter((s) => /^https?:\/\//i.test(s))
-        .slice(0, 6);
+      const cleanImages = images.slice(0, 6);
       const res = await fetch("/api/merchant/update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "x-owner-token": token } : {}),
         },
-        body: JSON.stringify({ submissionId, text, images }),
+        body: JSON.stringify({ submissionId, text, images: cleanImages }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -503,15 +499,15 @@ function MerchantUpdateModal({
             <p className="mt-0.5 text-[10.5px] text-gray-400">{text.length} / 500</p>
           </div>
           <div>
-            <label className="block text-[12px] font-medium text-gray-600 mb-1 flex items-center gap-1">
-              <ImagePlus size={12} /> 图片 URL（可选 · 每行一张 · 最多 6 张）
+            <label className="block text-[12px] font-medium text-gray-600 mb-1.5">
+              配图（可选 · 最多 6 张）
             </label>
-            <textarea
-              value={imageUrls}
-              onChange={(e) => setImageUrls(e.target.value)}
-              rows={3}
-              placeholder="https://...\nhttps://..."
-              className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400"
+            <MultiImageUploader
+              values={images}
+              onChange={setImages}
+              scope="merchant-update"
+              max={6}
+              note="从手机相册选择，支持多选 · 自动压缩"
             />
           </div>
           {error && (
