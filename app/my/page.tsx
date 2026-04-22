@@ -9,11 +9,10 @@ import {
   CheckCircle2,
   XCircle,
   Megaphone,
-  UserPlus,
-  UserSearch,
   Recycle,
   ShoppingCart,
   ClipboardList,
+  CalendarHeart,
   Trash2,
   Inbox,
   RefreshCw,
@@ -25,11 +24,10 @@ import { MultiImageUploader } from "@/components/ImageUploader";
 
 type SubmissionType =
   | "merchant"
-  | "hiring"
-  | "jobseeker"
   | "secondhand"
   | "purchase"
-  | "survey";
+  | "survey"
+  | "event";
 type Status = "pending" | "approved" | "rejected";
 
 interface SubmissionRecord {
@@ -46,11 +44,10 @@ const TYPE_META: Record<
   { label: string; Icon: React.ComponentType<{ size?: number; className?: string }>; color: string; bg: string }
 > = {
   merchant:   { label: "商家入驻", Icon: Megaphone,    color: "text-sky-600",    bg: "bg-sky-100" },
-  hiring:     { label: "招聘",     Icon: UserPlus,     color: "text-red-500",    bg: "bg-red-100" },
-  jobseeker:  { label: "求职",     Icon: UserSearch,   color: "text-amber-600",  bg: "bg-amber-100" },
   secondhand: { label: "二手物品", Icon: Recycle,      color: "text-teal-600",   bg: "bg-teal-100" },
   purchase:   { label: "求购信息", Icon: ShoppingCart, color: "text-rose-600",   bg: "bg-rose-100" },
   survey:     { label: "问卷调研", Icon: ClipboardList,color: "text-indigo-600", bg: "bg-indigo-100" },
+  event:      { label: "线下活动", Icon: CalendarHeart,color: "text-violet-600", bg: "bg-violet-100" },
 };
 
 const STATUS_META: Record<

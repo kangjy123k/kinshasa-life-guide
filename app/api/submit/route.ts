@@ -5,11 +5,10 @@ export const runtime = "nodejs";
 
 const VALID_TYPES: SubmissionType[] = [
   "merchant",
-  "hiring",
-  "jobseeker",
   "secondhand",
   "purchase",
   "survey",
+  "event",
 ];
 
 const OWNER_COOKIE = "klg_owner";

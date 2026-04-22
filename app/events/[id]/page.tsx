@@ -1,11 +1,12 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
+  Loader2,
   MapPin,
   Ticket,
   Users,
@@ -14,7 +15,8 @@ import {
   Phone,
   Sparkles,
 } from "lucide-react";
-import { getEvent } from "@/lib/events";
+import { getEvent, submissionToEvent, type OfflineEvent } from "@/lib/events";
+import type { RawSubmission } from "@/lib/businesses";
 
 export default function EventDetailPage({
   params,
@@ -22,8 +24,38 @@ export default function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const event = getEvent(id);
-  if (!event) return notFound();
+  const seed = getEvent(id);
+  const [extra, setExtra] = useState<OfflineEvent | null>(null);
+  const [loading, setLoading] = useState(!seed);
+
+  useEffect(() => {
+    if (seed) return;
+    let cancel = false;
+    fetch("/api/public/approved")
+      .then((r) => r.json())
+      .then((d: { records?: RawSubmission[] }) => {
+        if (cancel) return;
+        const hit = (d.records ?? []).find(
+          (r) => r.id === id && (r.type as string) === "event",
+        );
+        if (hit) setExtra(submissionToEvent(hit as unknown as { id: string; type: string; data: Record<string, string> }));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancel) setLoading(false); });
+    return () => { cancel = true; };
+  }, [id, seed]);
+
+  const event = seed ?? extra;
+  if (!event) {
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center text-gray-400">
+          <Loader2 size={18} className="animate-spin mr-2" /> 加载中…
+        </div>
+      );
+    }
+    return notFound();
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 via-sky-50 to-white pb-20">
@@ -73,16 +105,41 @@ export default function EventDetailPage({
                    text={`${event.date}${event.timeHint ? ` · ${event.timeHint}` : ""}`} />
           <InfoRow icon={<MapPin size={15} className="text-rose-400" />}
                    label="地点"
-                   text={`${event.venue} · ${event.area}`} />
+                   text={event.area ? `${event.venue} · ${event.area}` : event.venue} />
           {event.feeHint && (
             <InfoRow icon={<Ticket size={15} className="text-amber-500" />}
                      label="费用"
                      text={event.feeHint} />
           )}
+          {event.participantRange && (
+            <InfoRow icon={<Users size={15} className="text-sky-500" />}
+                     label="参与人数"
+                     text={event.participantRange} />
+          )}
           <InfoRow icon={<Users size={15} className="text-sky-500" />}
                    label="主办"
                    text={event.organizer} />
         </section>
+
+        {event.gallery && event.gallery.length > 0 && (
+          <section className="bg-white rounded-2xl border border-violet-100 p-4">
+            <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase mb-2">
+              活动相册
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {event.gallery.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={`${src}-${i}`}
+                  src={src}
+                  alt={`活动相册 ${i + 1}`}
+                  loading="lazy"
+                  className="aspect-square w-full rounded-lg object-cover border border-violet-50"
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="bg-white rounded-2xl border border-violet-100 p-4">
           <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase mb-1.5">

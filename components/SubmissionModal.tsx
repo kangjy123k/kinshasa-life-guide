@@ -14,6 +14,7 @@ type FieldType =
   | "subcategory"
   | "date"
   | "range-usd"
+  | "range-count"
   | "radio"
   | "contact-group"
   | "image"
@@ -32,26 +33,9 @@ interface FormField {
 
 export type FormKey =
   | "merchant"
-  | "hiring"
-  | "jobseeker"
   | "secondhand"
-  | "purchase";
-
-const WORK_CITIES = [
-  "金沙萨 (Kinshasa)",
-  "卢本巴希 (Lubumbashi)",
-  "马塔迪 (Matadi)",
-  "科卢韦齐 (Kolwezi)",
-  "刚果金其他地区",
-];
-
-const JOBSEEKER_CITIES = [
-  "金沙萨 (Kinshasa)",
-  "卢本巴希 (Lubumbashi)",
-  "马塔迪 (Matadi)",
-  "科卢韦齐 (Kolwezi)",
-  "刚果金所有地区不限",
-];
+  | "purchase"
+  | "event";
 
 const todayISO = () => {
   const d = new Date();
@@ -147,82 +131,6 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
       },
     ],
   },
-  hiring: {
-    title: "招聘信息发布",
-    fields: [
-      { name: "industry", label: "公司行业", type: "text", required: true },
-      {
-        name: "companyPublic",
-        label: "公司名称是否展示",
-        type: "radio",
-        required: true,
-        options: ["展示", "暂时保密"],
-      },
-      { name: "companyZh", label: "公司中文名称", type: "text", required: true },
-      { name: "companyIntl", label: "公司外文名称", type: "text" },
-      {
-        name: "registrationCountry",
-        label: "公司主体注册国家",
-        type: "select",
-        required: true,
-        options: ["中国", "刚果金", "其他"],
-      },
-      { name: "position", label: "招聘职位", type: "text", required: true },
-      {
-        name: "workCity",
-        label: "主要工作地点",
-        type: "select",
-        required: true,
-        options: WORK_CITIES,
-      },
-      { name: "jobContent", label: "主要工作内容", type: "textarea", required: true },
-      { name: "requirement", label: "任职条件", type: "textarea", required: true },
-      { name: "salary", label: "年薪区间", type: "range-usd", required: true },
-      { name: "benefits", label: "其他福利", type: "textarea" },
-      { name: "recruiterName", label: "招聘负责人称呼", type: "text", required: true },
-      {
-        name: "recruiterContact",
-        label: "招聘负责人微信号或邮箱",
-        type: "text",
-        required: true,
-      },
-      {
-        name: "deadline",
-        label: "招聘截止日期",
-        type: "date",
-        required: true,
-        helpText: "最多展示 1 个月，如需急招或长期招聘，请联系小程序运营",
-      },
-    ],
-  },
-  jobseeker: {
-    title: "求职信息发布",
-    fields: [
-      { name: "name", label: "求职者称呼", type: "text", required: true },
-      {
-        name: "gender",
-        label: "性别",
-        type: "radio",
-        required: true,
-        options: ["男", "女"],
-      },
-      { name: "age", label: "年龄", type: "text", required: true },
-      { name: "contact", label: "联系方式", type: "contact-group", required: true },
-      { name: "targetPosition", label: "目标岗位", type: "text", required: true },
-      { name: "experienceYears", label: "相关工作年限", type: "text", required: true },
-      {
-        name: "expectCity",
-        label: "期望工作地",
-        type: "select",
-        required: true,
-        options: JOBSEEKER_CITIES,
-      },
-      { name: "expectSalary", label: "期望年薪", type: "range-usd", required: true },
-      { name: "skills", label: "技能描述", type: "textarea", required: true },
-      { name: "achievements", label: "过往工作成就", type: "textarea" },
-      { name: "unacceptable", label: "不可接受的条件", type: "textarea" },
-    ],
-  },
   secondhand: {
     title: "二手物品发布",
     fields: [
@@ -237,7 +145,43 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
       },
       { name: "price", label: "售价（美元）", type: "text", required: true },
       { name: "description", label: "物品描述", type: "textarea", required: true },
+      {
+        name: "galleryUrls",
+        label: "物品图片（可选 · 最多 9 张）",
+        type: "gallery",
+        helpText: "从手机相册选择；第一张作为物品封面，其余在详情页以九宫格展示。",
+      },
       { name: "address", label: "物品所在地址", type: "text", required: true },
+      { name: "contactPerson", label: "联系人称呼", type: "text", required: true },
+      { name: "contact", label: "联系方式", type: "contact-group", required: true },
+    ],
+  },
+  event: {
+    title: "发布活动申请",
+    fields: [
+      { name: "eventName", label: "活动名称", type: "text", required: true },
+      { name: "eventDate", label: "活动日期", type: "date", required: true },
+      { name: "eventVenue", label: "活动地点", type: "text", required: true, placeholder: "场地名 + 区域，例：Pullman · Gombe" },
+      {
+        name: "participantCount",
+        label: "参与人数（最少 — 最多）",
+        type: "range-count",
+        required: true,
+      },
+      { name: "organizer", label: "活动组织方", type: "text", required: true },
+      {
+        name: "eventDescription",
+        label: "活动内容描述",
+        type: "textarea",
+        required: true,
+        placeholder: "活动亮点、流程、报名方式…",
+      },
+      {
+        name: "galleryUrls",
+        label: "活动相册（可选 · 最多 12 张）",
+        type: "gallery",
+        helpText: "从手机相册选择；第一张会作为海报。",
+      },
       { name: "contactPerson", label: "联系人称呼", type: "text", required: true },
       { name: "contact", label: "联系方式", type: "contact-group", required: true },
     ],
@@ -301,11 +245,11 @@ export function SubmissionModal({
         continue;
       }
 
-      if (f.type === "range-usd") {
+      if (f.type === "range-usd" || f.type === "range-count") {
         const lo = values[`${f.name}_min`]?.trim();
         const hi = values[`${f.name}_max`]?.trim();
         if (!lo || !hi) {
-          setError(`请填写「${f.label}」最低和最高值`);
+          setError(`请填写「${f.label}」最小和最大值`);
           return;
         }
         continue;
@@ -334,7 +278,7 @@ export function SubmissionModal({
       for (const f of def.fields) {
         if (!isActive(f)) continue;
         if (f.name.startsWith("_")) continue;
-        if (f.type === "range-usd") {
+        if (f.type === "range-usd" || f.type === "range-count") {
           payload[`${f.name}Min`] = values[`${f.name}_min`] ?? "";
           payload[`${f.name}Max`] = values[`${f.name}_max`] ?? "";
         } else if (f.type === "contact-group") {
@@ -556,32 +500,48 @@ function FormFieldInput({
     "w-full px-2.5 py-2 border rounded-lg text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-gray-500";
   const filled = (v: string) => !!v?.trim();
 
-  if (field.type === "range-usd") {
+  if (field.type === "range-usd" || field.type === "range-count") {
     const lo = values[`${field.name}_min`] ?? "";
     const hi = values[`${field.name}_max`] ?? "";
-    const loCls = `${baseInput} bg-gray-50 border-gray-200`;
-    const hiCls = `${baseInput} bg-gray-50 border-gray-200`;
+    const cls = `${baseInput} bg-gray-50 border-gray-200`;
+    const loPh = field.type === "range-count" ? "最少" : "最低";
+    const hiPh = field.type === "range-count" ? "最多" : "最高";
+    const suffix = field.type === "range-count" ? "人" : null;
     return (
       <div>
         <FieldLabel field={field} />
         <div className="flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            placeholder="最低"
-            value={lo}
-            onChange={(e) => onChange(`${field.name}_min`, e.target.value)}
-            className={loCls}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder={loPh}
+              value={lo}
+              onChange={(e) => onChange(`${field.name}_min`, e.target.value)}
+              className={`${cls}${suffix ? " pr-6" : ""}`}
+            />
+            {suffix && (
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+                {suffix}
+              </span>
+            )}
+          </div>
           <span className="text-gray-400 text-xs">—</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            placeholder="最高"
-            value={hi}
-            onChange={(e) => onChange(`${field.name}_max`, e.target.value)}
-            className={hiCls}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder={hiPh}
+              value={hi}
+              onChange={(e) => onChange(`${field.name}_max`, e.target.value)}
+              className={`${cls}${suffix ? " pr-6" : ""}`}
+            />
+            {suffix && (
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+                {suffix}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     );

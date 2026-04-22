@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 export const metadata: Metadata = {
   title: "刚果金华人生活服务指南",
   description:
-    "帮助刚果金华人更快找到本地服务 — 商品 · 餐厅 · 住宿 · 服务 · 租赁 · 招聘求职 · 二手专区",
+    "帮助刚果金华人更快找到本地服务 — 商品 · 餐厅 · 住宿 · 服务 · 租赁 · 二手专区 · 线下活动",
 };
 
 export const viewport = {

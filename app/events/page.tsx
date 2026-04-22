@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, ChevronRight, MapPin, Sparkles } from "lucide-react";
-import { EVENTS, upcomingEvents, type OfflineEvent } from "@/lib/events";
+import { EVENTS, submissionToEvent, type OfflineEvent } from "@/lib/events";
+import type { RawSubmission } from "@/lib/businesses";
 
 function formatDateLabel(iso: string): { main: string; week: string } {
   try {
@@ -22,10 +24,35 @@ function daysUntil(iso: string): number {
 }
 
 export default function EventsPage() {
-  const upcoming = upcomingEvents();
-  const past = EVENTS.filter((e) => !upcoming.find((u) => u.id === e.id))
-    .slice()
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const [extras, setExtras] = useState<OfflineEvent[]>([]);
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/public/approved")
+      .then((r) => r.json())
+      .then((d: { records?: RawSubmission[] }) => {
+        if (cancel) return;
+        const items: OfflineEvent[] = [];
+        for (const r of d.records ?? []) {
+          if ((r.type as string) !== "event") continue;
+          const ev = submissionToEvent(r as unknown as { id: string; type: string; data: Record<string, string> });
+          if (ev) items.push(ev);
+        }
+        setExtras(items);
+      })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, []);
+
+  const all = useMemo(() => [...EVENTS, ...extras], [extras]);
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = useMemo(
+    () => all.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
+    [all, today],
+  );
+  const past = useMemo(
+    () => all.filter((e) => e.date < today).sort((a, b) => b.date.localeCompare(a.date)),
+    [all, today],
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 via-sky-50 to-white pb-20">

@@ -3,11 +3,10 @@ import { list } from "@vercel/blob";
 
 export type SubmissionType =
   | "merchant"
-  | "hiring"
-  | "jobseeker"
   | "secondhand"
   | "purchase"
-  | "survey";
+  | "survey"
+  | "event";
 
 export interface SubmissionRecord {
   id: string;

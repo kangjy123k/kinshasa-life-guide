@@ -7,7 +7,6 @@ import {
   Briefcase,
   PartyPopper,
   Wrench,
-  Users,
   Tag,
 } from "lucide-react";
 import type React from "react";
@@ -120,7 +119,6 @@ export const categories: CategoryDef[] = [
   { key: "business",   label: "商业服务", icon: Briefcase,       sub: ["工程承包商", "建筑相关服务商", "装修队", "物流清关", "商业咨询"], color: "#3b82f6", emoji: "💼" },
   { key: "leisure",    label: "休闲娱乐", icon: PartyPopper,     sub: [], color: "#ec4899", emoji: "🎉" },
   { key: "rental",     label: "租赁设备", icon: Wrench,          sub: ["脚手架", "电气设备", "运输设备"], color: "#64748b", emoji: "🔧" },
-  { key: "jobs",       label: "招聘求职", icon: Users,           sub: ["招聘", "求职"], color: "#14b8a6", emoji: "👥" },
   { key: "secondhand", label: "二手专区", icon: Tag,             sub: [], color: "#f97316", emoji: "🏷️" },
 ];
 export const seedBusinesses: Business[] = [
@@ -503,38 +501,6 @@ export const seedBusinesses: Business[] = [
     category: "rental",
   },
 
-  /* ---------- 招聘求职（示例：实际由表单发布） ---------- */
-  {
-    id: 71,
-    name: "矿区项目招聘 — 中文翻译/采购员",
-    contactPerson: "中冶刚果 HR",
-    wechat: "zhongye_hr",
-    phone: "+243 99 333 1100",
-    area: "刚果金 卢本巴希矿区",
-    mainService: "中文-法语翻译 2 名 / 采购员 1 名",
-    hasStore: "薪资 2000-3500 USD/月 + 食宿 + 年假机票",
-    serviceScope: "工作地：卢本巴希；2 年合同",
-    intro: "中冶刚果项目部招聘随队翻译及采购员。要求：法语流利（DELF B2+）、有海外工作经验或采购经验优先。提供单间宿舍、三餐、医保、年终奖。可微信投递简历。",
-    image: "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=800&h=600&fit=crop",
-    category: "jobs",
-    subcategory: "招聘",
-  },
-  {
-    id: 72,
-    name: "求职 — 餐厅大厨/管理岗",
-    contactPerson: "陈先生",
-    wechat: "chenchef_2026",
-    phone: "+243 82 110 9988",
-    area: "可金沙萨/卢本巴希",
-    mainService: "10 年中餐主厨经验（粤菜+川菜），擅长宴会、外卖运营",
-    hasStore: "期望薪资 2500-4000 USD/月 + 提成",
-    serviceScope: "可立即到岗；偏好中餐厅或矿区食堂管理",
-    intro: "国内五星酒店主厨出身，2018 年起在金沙萨工作。擅长团队管理、采购成本控制、菜单设计。最近一份工作做到行政总厨，因合同到期寻找新机会。可提供作品图册和过往业绩。",
-    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=600&fit=crop",
-    category: "jobs",
-    subcategory: "求职",
-  },
-
   /* ---------- 二手专区（示例：实际由表单发布） ---------- */
   {
     id: 81,
@@ -615,11 +581,10 @@ export const businesses: Business[] = [
 ];
 export type SubmissionType =
   | "merchant"
-  | "hiring"
-  | "jobseeker"
   | "secondhand"
   | "purchase"
-  | "survey";
+  | "survey"
+  | "event";
 export interface RawSubmission {
   id: string;
   type: SubmissionType;
@@ -636,7 +601,6 @@ export const DEFAULT_IMG: Record<string, string> = {
   business:   "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&h=600&fit=crop",
   leisure:    "https://images.unsplash.com/photo-1493676304819-0d7a8d026dcf?w=800&h=600&fit=crop",
   rental:     "https://images.unsplash.com/photo-1565793298595-6a879b1d9492?w=800&h=600&fit=crop",
-  jobs:       "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=800&h=600&fit=crop",
   secondhand: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&h=600&fit=crop",
 };
 
@@ -644,13 +608,6 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
   const d = s.data || {};
   const baseId = 1_000_000 + idx;
   const get = (k: string) => (d[k] ?? "").trim();
-
-  const rangeSummary = (name: string) => {
-    const lo = get(`${name}Min`);
-    const hi = get(`${name}Max`);
-    if (lo && hi) return `${lo}-${hi}`;
-    return lo || hi || "";
-  };
 
   if (s.type === "merchant") {
     const catLabel = get("category");
@@ -709,73 +666,21 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
     };
   }
 
-  if (s.type === "hiring") {
-    const companyPublic = get("companyPublic");
-    const company =
-      companyPublic === "暂时保密"
-        ? "暂时保密"
-        : get("companyZh") || get("company") || "";
-    const position = get("position");
-    const salary = rangeSummary("salary") || get("salary");
-    const area = get("workCity") || get("area");
-    const contact = get("recruiterContact");
-    return {
-      id: baseId,
-      name: `招聘：${position}${company ? ` · ${company}` : ""}`,
-      contactPerson: get("recruiterName") || get("contactPerson"),
-      wechat: contact || get("wechat"),
-      phone: get("phone"),
-      area,
-      mainService: `${position}${salary ? ` | ${salary} USD` : ""}`,
-      hasStore: salary,
-      serviceScope: area,
-      intro: [get("jobContent"), get("requirement"), get("benefits"), get("description")]
-        .filter(Boolean)
-        .join("\n\n"),
-      image: DEFAULT_IMG.jobs,
-      category: "jobs",
-      subcategory: "招聘",
-    };
-  }
-
-  if (s.type === "jobseeker") {
-    const phone = get("phone") || get("contact_phone") || get("contact_whatsapp");
-    const wechat = get("wechat") || get("contact_wechat");
-    const expectArea = get("expectCity") || get("expectArea");
-    const expectSalary = rangeSummary("expectSalary") || get("expectSalary");
-    return {
-      id: baseId,
-      name: `求职：${get("targetPosition")}`,
-      contactPerson: get("name"),
-      wechat,
-      phone,
-      area: expectArea,
-      mainService: `${get("targetPosition")}${expectSalary ? ` | 期望 ${expectSalary} USD` : ""}`,
-      hasStore: expectSalary,
-      serviceScope: expectArea,
-      intro: [
-        get("experienceYears") && `工作年限：${get("experienceYears")}`,
-        get("experience") && `工作经验：${get("experience")}`,
-        get("skills") && `技能：${get("skills")}`,
-        get("achievements") && `过往成就：${get("achievements")}`,
-        get("unacceptable") && `不可接受：${get("unacceptable")}`,
-        get("intro"),
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
-      image: DEFAULT_IMG.jobs,
-      category: "jobs",
-      subcategory: "求职",
-    };
-  }
-
   if (s.type === "secondhand") {
     const category = get("categoryKey") || get("category");
     const area = get("address") || get("area");
     const phone = get("phone") || get("contact_phone") || get("contact_whatsapp");
     const wechat = get("wechat") || get("contact_wechat");
+    const isValidImg = (u: string) => /^https?:\/\//i.test(u) || u.startsWith("/api/media/");
+    const urls = (get("galleryUrls") || "")
+      .split(/\r?\n/)
+      .map((u) => u.trim())
+      .filter(isValidImg)
+      .slice(0, 9);
+    const [cover, ...rest] = urls;
     return {
       id: baseId,
+      submissionId: s.id,
       name: `${get("itemName")}${get("condition") ? `（${get("condition")}）` : ""}`,
       contactPerson: get("contactPerson"),
       wechat,
@@ -785,7 +690,8 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
       hasStore: get("condition"),
       serviceScope: area,
       intro: get("description"),
-      image: DEFAULT_IMG.secondhand,
+      image: cover || DEFAULT_IMG.secondhand,
+      gallery: rest.length ? rest : undefined,
       category: "secondhand",
     };
   }

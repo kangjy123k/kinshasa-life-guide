@@ -36,7 +36,7 @@ import {
   WhatsAppChip,
 } from "@/components/BusinessCardUI";
 import { homeUsefulItems } from "@/lib/useful-items";
-import { upcomingEvents } from "@/lib/events";
+import { EVENTS, submissionToEvent, type OfflineEvent } from "@/lib/events";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -438,7 +438,7 @@ function HomeView({
           <p className="text-sm md:text-base text-sky-50 max-w-md mx-auto">
             买商品 · 找餐厅 · 找住宿 · 找服务
             <br />
-            租赁设备 · 招聘求职 · 二手专区
+            租赁设备 · 二手专区 · 线下活动
           </p>
         </div>
       </section>
@@ -1049,7 +1049,28 @@ function WishingPoolBanner() {
 /*  线下活动横幅                                                         */
 /* ------------------------------------------------------------------ */
 function EventsBanner() {
-  const upcoming = upcomingEvents();
+  const [extras, setExtras] = useState<OfflineEvent[]>([]);
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/public/approved")
+      .then((r) => r.json())
+      .then((d: { records?: RawSubmission[] }) => {
+        if (cancel) return;
+        const items: OfflineEvent[] = [];
+        for (const r of d.records ?? []) {
+          if ((r.type as string) !== "event") continue;
+          const ev = submissionToEvent(r as unknown as { id: string; type: string; data: Record<string, string> });
+          if (ev) items.push(ev);
+        }
+        setExtras(items);
+      })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, []);
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = [...EVENTS, ...extras]
+    .filter((e) => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
   const next = upcoming[0];
   const rest = upcoming.length - 1;
 
@@ -1158,7 +1179,7 @@ function WeChatGroupBanner() {
               扫码入群 · 同城资讯 · 互助 · 活动通知
             </p>
             <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              商家上新、招聘求职、生活求助、代购代运、
+              商家上新、线下活动、生活求助、代购代运、
               <br className="hidden sm:block" />
               信息都在群里第一时间同步。
             </p>

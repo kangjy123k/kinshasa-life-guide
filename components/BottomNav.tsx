@@ -10,9 +10,8 @@ import {
   X,
   ShoppingCart,
   Store,
-  Briefcase,
-  UserPlus,
   Tag,
+  CalendarHeart,
 } from "lucide-react";
 import { SubmissionModal, type FormKey } from "./SubmissionModal";
 
@@ -26,9 +25,8 @@ type Option = {
 const PUBLISH_OPTIONS: Option[] = [
   { key: "purchase",   label: "求购信息", icon: ShoppingCart, color: "bg-gradient-to-br from-orange-400 to-amber-500" },
   { key: "merchant",   label: "商家入驻", icon: Store,        color: "bg-gradient-to-br from-sky-400 to-blue-500" },
-  { key: "hiring",     label: "发布招聘", icon: Briefcase,    color: "bg-gradient-to-br from-red-400 to-rose-500" },
-  { key: "jobseeker",  label: "发布求职", icon: UserPlus,     color: "bg-gradient-to-br from-amber-400 to-yellow-500" },
   { key: "secondhand", label: "二手物品", icon: Tag,          color: "bg-gradient-to-br from-teal-400 to-sky-500" },
+  { key: "event",      label: "发布活动", icon: CalendarHeart, color: "bg-gradient-to-br from-violet-500 to-sky-500" },
 ];
 
 type Tab = {
