@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeft,
   Megaphone,
@@ -11,6 +12,9 @@ import {
   Package,
   Loader2,
   Plus,
+  Eye,
+  Search,
+  X,
 } from "lucide-react";
 
 import type { RawSubmission } from "@/lib/businesses";
@@ -30,6 +34,7 @@ interface DemandCard {
   contactPerson: string;
   phone: string;
   wechat: string;
+  images: string[];
 }
 
 function formatBudget(data: Record<string, string>): string {
@@ -40,6 +45,15 @@ function formatBudget(data: Record<string, string>): string {
   if (!lo && !hi) return "";
   if (lo && hi) return `${lo} – ${hi} USD`;
   return `${lo || hi} USD`;
+}
+
+function parseGallery(raw: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((s) => /^https?:\/\/|^\//.test(s))
+    .slice(0, 9);
 }
 
 function relativeTime(iso: string): string {
@@ -62,6 +76,7 @@ function relativeTime(iso: string): string {
 export default function RequestsPage() {
   const [records, setRecords] = useState<RawSubmission[] | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -96,10 +111,29 @@ export default function RequestsPage() {
         contactPerson: (r.data.contactPerson ?? "").trim(),
         phone: (r.data.phone ?? "").trim(),
         wechat: (r.data.wechat ?? "").trim(),
+        images: parseGallery(r.data.galleryUrls ?? ""),
       }))
       .filter((d) => d.itemName)
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   }, [records]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return demands;
+    return demands.filter((d) => {
+      const hay = [
+        d.itemName,
+        d.description,
+        d.area,
+        d.contactPerson,
+        d.quantity,
+        d.paymentMethod,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [demands, query]);
 
   return (
     <div className="min-h-screen bg-amber-50">
@@ -118,7 +152,11 @@ export default function RequestsPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold leading-tight">需求大厅</h1>
             <p className="text-xs text-white/90">
-              {records === null ? "加载中…" : `共 ${demands.length} 条求购信息`}
+              {records === null
+                ? "加载中…"
+                : query.trim()
+                  ? `匹配「${query.trim()}」${filtered.length} 条`
+                  : `共 ${demands.length} 条求购信息`}
             </p>
           </div>
           <button
@@ -127,6 +165,29 @@ export default function RequestsPage() {
           >
             <Plus size={14} /> 发布
           </button>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-4 pb-4">
+          <div className="flex items-center gap-2 bg-white/95 rounded-full px-3 py-2 shadow-sm">
+            <Search size={14} className="text-orange-500 shrink-0" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="搜索求购信息：物品 / 区域 / 描述…"
+              className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 focus:outline-none"
+              inputMode="search"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="清空"
+                className="shrink-0"
+              >
+                <X size={14} className="text-gray-400" />
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
@@ -149,9 +210,14 @@ export default function RequestsPage() {
               <Plus size={16} /> 我要求购
             </button>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500 text-sm">没有匹配「{query.trim()}」的求购信息</p>
+            <p className="text-xs text-gray-400 mt-1">换个关键词试试</p>
+          </div>
         ) : (
           <ul className="space-y-3">
-            {demands.map((d) => (
+            {filtered.map((d) => (
               <DemandCardView key={d.id} d={d} />
             ))}
           </ul>
@@ -166,6 +232,9 @@ export default function RequestsPage() {
 }
 
 function DemandCardView({ d }: { d: DemandCard }) {
+  const [phoneShown, setPhoneShown] = useState(false);
+  const [wechatShown, setWechatShown] = useState(false);
+
   return (
     <li className="bg-white rounded-2xl shadow-sm border border-orange-100 p-4">
       <div className="flex items-start gap-2">
@@ -203,24 +272,74 @@ function DemandCardView({ d }: { d: DemandCard }) {
         </p>
       )}
 
+      {d.images.length > 0 && (
+        <div className="mt-3 grid grid-cols-3 gap-1.5">
+          {d.images.map((src, i) => (
+            <a
+              key={`${d.id}-${i}`}
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative aspect-square overflow-hidden rounded-lg bg-orange-50"
+            >
+              <Image
+                src={src}
+                alt={`${d.itemName} ${i + 1}`}
+                fill
+                sizes="(max-width: 768px) 33vw, 200px"
+                className="object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
       <div className="mt-3 pt-3 border-t border-orange-100 space-y-2">
         {d.phone && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-gray-400 w-16 shrink-0">电话</span>
-            <p className="flex-1 min-w-0 text-sm text-gray-700 truncate">{d.phone}</p>
-            <span className="shrink-0 flex gap-1.5">
-              <CallChip phone={d.phone} />
-              <WhatsAppChip phone={d.phone} />
-            </span>
+            {phoneShown ? (
+              <>
+                <p className="flex-1 min-w-0 text-sm text-gray-700 truncate select-all">
+                  {d.phone}
+                </p>
+                <span className="shrink-0 flex gap-1.5">
+                  <CallChip phone={d.phone} />
+                  <WhatsAppChip phone={d.phone} />
+                </span>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPhoneShown(true)}
+                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
+              >
+                <Eye size={12} /> 查看电话
+              </button>
+            )}
           </div>
         )}
         {d.wechat && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-gray-400 w-16 shrink-0">微信号</span>
-            <p className="flex-1 min-w-0 text-sm text-gray-700 truncate">{d.wechat}</p>
-            <span className="shrink-0">
-              <CopyChip text={d.wechat} label="复制微信号" doneLabel="已复制" />
-            </span>
+            {wechatShown ? (
+              <>
+                <p className="flex-1 min-w-0 text-sm text-gray-700 truncate select-all">
+                  {d.wechat}
+                </p>
+                <span className="shrink-0">
+                  <CopyChip text={d.wechat} label="复制微信号" doneLabel="已复制" />
+                </span>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setWechatShown(true)}
+                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
+              >
+                <Eye size={12} /> 查看微信号
+              </button>
+            )}
           </div>
         )}
       </div>

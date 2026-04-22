@@ -36,7 +36,6 @@ import {
 } from "@/components/BusinessCardUI";
 import { homeUsefulItems } from "@/lib/useful-items";
 import { FrenchWordDot } from "@/components/FrenchWordDot";
-import { EVENTS, submissionToEvent, type OfflineEvent } from "@/lib/events";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -105,23 +104,39 @@ export default function GuidePage() {
     }
   }, []);
 
-  // 初始化浏览器历史 + ?biz=<id> 支持
+  // 初始化浏览器历史 + ?biz / ?cat 支持
   // 把 home 当作栈底 state，之后 openCategory / openBusiness 各 push 一层，
   // 这样 iOS 边缘右滑、Android 手势返回就能一步步退回，而不是直接退出站点
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const raw = params.get("biz");
+    const rawBiz = params.get("biz");
+    const rawCat = params.get("cat");
     const cleanPath = window.location.pathname;
     // 栈底：home state
     window.history.replaceState({ klgView: "home" }, "", cleanPath);
-    if (!raw) return;
-    const id = Number(raw);
-    if (!Number.isFinite(id)) return;
-    // /?biz=xx 进入：在 home 之上再压一层 business，保证返回能回到 home
-    window.history.pushState({ klgView: "business", bizId: id }, "", cleanPath);
-    setDetailBizId(id);
-    setView("business");
+    if (rawBiz) {
+      const id = Number(rawBiz);
+      if (Number.isFinite(id)) {
+        // /?biz=xx 进入：在 home 之上再压一层 business，保证返回能回到 home
+        window.history.pushState({ klgView: "business", bizId: id }, "", cleanPath);
+        setDetailBizId(id);
+        setView("business");
+        return;
+      }
+    }
+    if (rawCat && categories.some((c) => c.key === rawCat)) {
+      // /?cat=xx 进入：在 home 之上再压一层 category
+      window.history.pushState(
+        { klgView: "category", categoryKey: rawCat },
+        "",
+        cleanPath
+      );
+      setActiveCategory(rawCat);
+      setActiveSub("全部");
+      setSearchQuery("");
+      setView("category");
+    }
   }, []);
 
   // popstate：浏览器后退（含手势滑动返回）时根据 state 恢复视图
@@ -438,7 +453,7 @@ function HomeView({
           <p className="text-sm md:text-base text-sky-50 max-w-md mx-auto">
             买商品 · 找餐厅 · 找住宿 · 找服务
             <br />
-            租赁设备 · 二手专区 · 线下活动
+            租赁设备 · 二手专区 · 需求大厅
           </p>
         </div>
       </section>
@@ -565,9 +580,6 @@ function HomeView({
 
       {/* ---- 许愿池专区 ---- */}
       <WishingPoolBanner />
-
-      {/* ---- 线下活动 ---- */}
-      <EventsBanner />
 
       {/* ---- 微信群入口 ---- */}
       <WeChatGroupBanner />
@@ -1040,81 +1052,6 @@ function WishingPoolBanner() {
             </p>
             <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 bg-white/25 backdrop-blur rounded-full text-[11px] md:text-xs font-semibold">
               去许愿 <ChevronRight size={12} />
-            </span>
-          </div>
-        </div>
-      </Link>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  线下活动横幅                                                         */
-/* ------------------------------------------------------------------ */
-function EventsBanner() {
-  const [extras, setExtras] = useState<OfflineEvent[]>([]);
-  useEffect(() => {
-    let cancel = false;
-    fetch("/api/public/approved")
-      .then((r) => r.json())
-      .then((d: { records?: RawSubmission[] }) => {
-        if (cancel) return;
-        const items: OfflineEvent[] = [];
-        for (const r of d.records ?? []) {
-          if ((r.type as string) !== "event") continue;
-          const ev = submissionToEvent(r as unknown as { id: string; type: string; data: Record<string, string> });
-          if (ev) items.push(ev);
-        }
-        setExtras(items);
-      })
-      .catch(() => {});
-    return () => { cancel = true; };
-  }, []);
-  const today = new Date().toISOString().slice(0, 10);
-  const upcoming = [...EVENTS, ...extras]
-    .filter((e) => e.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const next = upcoming[0];
-  const rest = upcoming.length - 1;
-
-  const dayLabel = (() => {
-    if (!next) return null;
-    const d = new Date(next.date + "T12:00:00");
-    return d.toLocaleDateString("zh-CN", {
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "short",
-    });
-  })();
-
-  return (
-    <section className="max-w-4xl mx-auto px-4 mt-6">
-      <Link
-        href="/events"
-        className="relative block rounded-3xl overflow-hidden shadow-lg bg-gradient-to-br from-violet-600 via-indigo-500 to-sky-500 text-white active:scale-[0.99] transition"
-      >
-        <div className="absolute -top-10 -left-6 w-32 h-32 rounded-full bg-white/15" />
-        <div className="absolute -bottom-12 -right-6 w-40 h-40 rounded-full bg-white/10" />
-        <div className="absolute top-10 right-16 w-2.5 h-2.5 rounded-full bg-white/40" />
-
-        <div className="relative flex items-center gap-3 px-4 py-4 md:px-6 md:py-5">
-          <span className="text-5xl md:text-6xl drop-shadow shrink-0">🎉</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <h3 className="text-lg md:text-xl font-black leading-tight drop-shadow">
-                线下活动
-              </h3>
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-300 text-violet-900 text-[10px] font-black rounded-full shadow">
-                <Sparkles size={10} fill="currentColor" /> 新
-              </span>
-            </div>
-            <p className="text-xs md:text-sm text-white/95 leading-snug drop-shadow">
-              {next
-                ? `下一场：${dayLabel} · ${next.title}${rest > 0 ? `（另 ${rest} 场在排） ` : ""}`
-                : "在刚果金也有丰富生活 —— 聚会、赛事、演出 集中展示"}
-            </p>
-            <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 bg-white/25 backdrop-blur rounded-full text-[11px] md:text-xs font-semibold">
-              查看全部 <ChevronRight size={12} />
             </span>
           </div>
         </div>

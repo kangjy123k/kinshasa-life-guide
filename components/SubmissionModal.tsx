@@ -51,6 +51,18 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
     fields: [
       { name: "itemName", label: "求购物品名称", type: "text", required: true },
       { name: "quantity", label: "数量", type: "text", required: true },
+      {
+        name: "description",
+        label: "详细描述（可选）",
+        type: "textarea",
+        placeholder: "规格、品牌、型号、用途等，越详细越容易找到对的人",
+      },
+      {
+        name: "galleryUrls",
+        label: "参考图片（可选 · 最多 9 张）",
+        type: "gallery",
+        helpText: "从手机相册选择，发布后会在求购卡片上展示。",
+      },
       { name: "budget", label: "预算区间（美元）", type: "range-usd", required: true },
       { name: "deadline", label: "最晚收货时间", type: "date", required: true },
       {

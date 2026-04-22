@@ -368,23 +368,71 @@ export default function WishingPool() {
       </header>
 
       <div className="relative max-w-4xl mx-auto px-2 mt-2">
-        <div className="relative mx-auto rounded-[32px] overflow-hidden border border-sky-300/15"
-             style={{
-               aspectRatio: "1 / 1.1",
-               maxWidth: 560,
-               boxShadow: "inset 0 0 60px rgba(0,0,0,0.6), 0 20px 80px rgba(0,0,0,0.6)",
-               background: "radial-gradient(ellipse at 50% 50%, #020a1e 0%, #04142d 40%, #08305d 80%, #0d4787 100%)",
-             }}
+        {/* 下方月光光晕：让湖面像悬浮在深空中 */}
+        <div
+          aria-hidden
+          className="absolute left-1/2 -translate-x-1/2 bottom-[-40px] w-[90%] max-w-[520px] h-24 pointer-events-none blur-3xl opacity-70"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 50%, rgba(58,148,230,0.45) 0%, rgba(13,71,135,0.25) 40%, transparent 75%)",
+          }}
+        />
+        <div
+          className="relative mx-auto"
+          style={{
+            aspectRatio: "1 / 1.1",
+            maxWidth: 560,
+          }}
         >
-          <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center"><Loader2 className="animate-spin text-white/60" size={28} /></div>}>
-            <Scene3D
-              bubbles={bubbles}
-              wishById={wishById}
-              addingOpen={addingOpen}
-              onBubbleClick={handleBubbleClick}
-              onBubbleDoubleClick={handleBubbleDoubleClick}
-            />
-          </Suspense>
+          {/* 水体本身：radial 渐变淡出到透明，没有硬边 */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 58% 56% at 50% 50%, #0d4787 0%, #08305d 38%, #04142d 65%, rgba(2,7,17,0) 100%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse 55% 56% at 50% 50%, #000 55%, rgba(0,0,0,0.6) 78%, transparent 100%)",
+              maskImage:
+                "radial-gradient(ellipse 55% 56% at 50% 50%, #000 55%, rgba(0,0,0,0.6) 78%, transparent 100%)",
+            }}
+          />
+
+          {/* 3D 水池，边缘被同样的 radial mask 柔化，看上去像悬浮水面 */}
+          <div
+            className="absolute inset-0"
+            style={{
+              WebkitMaskImage:
+                "radial-gradient(ellipse 55% 56% at 50% 50%, #000 55%, rgba(0,0,0,0.6) 78%, transparent 100%)",
+              maskImage:
+                "radial-gradient(ellipse 55% 56% at 50% 50%, #000 55%, rgba(0,0,0,0.6) 78%, transparent 100%)",
+            }}
+          >
+            <Suspense
+              fallback={
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="animate-spin text-white/60" size={28} />
+                </div>
+              }
+            >
+              <Scene3D
+                bubbles={bubbles}
+                wishById={wishById}
+                addingOpen={addingOpen}
+                onBubbleClick={handleBubbleClick}
+                onBubbleDoubleClick={handleBubbleDoubleClick}
+              />
+            </Suspense>
+          </div>
+
+          {/* 水面高光（顶部薄雾） */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 55% 35% at 50% 20%, rgba(180,220,255,0.25) 0%, transparent 70%)",
+            }}
+          />
 
           {loading && bubbles.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
