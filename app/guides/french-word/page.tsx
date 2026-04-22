@@ -160,7 +160,7 @@ function WordCard({ entry }: { entry: FrenchDailyEntry }) {
           {entry.zh}
         </p>
         <div className="mt-3">
-          <SpeakButton text={entry.word} cacheKey={`fwod-${entry.word}`} />
+          <SpeakButton text={entry.word} cacheKey={`fwod-${entry.word}`} label="法语播放" />
         </div>
       </div>
 
@@ -175,7 +175,7 @@ function WordCard({ entry }: { entry: FrenchDailyEntry }) {
               {entry.example}
             </p>
             <p className="text-xs text-gray-600 leading-snug">{entry.exampleZh}</p>
-            <SpeakButton text={entry.example} cacheKey={`fwod-ex-${entry.word}`} />
+            <SpeakButton text={entry.example} cacheKey={`fwod-ex-${entry.word}`} label="法语播放" />
           </div>
         </div>
       </div>

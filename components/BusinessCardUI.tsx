@@ -148,7 +148,15 @@ function hashText(s: string): string {
   return (h >>> 0).toString(36);
 }
 
-export function SpeakButton({ text, cacheKey }: { text: string; cacheKey?: string }) {
+export function SpeakButton({
+  text,
+  cacheKey,
+  label = "法语播报地址",
+}: {
+  text: string;
+  cacheKey?: string;
+  label?: string;
+}) {
   const [speaking, setSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -233,7 +241,7 @@ export function SpeakButton({ text, cacheKey }: { text: string; cacheKey?: strin
     <button
       type="button"
       onClick={speak}
-      aria-label={`法语播报地址：${text}`}
+      aria-label={`${label}：${text}`}
       title={`点击用法语朗读：${text}`}
       className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors touch-manipulation active:scale-95 ${
         speaking
@@ -242,7 +250,7 @@ export function SpeakButton({ text, cacheKey }: { text: string; cacheKey?: strin
       }`}
     >
       <Volume2 size={16} />
-      <span>法语播报地址</span>
+      <span>{label}</span>
     </button>
   );
 }

@@ -102,7 +102,7 @@ export default function ConstructionFrenchPage() {
                     <p className="text-sm text-gray-900 font-medium">{p.cn}</p>
                     <p className="text-sm text-sky-700 mt-0.5 leading-snug">{p.fr}</p>
                   </div>
-                  <SpeakButton text={p.fr} cacheKey={`cf-${gi}-${pi}`} />
+                  <SpeakButton text={p.fr} cacheKey={`cf-${gi}-${pi}`} label="法语播放" />
                 </li>
               ))}
             </ul>
