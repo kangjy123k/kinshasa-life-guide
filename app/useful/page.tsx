@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Search, X } from "lucide-react";
 import { filterUseful, usefulItems } from "@/lib/useful-items";
+import { FrenchWordDot } from "@/components/FrenchWordDot";
 
 export default function UsefulPage() {
   const router = useRouter();
@@ -65,7 +66,10 @@ export default function UsefulPage() {
               >
                 <span className="text-3xl leading-none shrink-0">{it.emoji}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold">{it.title}</div>
+                  <div className="text-sm font-bold flex items-center gap-1.5">
+                    {it.title}
+                    {it.key === "french-word" && <FrenchWordDot />}
+                  </div>
                   <div className="text-xs text-gray-500 truncate">{it.desc}</div>
                 </div>
                 <ChevronRight

@@ -35,6 +35,7 @@ import {
   WhatsAppChip,
 } from "@/components/BusinessCardUI";
 import { homeUsefulItems } from "@/lib/useful-items";
+import { FrenchWordDot } from "@/components/FrenchWordDot";
 import { EVENTS, submissionToEvent, type OfflineEvent } from "@/lib/events";
 
 /* ------------------------------------------------------------------ */
@@ -538,7 +539,10 @@ function HomeView({
             >
               <span className="text-2xl leading-none">{it.emoji}</span>
               <div className="min-w-0">
-                <div className="text-xs font-bold">{it.title}</div>
+                <div className="text-xs font-bold flex items-center gap-1">
+                  {it.title}
+                  {it.key === "french-word" && <FrenchWordDot />}
+                </div>
                 <div className="text-[10px] text-gray-600 truncate">{it.desc}</div>
               </div>
             </Link>
