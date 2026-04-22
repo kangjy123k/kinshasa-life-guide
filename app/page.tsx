@@ -13,7 +13,6 @@ import {
   X,
   ArrowLeft,
   QrCode,
-  AlertTriangle,
   Megaphone,
   Sparkles,
 } from "lucide-react";
@@ -1121,86 +1120,40 @@ function EventsBanner() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  微信群二维码入口                                                     */
+/*  群主微信入口（群已满 200，改为加群主邀请）                             */
 /* ------------------------------------------------------------------ */
-interface QrMeta {
-  ok: boolean;
-  fallback: boolean;
-  imageUrl: string;
-  uploadedAt: string | null;
-  version: number;
-}
-
 function WeChatGroupBanner() {
-  const [meta, setMeta] = useState<QrMeta | null>(null);
-
-  useEffect(() => {
-    let cancel = false;
-    fetch("/api/public/qrcode")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancel) setMeta(d);
-      })
-      .catch(() => {});
-    return () => {
-      cancel = true;
-    };
-  }, []);
-
-  const uploadedAt = meta?.uploadedAt ? new Date(meta.uploadedAt) : null;
-  const daysSince = uploadedAt
-    ? Math.floor((Date.now() - uploadedAt.getTime()) / 86400_000)
-    : null;
-  const daysLeft = daysSince === null ? null : 7 - daysSince;
-  const expired = daysLeft !== null && daysLeft <= 0;
-  const expiring = daysLeft !== null && daysLeft > 0 && daysLeft <= 2;
-
   return (
     <section className="max-w-4xl mx-auto px-4 mt-8 pb-8">
       <div className="rounded-2xl overflow-hidden shadow-md border border-emerald-100 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
         <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white px-4 py-2.5">
           <QrCode size={16} />
           <span className="text-sm font-bold">加入刚果金华人微信群</span>
+          <span className="ml-auto text-[10.5px] font-semibold bg-white/20 backdrop-blur rounded-full px-2 py-0.5">
+            群已满 200 · 需邀请
+          </span>
         </div>
         <div className="p-4 flex flex-col sm:flex-row items-center gap-4">
           <div className="shrink-0 bg-white rounded-xl p-2 shadow-sm border border-emerald-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={meta?.imageUrl ?? "/images/qr/wechat-group.jpg"}
-              alt="微信群二维码"
+              src="/images/qr/host-wechat.jpg"
+              alt="群主微信二维码"
               className="w-36 h-36 md:w-40 md:h-40 object-cover rounded-lg"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = "/images/qr/wechat-group.jpg";
-              }}
             />
           </div>
           <div className="flex-1 min-w-0 text-center sm:text-left">
             <p className="text-sm md:text-base font-semibold text-gray-800">
-              扫码入群 · 同城资讯 · 互助 · 活动通知
+              扫码加群主微信 · 验证后邀请进群
             </p>
             <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              商家上新、线下活动、生活求助、代购代运、
+              当前群已满 200 人，无法直接扫码进群。
               <br className="hidden sm:block" />
-              信息都在群里第一时间同步。
+              加群主个人微信，备注"刚果金 · 入群"即可邀请进群。
             </p>
-            {daysLeft === null ? (
-              <p className="text-[11px] text-gray-400 mt-2">
-                🛈 二维码每 7 天刷新一次，过期请加管理员补群
-              </p>
-            ) : expired ? (
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red-500 bg-red-50 rounded-full px-2.5 py-1">
-                <AlertTriangle size={12} />
-                二维码已过期 · 请加管理员微信拉群
-              </p>
-            ) : expiring ? (
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-orange-600 bg-orange-50 rounded-full px-2.5 py-1">
-                ⏳ 二维码还有 {daysLeft} 天过期，请尽快扫码
-              </p>
-            ) : (
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-full px-2.5 py-1">
-                ✅ 二维码有效期剩余 {daysLeft} 天
-              </p>
-            )}
+            <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+              商家上新、线下活动、生活求助、代购代运，群内第一时间同步。
+            </p>
           </div>
         </div>
       </div>
