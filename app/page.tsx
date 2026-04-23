@@ -58,7 +58,6 @@ const ads: AdSlide[] = [
   {
     image: "/images/sponsor.webp",
     plainImage: true,
-    imageBg: "#fff1f2", // 与图片背景接近的淡粉色
   },
   {
     title: "混凝土搅拌站",
@@ -640,14 +639,14 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
       {/* 切换时整块内容一起淡入，图/字同步出现 */}
       <div key={index} className="absolute inset-0 animate-slide-in">
         {slide.image && plain ? (
-          // 纯图模式：图片完整居中显示，不加文字、emoji、蒙层
+          // 纯图模式：图片撑满容器（按比例裁剪以填满），不加文字、emoji、蒙层
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={slide.image}
             alt={slide.title ?? "广告"}
             fetchPriority="high"
             loading="eager"
-            className="absolute inset-0 w-full h-full object-contain"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : slide.image ? (
           <>
