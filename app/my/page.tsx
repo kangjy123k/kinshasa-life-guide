@@ -121,6 +121,8 @@ export default function MySubmissionsPage() {
     }
   }
 
+  const pendingCount = records.filter((r) => r.status === "pending").length;
+
   useEffect(() => {
     load();
     const onFocus = () => load();
@@ -135,7 +137,16 @@ export default function MySubmissionsPage() {
     };
   }, []);
 
-  const pending = records.filter((r) => r.status === "pending").length;
+  // 有 pending 时 30s 轮询一次，用户不刷新也能看到审核结果
+  useEffect(() => {
+    if (pendingCount === 0) return;
+    const t = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [pendingCount]);
+
+  const pending = pendingCount;
   const approved = records.filter((r) => r.status === "approved").length;
   const rejected = records.filter((r) => r.status === "rejected").length;
 

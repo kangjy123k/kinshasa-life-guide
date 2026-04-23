@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import VersionChecker from "@/components/VersionChecker";
 
 export const metadata: Metadata = {
   title: "刚果金华人生活服务指南",
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body className="min-h-full bg-sky-50">
         {children}
         <BottomNav />
+        <VersionChecker />
       </body>
     </html>
   );
