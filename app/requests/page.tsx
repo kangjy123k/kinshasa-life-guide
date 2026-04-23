@@ -294,25 +294,27 @@ function DemandCardView({ d }: { d: DemandCard }) {
         </div>
       )}
 
-      <div className="mt-3 pt-3 border-t border-orange-100 space-y-2">
+      <div className="mt-3 pt-3 border-t border-orange-100 space-y-3">
         {d.phone && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-gray-400 w-16 shrink-0">电话</span>
+          <div>
             {phoneShown ? (
-              <>
-                <p className="flex-1 min-w-0 text-sm text-gray-700 truncate select-all">
-                  {d.phone}
-                </p>
-                <span className="shrink-0 flex gap-1.5">
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[11px] text-gray-400 shrink-0">电话</span>
+                  <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
+                    {d.phone}
+                  </p>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   <CallChip phone={d.phone} />
                   <WhatsAppChip phone={d.phone} />
-                </span>
-              </>
+                </div>
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setPhoneShown(true)}
-                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
+                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
               >
                 <Eye size={12} /> 查看电话
               </button>
@@ -320,22 +322,24 @@ function DemandCardView({ d }: { d: DemandCard }) {
           </div>
         )}
         {d.wechat && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-gray-400 w-16 shrink-0">微信号</span>
+          <div>
             {wechatShown ? (
-              <>
-                <p className="flex-1 min-w-0 text-sm text-gray-700 truncate select-all">
-                  {d.wechat}
-                </p>
-                <span className="shrink-0">
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[11px] text-gray-400 shrink-0">微信号</span>
+                  <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
+                    {d.wechat}
+                  </p>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   <CopyChip text={d.wechat} label="复制微信号" doneLabel="已复制" />
-                </span>
-              </>
+                </div>
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setWechatShown(true)}
-                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
+                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
               >
                 <Eye size={12} /> 查看微信号
               </button>

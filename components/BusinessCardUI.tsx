@@ -148,6 +148,11 @@ function hashText(s: string): string {
   return (h >>> 0).toString(36);
 }
 
+// 44 字节静音 WAV（PCM 1 ch / 24kHz / 16bit / 0 sample），用来在用户手势 tick
+// 里先把 <audio> 元素"解锁"，后续异步 fetch 回来再 audio.play() 就不会被 iOS 阻拦
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAwF0AAIC7AAACABAAZGF0YQAAAAA=";
+
 export function SpeakButton({
   text,
   cacheKey,
@@ -159,6 +164,7 @@ export function SpeakButton({
 }) {
   const [speaking, setSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const unlockedRef = useRef(false);
 
   const reportError = (stage: string, extra?: unknown) => {
     // 失败只打 console，不 alert 吓用户 — 按钮会自动恢复成可点状态
@@ -171,6 +177,35 @@ export function SpeakButton({
     if (speaking) return;
     setSpeaking(true);
 
+    // 1) 确保 audio 元素存在，并且在"用户点击这一 tick"里先把它解锁
+    //    iOS Safari 要求 audio.play() 的首次调用发生在用户手势里；
+    //    先用静音 WAV 同步 play 一次，之后即使 await 了 fetch，再 play() 也不会被拒
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.preload = "auto";
+    }
+    const audio = audioRef.current;
+    audio.onended = null;
+    audio.onerror = null;
+
+    if (!unlockedRef.current) {
+      try {
+        audio.muted = true;
+        audio.src = SILENT_WAV;
+        const p = audio.play();
+        if (p && typeof p.then === "function") {
+          await p.catch(() => {});
+        }
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        unlockedRef.current = true;
+      } catch {
+        // 解锁失败也继续尝试真实播放 — 桌面浏览器完全不需要解锁
+      }
+    }
+
+    // 2) 拉取真正的音频（命中 Blob 缓存时 < 200ms，冷启动时 1~3s）
     const fullCacheKey = cacheKey ? `${cacheKey}-${hashText(text)}` : undefined;
     let res: Response;
     try {
@@ -217,8 +252,8 @@ export function SpeakButton({
       return;
     }
 
-    const audio = new Audio(audioUrl);
-    audioRef.current = audio;
+    // 3) 复用已解锁的 <audio>：替换 src 再 play，iOS 不会再被拒
+    audio.src = audioUrl;
     audio.onended = () => {
       setSpeaking(false);
       revoke();
