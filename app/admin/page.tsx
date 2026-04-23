@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Lock,
   Loader2,
@@ -15,6 +16,8 @@ import {
   ShoppingCart,
   ClipboardList,
   CalendarHeart,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
 
 type SubmissionType =
@@ -229,12 +232,6 @@ export default function AdminPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <a
-              href="/admin/fwod"
-              className="flex items-center gap-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-sm rounded-lg"
-            >
-              🇫🇷 每日法语
-            </a>
             <button
               onClick={() => tryLoad(password)}
               disabled={loading}
@@ -252,6 +249,36 @@ export default function AdminPage() {
           </div>
         </div>
       </header>
+
+      {/* 每日法语上传快捷入口 — 醒目 banner */}
+      <section className="max-w-6xl mx-auto px-4 pt-4">
+        <Link
+          href="/admin/fwod"
+          className="group relative block rounded-2xl overflow-hidden shadow-md bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 text-white active:scale-[0.99] transition"
+        >
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/15" />
+          <div className="absolute -bottom-12 -left-6 w-40 h-40 rounded-full bg-white/10" />
+          <div className="relative flex items-center gap-3 px-5 py-4">
+            <span className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 text-2xl">
+              🇫🇷
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-bold drop-shadow">每日法语一词 · 上传</h2>
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] font-bold">
+                  <Sparkles size={10} fill="currentColor" /> 后台
+                </span>
+              </div>
+              <p className="text-xs text-white/90 mt-0.5 leading-snug">
+                上传今日单词、释义图片、近似读音，立即上线前台
+              </p>
+            </div>
+            <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-white text-rose-600 rounded-full text-xs font-bold shadow group-hover:scale-105 transition">
+              进入 <ArrowRight size={13} />
+            </span>
+          </div>
+        </Link>
+      </section>
 
       {/* 类型 tab */}
       <div className="bg-white border-b border-sky-100 sticky top-0 z-10">

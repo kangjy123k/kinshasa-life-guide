@@ -18,9 +18,11 @@ import {
   RefreshCw,
   Sparkles,
   X,
+  Pencil,
 } from "lucide-react";
 import { getOwnerToken } from "@/lib/owner-token-client";
 import { MultiImageUploader } from "@/components/ImageUploader";
+import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
 
 type SubmissionType =
   | "merchant"
@@ -241,7 +243,10 @@ function RecordCard({
   const [working, setWorking] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
+  // 除问卷外都可编辑（问卷是一次性答题）；编辑后后端会重置为 pending
+  const canEdit = record.type !== "survey";
   const canPostUpdate = record.type === "merchant" && record.status === "approved";
   const existingUpdates = useMemo(() => {
     const raw = record.data?.updates;
@@ -337,7 +342,7 @@ function RecordCard({
         </div>
       </div>
 
-      <div className="px-3.5 py-2.5 border-t border-sky-50 flex items-center justify-end gap-2">
+      <div className="px-3.5 py-2.5 border-t border-sky-50 flex items-center justify-end gap-2 flex-wrap">
         {canPostUpdate && !confirming && (
           <button
             onClick={() => setUpdateOpen(true)}
@@ -351,6 +356,16 @@ function RecordCard({
                 {existingUpdates}
               </span>
             )}
+          </button>
+        )}
+        {canEdit && !confirming && (
+          <button
+            onClick={() => setEditOpen(true)}
+            disabled={working}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg active:scale-95 transition"
+          >
+            <Pencil size={13} />
+            编辑
           </button>
         )}
         {!confirming ? (
@@ -392,6 +407,16 @@ function RecordCard({
             setUpdateOpen(false);
             onUpdatesChanged();
           }}
+        />
+      )}
+
+      {editOpen && canEdit && (
+        <SubmissionModal
+          formKey={record.type as FormKey}
+          editRecordId={record.id}
+          initialData={record.data}
+          onClose={() => setEditOpen(false)}
+          onSaved={onUpdatesChanged}
         />
       )}
     </div>

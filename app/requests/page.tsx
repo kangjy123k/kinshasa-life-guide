@@ -13,6 +13,7 @@ import {
   Loader2,
   Plus,
   Eye,
+  EyeOff,
   Search,
   X,
 } from "lucide-react";
@@ -304,6 +305,14 @@ function DemandCardView({ d }: { d: DemandCard }) {
                   <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
                     {d.phone}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setPhoneShown(false)}
+                    className="shrink-0 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[11px] font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 active:scale-95 transition"
+                    aria-label="收起电话"
+                  >
+                    <EyeOff size={11} /> 收起
+                  </button>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <CallChip phone={d.phone} />
@@ -330,6 +339,14 @@ function DemandCardView({ d }: { d: DemandCard }) {
                   <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
                     {d.wechat}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setWechatShown(false)}
+                    className="shrink-0 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[11px] font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 active:scale-95 transition"
+                    aria-label="收起微信号"
+                  >
+                    <EyeOff size={11} /> 收起
+                  </button>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <CopyChip text={d.wechat} label="复制微信号" doneLabel="已复制" />

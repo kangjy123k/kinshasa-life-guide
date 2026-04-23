@@ -212,6 +212,44 @@ export async function deleteByOwner(id: string, ownerToken: string): Promise<boo
   return (res.rowsAffected ?? 0) > 0;
 }
 
+/**
+ * 本人编辑已提交的内容。任何状态（pending / approved / rejected）都允许编辑，
+ * 编辑后 status 一律重置为 pending 等管理员重新审核；timestamp 不动以保留创建顺序。
+ * 商家动态 updates 字段保留不被覆盖。
+ */
+export async function updateByOwner(
+  id: string,
+  ownerToken: string,
+  newData: Record<string, string>,
+): Promise<SubmissionRecord | null> {
+  await ensureSchema();
+  if (!id || !ownerToken) return null;
+  const { rows } = await db().execute({
+    sql: `SELECT data_json FROM user_submission WHERE id = ? AND owner_token = ?`,
+    args: [id, ownerToken],
+  });
+  if (rows.length === 0) return null;
+  let existing: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(String((rows[0] as unknown as { data_json: string }).data_json ?? "{}"));
+    if (parsed && typeof parsed === "object") existing = parsed as Record<string, string>;
+  } catch {
+    /* ignore */
+  }
+  const merged: Record<string, string> = { ...newData };
+  // 保留 updates（商家动态）等内部字段，只以 newData 覆盖表单显式写入的字段
+  if (existing.updates) merged.updates = existing.updates;
+  const res = await db().execute({
+    sql: `UPDATE user_submission
+          SET data_json = ?, status = 'pending'
+          WHERE id = ? AND owner_token = ?
+          RETURNING id, type, timestamp, status, owner_token, data_json`,
+    args: [JSON.stringify(merged), id, ownerToken],
+  });
+  if (res.rows.length === 0) return null;
+  return rowToRecord(res.rows[0] as unknown as Record<string, unknown>);
+}
+
 export interface MerchantUpdate {
   id: string;
   at: string;

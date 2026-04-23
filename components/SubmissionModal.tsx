@@ -203,16 +203,44 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
 export function SubmissionModal({
   formKey,
   onClose,
+  editRecordId,
+  initialData,
+  onSaved,
 }: {
   formKey: FormKey;
   onClose: () => void;
+  /** 传入表示进入编辑模式：POST /api/my/update 而非 /api/submit */
+  editRecordId?: string;
+  /** 编辑时用于回填表单，包含 DB 里 data_json 的全部键值 */
+  initialData?: Record<string, string>;
+  /** 编辑成功的回调（新增成功仍走原来的 done 页面） */
+  onSaved?: () => void;
 }) {
+  const editing = !!editRecordId;
   const def = FORMS[formKey];
   const [values, setValues] = useState<Record<string, string>>(() => {
     const seed: Record<string, string> = {};
     def.fields.forEach((f) => {
       if (f.type === "date") seed[f.name] = todayISO();
     });
+    if (initialData) {
+      for (const f of def.fields) {
+        if (f.type === "range-usd" || f.type === "range-count") {
+          // DB 里存的是 xxxMin / xxxMax，表单内部键是 xxx_min / xxx_max
+          const lo = initialData[`${f.name}Min`];
+          const hi = initialData[`${f.name}Max`];
+          if (lo != null) seed[`${f.name}_min`] = String(lo);
+          if (hi != null) seed[`${f.name}_max`] = String(hi);
+        } else if (f.type === "contact-group") {
+          (["phone", "whatsapp", "wechat", "email"] as const).forEach((k) => {
+            const key = `${f.name}_${k}`;
+            if (initialData[key] != null) seed[key] = String(initialData[key]);
+          });
+        } else if (initialData[f.name] != null) {
+          seed[f.name] = String(initialData[f.name]);
+        }
+      }
+    }
     return seed;
   });
   const [submitting, setSubmitting] = useState(false);
@@ -302,22 +330,39 @@ export function SubmissionModal({
         }
       }
       const token = getOwnerToken();
-      const res = await fetch("/api/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "x-owner-token": token } : {}),
-        },
-        body: JSON.stringify({ type: formKey, data: payload }),
-      });
-      if (!res.ok) throw new Error("submit failed");
-      const json = (await res.json().catch(() => null)) as
-        | { ownerToken?: string }
-        | null;
-      if (json?.ownerToken) setOwnerToken(json.ownerToken);
-      setDone(true);
+      if (editing) {
+        const res = await fetch("/api/my/update", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "x-owner-token": token } : {}),
+          },
+          body: JSON.stringify({ id: editRecordId, data: payload }),
+        });
+        if (!res.ok) {
+          const json = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(json.error || "update failed");
+        }
+        onSaved?.();
+        setDone(true);
+      } else {
+        const res = await fetch("/api/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "x-owner-token": token } : {}),
+          },
+          body: JSON.stringify({ type: formKey, data: payload }),
+        });
+        if (!res.ok) throw new Error("submit failed");
+        const json = (await res.json().catch(() => null)) as
+          | { ownerToken?: string }
+          | null;
+        if (json?.ownerToken) setOwnerToken(json.ownerToken);
+        setDone(true);
+      }
     } catch {
-      setError("提交失败，请稍后再试");
+      setError(editing ? "保存失败，请稍后再试" : "提交失败，请稍后再试");
     } finally {
       setSubmitting(false);
     }
@@ -336,7 +381,7 @@ export function SubmissionModal({
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
           <h3 className="text-[15px] font-semibold text-gray-800 flex-1 min-w-0 truncate">
-            {def.title}
+            {editing ? `编辑：${def.title}` : def.title}
           </h3>
           <button
             onClick={handleClose}
@@ -352,21 +397,27 @@ export function SubmissionModal({
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 mb-3">
               <CheckCircle2 size={26} className="text-red-400" />
             </div>
-            <p className="text-base font-semibold text-gray-800 mb-1">提交成功</p>
+            <p className="text-base font-semibold text-gray-800 mb-1">
+              {editing ? "修改已保存" : "提交成功"}
+            </p>
             <p className="inline-block px-2.5 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs font-medium">
               ⏳ 审核中
             </p>
             <p className="text-[11px] text-gray-400 mt-3">
-              审核通过后会展示在对应分类页面
+              {editing
+                ? "修改后需要重新审核，通过后会再次展示"
+                : "审核通过后会展示在对应分类页面"}
             </p>
             <div className="mt-5 flex items-center justify-center gap-2">
-              <Link
-                href="/my"
-                onClick={handleClose}
-                className="inline-flex items-center gap-1 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-full active:scale-95 transition"
-              >
-                查看我的发布
-              </Link>
+              {!editing && (
+                <Link
+                  href="/my"
+                  onClick={handleClose}
+                  className="inline-flex items-center gap-1 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-full active:scale-95 transition"
+                >
+                  查看我的发布
+                </Link>
+              )}
               <button
                 onClick={handleClose}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-full active:scale-95 transition"
@@ -430,8 +481,11 @@ export function SubmissionModal({
               >
                 {submitting ? (
                   <>
-                    <Loader2 size={14} className="animate-spin" /> 提交中…
+                    <Loader2 size={14} className="animate-spin" />
+                    {editing ? "保存中…" : "提交中…"}
                   </>
+                ) : editing ? (
+                  "保存修改"
                 ) : (
                   "提交申请"
                 )}
