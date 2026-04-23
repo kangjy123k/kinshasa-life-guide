@@ -440,7 +440,7 @@ function HomeView({
         <span
           id="klg-share-anchor"
           aria-hidden
-          className="absolute bottom-3 right-3 w-0 h-0 pointer-events-none"
+          className="absolute bottom-16 right-3 w-0 h-0 pointer-events-none"
         />
 
         <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-8 text-center">

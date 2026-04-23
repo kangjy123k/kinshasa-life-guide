@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, Download } from "lucide-react";
 
-const STORAGE_KEY = "klg-share-fab-pos";
+const STORAGE_KEY = "klg-share-fab-pos-v2";
 const TAB_SIZE = 56;
 const EDGE_MARGIN = 8;
 
