@@ -51,6 +51,56 @@ const STATUS_META: Record<Status, { label: string; cls: string; icon: React.Comp
   rejected: { label: "已拒绝", cls: "bg-red-100 text-red-600",      icon: XCircle },
 };
 
+// 字段 key → 中文标签；与表单 label 对齐。unknown key 回落到原始 key。
+const FIELD_LABELS: Record<string, string> = {
+  // merchant
+  nameZh: "商家中文名称",
+  nameIntl: "商家外文名称",
+  contactPerson: "联系人称呼",
+  phone: "联系人电话/WhatsApp",
+  wechat: "联系人微信号",
+  category: "所属分类",
+  subcategory: "子分类",
+  hasStore: "是否有门店",
+  storeAddress: "具体地址（法语）",
+  area: "所在区域",
+  mainService: "主营产品或服务介绍",
+  coverImageUrl: "页面首图",
+  galleryUrls: "相册",
+  latestUpdateText: "最新动态",
+  latestUpdateImages: "最新动态配图",
+  // purchase
+  itemName: "物品名称",
+  quantity: "数量",
+  description: "描述",
+  budget: "预算区间",
+  deadline: "最晚收货时间",
+  paymentMethod: "付费方式",
+  // secondhand
+  categoryKey: "物品类别",
+  condition: "新旧程度",
+  price: "售价",
+  address: "地址",
+  // survey
+  surveyTitle: "调研主题",
+  surveyIntro: "调研说明",
+  surveyReward: "调研奖励",
+  surveyLink: "调研链接",
+  // event
+  eventName: "活动名称",
+  organizer: "主办方",
+  eventDate: "活动日期",
+  eventVenue: "活动场地",
+  eventDescription: "活动描述",
+  participantCountMin: "人数下限",
+  participantCountMax: "人数上限",
+  // common contact aliases
+  contact_phone: "电话/WhatsApp",
+  contact_whatsapp: "WhatsApp",
+  contact_wechat: "微信号",
+  contact_email: "邮箱",
+};
+
 const PASSWORD_KEY = "kinshasa_admin_pw";
 
 export default function AdminPage() {
@@ -454,7 +504,7 @@ function SubmissionCard({
         {Object.entries(record.data).map(([k, v]) => (
           v ? (
             <div key={k} className="text-sm">
-              <span className="text-gray-400 mr-1.5">{k}:</span>
+              <span className="text-gray-400 mr-1.5">{FIELD_LABELS[k] ?? k}:</span>
               <span className="text-gray-700 break-words">{v}</span>
             </div>
           ) : null

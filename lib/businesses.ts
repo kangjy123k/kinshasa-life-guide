@@ -27,10 +27,11 @@ export interface Business {
   wechat: string;
   phone: string;
   area: string;
+  address?: string;  // 具体地址（法语），供语音播报 + 地图标注
   mainService: string;
   hasStore: string;
-  serviceScope: string;
-  intro: string;
+  serviceScope?: string;
+  intro?: string;
   image: string;
   gallery?: string[];
   updates?: BusinessUpdate[];
@@ -517,62 +518,7 @@ export const seedBusinesses: Business[] = [
     category: "secondhand",
   },
 ];
-export const liveBusinesses: Business[] = [
-  {
-    id: 2001,
-    name: "福美超市",
-    englishName: "Royal Shopping - Art Shops Market",
-    contactPerson: "刘女士",
-    wechat: "kazlxy",
-    phone: "",
-    area: "Avenue Likasi, Kinshasa",
-    mainService: "综合食品超市：中国食品、粮油调味、方便面、零食饮料、冷冻食品、日用百货",
-    hasStore: "有 — 临街超市门店",
-    serviceScope: "金沙萨市区",
-    intro: "福美超市位于 Avenue Likasi，是华人常去的综合型食品超市。中国粮油、调味料、方便面、速冻饺子、零食饮料、日用杂货齐全，适合日常采买。",
-    image: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=800&h=600&fit=crop",
-    category: "goods",
-    subcategory: "生活用品、食品",
-    featured: true,
-    lat: -4.3500,
-    lng: 15.3050,
-  },
-  {
-    id: 2002,
-    name: "亚洲花园 Jardin d'Asie",
-    contactPerson: "餐厅前台",
-    wechat: "",
-    phone: "+243 85 903 8380",
-    area: "金沙萨 Gombe 区 · Avenue Uvira N°60，Immeuble Aimer Tower 17-18 楼",
-    mainService: "亚洲料理 · 中餐 / 日料 / 韩式拼盘 · 商务宴请 · 刚果河景包房",
-    hasStore: "有 — Aimer Tower 顶层整层餐厅",
-    serviceScope: "金沙萨市区；可预订包房、节日订席",
-    intro: "位于 Gombe 区 Aimer Tower 17-18 层的高端亚洲餐厅，俯瞰刚果河。菜品覆盖中餐、日料、韩式拼盘，环境优雅，适合商务宴请、家庭聚餐和节日庆典。Instagram @jardin_dasie_drc 可查看环境图与菜品。",
-    image: "/images/businesses/jardin-dasie.jpg",
-    category: "restaurant",
-    subcategory: "中国餐厅",
-    featured: true,
-    lat: -4.2990,
-    lng: 15.2895,
-  },
-  {
-    id: 2003,
-    name: "喜客饭店",
-    contactPerson: "",
-    wechat: "",
-    phone: "",
-    area: "金沙萨 Ngaliema 区 · 26 Avenue Sergent Moke",
-    mainService: "家常中餐、川菜、粤菜、小炒、外卖",
-    hasStore: "有 — 堂食餐厅",
-    serviceScope: "金沙萨市区；可预订包场小聚",
-    intro: "喜客饭店位于 Avenue Sergent Moke 26 号，周边是华人常驻的 Ngaliema / Haut Commandement 社区。主打家常中餐，川粤口味，适合日常快餐、家庭聚餐或小型宴请。",
-    image: "/images/businesses/xike.webp",
-    category: "restaurant",
-    subcategory: "中国餐厅",
-    lat: -4.3700,
-    lng: 15.2600,
-  },
-];
+export const liveBusinesses: Business[] = [];
 
 /* 种子数据全部标记 hidden，保留但页面不展示 */
 export const businesses: Business[] = [
@@ -665,23 +611,26 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
       };
       updates = [formUpdate, ...updates].slice(0, 20);
     }
+    const area = get("area");
+    const coord = AREA_COORDS[area];
     return {
       id: baseId,
       submissionId: s.id,
       name,
+      englishName: nameIntl || undefined,
       contactPerson: get("contactPerson"),
       wechat: get("wechat"),
       phone: get("phone"),
-      area: get("area"),
+      area,
+      address: get("storeAddress") || undefined,
       mainService: get("mainService"),
       hasStore: get("hasStore"),
-      serviceScope: get("storeAddress") || get("serviceScope"),
-      intro: nameIntl || get("intro"),
       image: isValidImg(cover) ? cover : DEFAULT_IMG[cat.key] ?? DEFAULT_IMG.business,
       gallery: gallery.length ? gallery : undefined,
       updates: updates.length ? updates : undefined,
       category: cat.key,
       subcategory: get("subcategory") || undefined,
+      ...(coord ? { lat: coord[0], lng: coord[1] } : {}),
     };
   }
 

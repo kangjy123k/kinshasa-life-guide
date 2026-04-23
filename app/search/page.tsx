@@ -131,7 +131,8 @@ function SearchInner() {
           b.name.toLowerCase().includes(q) ||
           b.mainService.toLowerCase().includes(q) ||
           b.area.toLowerCase().includes(q) ||
-          b.intro.toLowerCase().includes(q) ||
+          (b.address?.toLowerCase().includes(q) ?? false) ||
+          (b.intro?.toLowerCase().includes(q) ?? false) ||
           (b.subcategory ?? "").toLowerCase().includes(q) ||
           catLabel.toLowerCase().includes(q)
         );

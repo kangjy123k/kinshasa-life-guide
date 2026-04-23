@@ -101,13 +101,6 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
       },
       { name: "subcategory", label: "子分类（可多选）", type: "subcategory", required: true },
       {
-        name: "area",
-        label: "所在区域（金沙萨）",
-        type: "select",
-        required: true,
-        options: KINSHASA_COMMUNES,
-      },
-      {
         name: "hasStore",
         label: "是否有门店",
         type: "select",
@@ -121,6 +114,13 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
         required: true,
         placeholder: "网站自动语音播报，方便客人告诉司机",
         conditional: { field: "hasStore", equals: "有" },
+      },
+      {
+        name: "area",
+        label: "所在区域（金沙萨）",
+        type: "select",
+        required: true,
+        options: KINSHASA_COMMUNES,
       },
       {
         name: "mainService",

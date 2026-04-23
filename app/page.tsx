@@ -750,7 +750,8 @@ function CategoryView({
       b.name.toLowerCase().includes(q) ||
       b.mainService.toLowerCase().includes(q) ||
       b.area.toLowerCase().includes(q) ||
-      b.intro.toLowerCase().includes(q)
+      (b.address?.toLowerCase().includes(q) ?? false) ||
+      (b.intro?.toLowerCase().includes(q) ?? false)
     );
   });
 
@@ -919,16 +920,19 @@ function BusinessDetailView({
             </button>
 
             <div className="mt-5 space-y-3 text-sm">
-              <Field
-                label="所在区域"
-                value={biz.area}
-                action={
-                  <SpeakButton
-                    text={`Je veux aller à cette adresse, ${biz.area}`}
-                    cacheKey={`biz-${biz.id}`}
-                  />
-                }
-              />
+              {biz.address && (
+                <Field
+                  label="具体地址"
+                  value={biz.address}
+                  action={
+                    <SpeakButton
+                      text={`Je veux aller à cette adresse, ${biz.address}`}
+                      cacheKey={`biz-${biz.id}-addr`}
+                    />
+                  }
+                />
+              )}
+              <Field label="所在区域" value={biz.area} />
               <Field label="联系人" value={biz.contactPerson} />
               <Field
                 label="微信号"
@@ -945,10 +949,8 @@ function BusinessDetailView({
                   </span>
                 }
               />
-              <Field label="门店/仓库" value={biz.hasStore} />
-              <Field label="服务范围" value={biz.serviceScope} />
+              <Field label="是否有门店" value={biz.hasStore} />
               <Field label="主营产品或服务" value={biz.mainService} />
-              <Field label="商家简介" value={biz.intro} />
             </div>
 
             <ContactButtons biz={biz} className="mt-5" />

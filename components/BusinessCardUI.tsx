@@ -82,14 +82,20 @@ export function BusinessCard({
             )}
           </div>
           <SpeakButton
-            text={`Je veux aller à cette adresse, ${biz.area}`}
-            cacheKey={`biz-${biz.id}`}
+            text={`Je veux aller à cette adresse, ${biz.address || biz.area}`}
+            cacheKey={`biz-${biz.id}-addr`}
           />
         </div>
 
         <div className="mt-3 space-y-2">
-          <Row icon={<MapPin size={15} className="text-red-400" />} text={biz.area} />
+          {biz.address && (
+            <Row
+              icon={<MapPin size={15} className="text-red-400" />}
+              text={biz.address}
+            />
+          )}
           <Row icon={<Store size={15} className="text-sky-400" />} text={biz.mainService} clamp />
+          <Row icon={<MapPin size={15} className="text-gray-400" />} text={`所在区域：${biz.area}`} />
         </div>
 
         {onOpen && (
