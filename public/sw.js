@@ -1,14 +1,15 @@
 // Kinshasa Life Guide — 轻量 Service Worker
 // 目的：在非洲高延迟/低带宽网络下，让回访与导航做到近乎瞬时
 // 策略：
-//   - HTML / 文档：stale-while-revalidate（先回缓存，后台更新）
+//   - HTML / 文档：network-first（3s 超时内拿新版；失败才回缓存）—— 避免部署新版后用户一直卡在旧 HTML
 //   - _next/static 与 /images：cache-first（指纹化/immutable 资源）
 //   - /api/*：始终走网络，由 CDN 的 s-maxage 控制
 
-const CACHE = "klg-v4";
+const CACHE = "klg-v5";
 const STATIC_PREFIXES = ["/_next/static/", "/images/"];
+const HTML_NETWORK_TIMEOUT_MS = 3000;
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
@@ -28,6 +29,22 @@ function isStatic(pathname) {
   return STATIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -36,7 +53,6 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   if (isStatic(url.pathname)) {
-    // cache-first
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE);
@@ -59,20 +75,21 @@ self.addEventListener("fetch", (event) => {
 
   const accept = req.headers.get("accept") || "";
   if (req.mode === "navigate" || accept.includes("text/html")) {
-    // stale-while-revalidate for HTML
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE);
-        const cached = await cache.match(req);
-        const networkPromise = fetch(req)
-          .then((res) => {
-            if (res && res.status === 200 && res.type === "basic") {
-              cache.put(req, res.clone());
-            }
-            return res;
-          })
-          .catch(() => cached);
-        return cached || networkPromise;
+        try {
+          const res = await withTimeout(fetch(req), HTML_NETWORK_TIMEOUT_MS);
+          if (res && res.status === 200 && res.type === "basic") {
+            cache.put(req, res.clone());
+          }
+          return res;
+        } catch {
+          const cached = await cache.match(req);
+          if (cached) return cached;
+          // 最后兜底再试一次，不加超时
+          return fetch(req);
+        }
       })()
     );
   }
