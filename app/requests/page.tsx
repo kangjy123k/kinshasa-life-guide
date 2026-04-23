@@ -12,8 +12,8 @@ import {
   Package,
   Loader2,
   Plus,
-  Eye,
-  EyeOff,
+  ChevronDown,
+  ChevronUp,
   Search,
   X,
 } from "lucide-react";
@@ -234,8 +234,10 @@ export default function RequestsPage() {
 }
 
 function DemandCardView({ d }: { d: DemandCard }) {
-  const [phoneShown, setPhoneShown] = useState(false);
-  const [wechatShown, setWechatShown] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const hasPhone = !!d.phone;
+  const hasWechat = !!d.wechat;
+  const hasContact = hasPhone || hasWechat;
 
   return (
     <li className="bg-white rounded-2xl shadow-sm border border-orange-100 p-4">
@@ -248,6 +250,24 @@ function DemandCardView({ d }: { d: DemandCard }) {
             {d.contactPerson || "匿名"} · {relativeTime(d.timestamp)}
           </p>
         </div>
+        {hasContact && (
+          <button
+            type="button"
+            onClick={() => setContactsOpen((o) => !o)}
+            className="shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium text-amber-700 hover:text-amber-800 hover:bg-amber-50 active:scale-95 transition"
+            aria-expanded={contactsOpen}
+          >
+            {contactsOpen ? (
+              <>
+                收起 <ChevronUp size={11} />
+              </>
+            ) : (
+              <>
+                查看联系方式 <ChevronDown size={11} />
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -297,75 +317,37 @@ function DemandCardView({ d }: { d: DemandCard }) {
         </div>
       )}
 
-      <div className="mt-3 pt-3 border-t border-orange-100 space-y-3">
-        {d.phone && (
-          <div>
-            {phoneShown ? (
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[11px] text-gray-400 shrink-0">电话</span>
-                  <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
-                    {d.phone}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setPhoneShown(false)}
-                    className="shrink-0 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[11px] font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 active:scale-95 transition"
-                    aria-label="收起电话"
-                  >
-                    <EyeOff size={11} /> 收起
-                  </button>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <CallChip phone={d.phone} />
-                  <WhatsAppChip phone={d.phone} />
-                </div>
+      {hasContact && contactsOpen && (
+        <div className="mt-3 pt-3 border-t border-orange-100 space-y-3">
+          {hasPhone && (
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[11px] text-gray-400 shrink-0">电话</span>
+                <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
+                  {d.phone}
+                </p>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setPhoneShown(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
-              >
-                <Eye size={12} /> 查看电话
-              </button>
-            )}
-          </div>
-        )}
-        {d.wechat && (
-          <div>
-            {wechatShown ? (
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[11px] text-gray-400 shrink-0">微信号</span>
-                  <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
-                    {d.wechat}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setWechatShown(false)}
-                    className="shrink-0 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[11px] font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 active:scale-95 transition"
-                    aria-label="收起微信号"
-                  >
-                    <EyeOff size={11} /> 收起
-                  </button>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <CopyChip text={d.wechat} label="复制微信号" doneLabel="已复制" />
-                </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <CallChip phone={d.phone} />
+                <WhatsAppChip phone={d.phone} />
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setWechatShown(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200 active:scale-95 transition"
-              >
-                <Eye size={12} /> 查看微信号
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+          {hasWechat && (
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[11px] text-gray-400 shrink-0">微信号</span>
+                <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 break-all select-all">
+                  {d.wechat}
+                </p>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <CopyChip text={d.wechat} label="复制微信号" doneLabel="已复制" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </li>
   );
 }

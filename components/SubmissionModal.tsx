@@ -402,6 +402,15 @@ export function SubmissionModal({
           <h3 className="text-[15px] font-semibold text-gray-800 flex-1 min-w-0 truncate">
             {editing ? `编辑：${def.title}` : def.title}
           </h3>
+          {formKey === "purchase" && !editing && !done && (
+            <Link
+              href="/requests"
+              onClick={handleClose}
+              className="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-semibold text-amber-600 hover:text-amber-700 active:scale-95 transition"
+            >
+              直通需求大厅 <ArrowRight size={11} />
+            </Link>
+          )}
           <button
             onClick={handleClose}
             className="w-7 h-7 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center active:scale-95 transition"
@@ -448,17 +457,6 @@ export function SubmissionModal({
         ) : (
           <>
             <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
-              {formKey === "purchase" && (
-                <Link
-                  href="/requests"
-                  onClick={handleClose}
-                  className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white text-sm font-bold shadow-md active:scale-95 transition"
-                >
-                  直通需求大厅
-                  <ArrowRight size={14} />
-                </Link>
-              )}
-
               {def.fields.map((f, idx) => {
                 if (!isActive(f)) return null;
 
