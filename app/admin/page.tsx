@@ -63,6 +63,8 @@ const FIELD_LABELS: Record<string, string> = {
   subcategory: "子分类",
   hasStore: "是否有门店",
   storeAddress: "具体地址（法语）",
+  storeLocationLat: "地图定位 · 纬度",
+  storeLocationLng: "地图定位 · 经度",
   area: "所在区域",
   mainService: "主营产品或服务介绍",
   coverImageUrl: "页面首图",

@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { X, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { categories, KINSHASA_COMMUNES } from "@/lib/businesses";
 import { getOwnerToken, setOwnerToken } from "@/lib/owner-token-client";
 import { SingleImageUploader, MultiImageUploader } from "@/components/ImageUploader";
+
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[200px] rounded-lg border border-gray-200 bg-gray-50 animate-pulse" />
+  ),
+});
 
 type FieldType =
   | "text"
@@ -18,7 +26,8 @@ type FieldType =
   | "radio"
   | "contact-group"
   | "image"
-  | "gallery";
+  | "gallery"
+  | "location-picker";
 
 interface FormField {
   name: string;
@@ -113,6 +122,14 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
         type: "text",
         required: true,
         placeholder: "网站自动语音播报，方便客人告诉司机",
+        conditional: { field: "hasStore", equals: "有" },
+      },
+      {
+        name: "storeLocation",
+        label: "地图定位",
+        type: "location-picker",
+        required: true,
+        helpText: "在地图上点一下放大头钉，客人能在商家地图里看到这个点",
         conditional: { field: "hasStore", equals: "有" },
       },
       {
@@ -255,6 +272,11 @@ export function SubmissionModal({
             const key = `${f.name}_${k}`;
             if (initialData[key] != null) seed[key] = String(initialData[key]);
           });
+        } else if (f.type === "location-picker") {
+          const lat = initialData[`${f.name}Lat`];
+          const lng = initialData[`${f.name}Lng`];
+          if (lat != null) seed[`${f.name}_lat`] = String(lat);
+          if (lng != null) seed[`${f.name}_lng`] = String(lng);
         } else if (initialData[f.name] != null) {
           seed[f.name] = String(initialData[f.name]);
         }
@@ -281,6 +303,8 @@ export function SubmissionModal({
       if (name === "category" && prev.category !== v) next.subcategory = "";
       if (name === "hasStore" && prev.hasStore !== v && v !== "有") {
         next.storeAddress = "";
+        next.storeLocation_lat = "";
+        next.storeLocation_lng = "";
       }
       return next;
     });
@@ -325,6 +349,16 @@ export function SubmissionModal({
         continue;
       }
 
+      if (f.type === "location-picker") {
+        const lat = values[`${f.name}_lat`]?.trim();
+        const lng = values[`${f.name}_lng`]?.trim();
+        if (!lat || !lng) {
+          setError(`请在地图上点一下放置「${f.label}」大头钉`);
+          return;
+        }
+        continue;
+      }
+
       if (!values[f.name]?.trim()) {
         setError(`请填写「${f.label}」`);
         return;
@@ -344,6 +378,9 @@ export function SubmissionModal({
           (["phone", "whatsapp", "wechat", "email"] as const).forEach((k) => {
             payload[`${f.name}_${k}`] = values[`${f.name}_${k}`] ?? "";
           });
+        } else if (f.type === "location-picker") {
+          payload[`${f.name}Lat`] = values[`${f.name}_lat`] ?? "";
+          payload[`${f.name}Lng`] = values[`${f.name}_lng`] ?? "";
         } else {
           payload[f.name] = values[f.name] ?? "";
         }
@@ -629,6 +666,31 @@ function FormFieldInput({
             )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (field.type === "location-picker") {
+    const latStr = values[`${field.name}_lat`];
+    const lngStr = values[`${field.name}_lng`];
+    const lat = latStr ? Number(latStr) : undefined;
+    const lng = lngStr ? Number(lngStr) : undefined;
+    return (
+      <div>
+        <FieldLabel field={field} />
+        <LocationPicker
+          value={{
+            lat: Number.isFinite(lat) ? lat : undefined,
+            lng: Number.isFinite(lng) ? lng : undefined,
+          }}
+          onChange={(la, lo) => {
+            onChange(`${field.name}_lat`, String(la));
+            onChange(`${field.name}_lng`, String(lo));
+          }}
+        />
+        {field.helpText && (
+          <p className="mt-1 text-[11px] text-gray-500 leading-snug">{field.helpText}</p>
+        )}
       </div>
     );
   }

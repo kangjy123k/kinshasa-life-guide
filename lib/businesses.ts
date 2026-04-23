@@ -612,7 +612,13 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
       updates = [formUpdate, ...updates].slice(0, 20);
     }
     const area = get("area");
-    const coord = AREA_COORDS[area];
+    // 优先用商家自己在地图上点选的定位；没有（老数据 / 无门店）再回落到 commune 近似坐标
+    const pickedLat = Number(get("storeLocationLat"));
+    const pickedLng = Number(get("storeLocationLng"));
+    const hasPicked = Number.isFinite(pickedLat) && Number.isFinite(pickedLng);
+    const coord = hasPicked
+      ? ([pickedLat, pickedLng] as [number, number])
+      : AREA_COORDS[area];
     return {
       id: baseId,
       submissionId: s.id,
