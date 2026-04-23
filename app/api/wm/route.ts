@@ -68,13 +68,19 @@ export async function GET(req: NextRequest) {
     if (!sourceBuf) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
-    // 读取源图尺寸（不做不必要的 decode，直接 metadata）
-    const meta = await sharp(sourceBuf).metadata();
-    const w = meta.width ?? 1200;
-    const h = meta.height ?? 900;
+    const [srcMeta, wmMeta] = await Promise.all([
+      sharp(sourceBuf).metadata(),
+      sharp(wmBuf).metadata(),
+    ]);
+    const w = srcMeta.width ?? 1200;
+    const h = srcMeta.height ?? 900;
+    const tileOrigW = wmMeta.width ?? 488;
+    const tileOrigH = wmMeta.height ?? 334;
     // 水印 tile 随源图尺寸缩放：目标每条水印文字横跨约图宽的 1/3，
-    // 原始 tile 约 488x334，太小的源图不放大（withoutEnlargement 等价）
-    const targetTileW = Math.max(260, Math.min(Math.round(w / 3), 700));
+    // 但必须严格不超过源图宽/高（sharp composite 要求 overlay ≤ base）。
+    const ideal = Math.max(260, Math.min(Math.round(w / 3), 700));
+    const maxByHeight = Math.floor((h * tileOrigW) / tileOrigH);
+    const targetTileW = Math.max(1, Math.min(ideal, w, maxByHeight));
     const tileResized = await sharp(wmBuf)
       .resize({ width: targetTileW, withoutEnlargement: false })
       .png()
