@@ -135,16 +135,30 @@ export function localDateString(d: Date = new Date()): string {
 }
 
 /** 找到"不晚于"给定日期的最新词条下标；若日期早于 FIRST_DATE 返回 0 */
-export function indexForDate(dateStr: string): number {
-  if (dateStr < FIRST_DATE) return 0;
-  // 从后往前找，匹配首个 <= 的日期
-  for (let i = BANK.length - 1; i >= 0; i--) {
-    if (BANK[i].date <= dateStr) return i;
+export function indexForDate(dateStr: string, list: FrenchDailyEntry[] = BANK): number {
+  if (list.length === 0) return 0;
+  if (dateStr < list[0].date) return 0;
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i].date <= dateStr) return i;
   }
   return 0;
 }
 
 /** 今日词条下标（若今天之后无新词，停留在最后一个） */
-export function todayIndex(): number {
-  return indexForDate(localDateString());
+export function todayIndex(list: FrenchDailyEntry[] = BANK): number {
+  return indexForDate(localDateString(), list);
+}
+
+/**
+ * 合并静态 BANK 与后台动态条目：相同日期时动态条目覆盖静态；
+ * 动态条目可以扩展到静态 BANK 之外的日期。最终按日期升序返回。
+ */
+export function mergeEntries(
+  staticList: FrenchDailyEntry[],
+  dynamicList: FrenchDailyEntry[],
+): FrenchDailyEntry[] {
+  const byDate = new Map<string, FrenchDailyEntry>();
+  for (const e of staticList) byDate.set(e.date, e);
+  for (const e of dynamicList) byDate.set(e.date, e);
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }

@@ -16,9 +16,9 @@ import {
 import { SpeakButton, CopyChip } from "@/components/BusinessCardUI";
 import {
   BANK,
-  TOTAL_ENTRIES,
   todayIndex,
   localDateString,
+  mergeEntries,
   type FrenchDailyEntry,
 } from "@/lib/french-word-of-the-day";
 
@@ -75,9 +75,11 @@ function formatDateHuman(d: string): string {
 }
 
 export default function FrenchWordPage() {
-  const maxIdx = BANK.length - 1;
-  const todayIdx = useMemo(() => todayIndex(), []);
-  const [index, setIndex] = useState(todayIdx);
+  const [dynamicEntries, setDynamicEntries] = useState<FrenchDailyEntry[]>([]);
+  const entries = useMemo(() => mergeEntries(BANK, dynamicEntries), [dynamicEntries]);
+  const todayIdx = useMemo(() => todayIndex(entries), [entries]);
+  const totalEntries = entries.length;
+  const [index, setIndex] = useState(() => todayIndex(BANK));
   const [progress, setProgress] = useState<Progress>(() =>
     typeof window === "undefined"
       ? { learned: {}, streak: 0, lastStudy: null, longestStreak: 0 }
@@ -93,7 +95,27 @@ export default function FrenchWordPage() {
     setProgress(readProgress());
   }, []);
 
-  const entry = BANK[index];
+  // 拉取后台上传的动态词条（离线失败静默兜底为纯静态 BANK）
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/fwod/list", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; entries?: FrenchDailyEntry[] }) => {
+        if (cancelled) return;
+        if (d?.ok && Array.isArray(d.entries)) setDynamicEntries(d.entries);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 动态词条到达后，若当前仍停留在旧今日且存在更新的今日，则自动跳到新今日
+  useEffect(() => {
+    setIndex((cur) => (cur === todayIdx ? cur : Math.min(cur, entries.length - 1)));
+  }, [entries.length, todayIdx]);
+
+  const entry = entries[Math.min(index, entries.length - 1)];
   const isToday = index === todayIdx;
   const canForward = index < todayIdx;
   const canBackward = index > 0;
@@ -138,7 +160,7 @@ export default function FrenchWordPage() {
           window.setTimeout(() => setJustLearned(false), 1400);
 
           const newCount = Object.keys(next.learned).length;
-          const ms = milestoneFor(newCount, TOTAL_ENTRIES);
+          const ms = milestoneFor(newCount, totalEntries);
           if (ms) {
             setMilestone(ms);
             window.setTimeout(() => setMilestone(null), 2600);
@@ -148,7 +170,7 @@ export default function FrenchWordPage() {
         return next;
       });
     },
-    []
+    [totalEntries]
   );
 
   useEffect(() => {
@@ -230,12 +252,12 @@ export default function FrenchWordPage() {
             </div>
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-[11px] font-semibold">
               <Trophy size={12} fill="currentColor" />
-              已学 {learnedCount} / {TOTAL_ENTRIES}
+              已学 {learnedCount} / {totalEntries}
             </div>
             <div className="flex-1 h-1.5 rounded-full bg-rose-100 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-rose-400 to-amber-400 transition-all duration-500"
-                style={{ width: `${(learnedCount / TOTAL_ENTRIES) * 100}%` }}
+                style={{ width: `${(learnedCount / totalEntries) * 100}%` }}
               />
             </div>
           </div>
@@ -326,6 +348,7 @@ export default function FrenchWordPage() {
       {/* 词库总览 */}
       {showList && (
         <WordListSheet
+          entries={entries}
           currentIndex={index}
           learned={progress.learned}
           todayIdx={todayIdx}
@@ -424,12 +447,14 @@ function Block({ title, body }: { title: string; body: string }) {
 }
 
 function WordListSheet({
+  entries,
   currentIndex,
   learned,
   todayIdx,
   onClose,
   onPick,
 }: {
+  entries: FrenchDailyEntry[];
   currentIndex: number;
   learned: Record<string, string>;
   todayIdx: number;
@@ -464,7 +489,7 @@ function WordListSheet({
           </button>
         </div>
         <ul className="divide-y divide-rose-50">
-          {BANK.map((e, i) => {
+          {entries.map((e, i) => {
             const isLearned = !!learned[e.word];
             const isLocked = i > todayIdx;
             const isCurrent = i === currentIndex;
