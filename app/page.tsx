@@ -404,10 +404,12 @@ function HomeView({
   onOpenBusiness: (id: number) => void;
 }) {
   const router = useRouter();
-  const featured = allBusinesses
-    .slice()
-    .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-    .slice(0, 3);
+  // 所有 featured 商家进轮播池，按 id 稳定排序避免新数据插队
+  const featured = useMemo(
+    () =>
+      allBusinesses.filter((b) => b.featured).sort((a, b) => a.id - b.id),
+    [allBusinesses]
+  );
 
   const [homeQuery, setHomeQuery] = useState("");
 
@@ -569,17 +571,7 @@ function HomeView({
       </section>
 
       {/* ---- 热门商家 ---- */}
-      <section className="max-w-4xl mx-auto px-4 mt-8 pb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="w-1 h-5 bg-red-400 rounded-full" />
-          <h2 className="text-base font-bold text-gray-800">热门商家</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {featured.map((biz) => (
-            <BusinessCard key={biz.id} biz={biz} onOpen={onOpenBusiness} />
-          ))}
-        </div>
-      </section>
+      <FeaturedRotator items={featured} onOpen={onOpenBusiness} />
 
       {/* ---- 许愿池专区 ---- */}
       <WishingPoolBanner />
@@ -587,6 +579,80 @@ function HomeView({
       {/* ---- 微信群入口 ---- */}
       <WeChatGroupBanner />
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  热门商家轮播：每 5 秒切 3 个，fade 进出                             */
+/* ------------------------------------------------------------------ */
+const FEATURED_PAGE_SIZE = 3;
+const FEATURED_INTERVAL_MS = 5000;
+const FEATURED_FADE_MS = 350;
+
+function FeaturedRotator({
+  items,
+  onOpen,
+}: {
+  items: Business[];
+  onOpen: (id: number) => void;
+}) {
+  const pageCount = Math.max(1, Math.ceil(items.length / FEATURED_PAGE_SIZE));
+  const [page, setPage] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  // 数据变化时把页码夹回有效范围，避免空页
+  useEffect(() => {
+    if (page >= pageCount) setPage(0);
+  }, [page, pageCount]);
+
+  useEffect(() => {
+    if (pageCount <= 1) return; // 只有一组就不滚
+    const tick = setInterval(() => {
+      setVisible(false);
+      const t = setTimeout(() => {
+        setPage((p) => (p + 1) % pageCount);
+        setVisible(true);
+      }, FEATURED_FADE_MS);
+      return () => clearTimeout(t);
+    }, FEATURED_INTERVAL_MS);
+    return () => clearInterval(tick);
+  }, [pageCount]);
+
+  if (items.length === 0) return null;
+
+  const start = page * FEATURED_PAGE_SIZE;
+  const slice = items.slice(start, start + FEATURED_PAGE_SIZE);
+
+  return (
+    <section className="max-w-4xl mx-auto px-4 mt-8 pb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-1 h-5 bg-red-400 rounded-full" />
+        <h2 className="text-base font-bold text-gray-800">热门商家</h2>
+        {pageCount > 1 && (
+          <div className="ml-auto flex gap-1">
+            {Array.from({ length: pageCount }).map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === page ? "w-4 bg-red-400" : "w-1.5 bg-gray-300"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      <div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4 transition-opacity"
+        style={{
+          opacity: visible ? 1 : 0,
+          transitionDuration: `${FEATURED_FADE_MS}ms`,
+        }}
+      >
+        {slice.map((biz) => (
+          <BusinessCard key={biz.id} biz={biz} onOpen={onOpen} />
+        ))}
+      </div>
+    </section>
   );
 }
 
