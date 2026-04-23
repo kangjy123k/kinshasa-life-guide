@@ -613,8 +613,10 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
     }
     const area = get("area");
     // 优先用商家自己在地图上点选的定位；没有（老数据 / 无门店）再回落到 commune 近似坐标
-    const pickedLat = Number(get("storeLocationLat"));
-    const pickedLng = Number(get("storeLocationLng"));
+    const latRaw = get("storeLocationLat");
+    const lngRaw = get("storeLocationLng");
+    const pickedLat = latRaw ? Number(latRaw) : NaN;
+    const pickedLng = lngRaw ? Number(lngRaw) : NaN;
     const hasPicked = Number.isFinite(pickedLat) && Number.isFinite(pickedLng);
     const coord = hasPicked
       ? ([pickedLat, pickedLng] as [number, number])
