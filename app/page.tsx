@@ -34,6 +34,7 @@ import {
 import { homeUsefulItems } from "@/lib/useful-items";
 import { FrenchWordDot } from "@/components/FrenchWordDot";
 import { ProtectedImg } from "@/components/ProtectedImg";
+import { ShareFab } from "@/components/ShareFab";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -297,6 +298,8 @@ export default function GuidePage() {
 
       <Footer />
 
+      {view === "home" && <ShareFab />}
+
       {posterOpen && <PosterPopup onClose={() => setPosterOpen(false)} />}
     </div>
   );
@@ -432,6 +435,12 @@ function HomeView({
           size={16}
           className="absolute top-12 right-16 text-yellow-300 drop-shadow"
           fill="currentColor"
+        />
+
+        <span
+          id="klg-share-anchor"
+          aria-hidden
+          className="absolute bottom-3 right-3 w-0 h-0 pointer-events-none"
         />
 
         <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-8 text-center">
