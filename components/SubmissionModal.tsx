@@ -394,7 +394,7 @@ export function SubmissionModal({
       }`}
     >
       <div
-        className={`w-full max-w-[22rem] md:max-w-sm bg-white rounded-2xl shadow-xl max-h-[85vh] flex flex-col overflow-hidden transition-all duration-300 ease-out ${
+        className={`w-full max-w-[22rem] md:max-w-sm bg-white rounded-2xl shadow-xl max-h-[85dvh] flex flex-col overflow-hidden transition-all duration-300 ease-out ${
           closing ? "opacity-0 scale-95" : "opacity-100 scale-100"
         }`}
       >
@@ -490,7 +490,10 @@ export function SubmissionModal({
                 </p>
               )}
             </div>
-            <div className="px-4 py-2.5 border-t border-gray-100 shrink-0">
+            <div
+              className="px-4 pt-2.5 border-t border-gray-100 shrink-0 bg-white"
+              style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}
+            >
               <button
                 onClick={submit}
                 disabled={submitting}
