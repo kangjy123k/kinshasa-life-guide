@@ -13,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import { type Business, categories } from "@/lib/businesses";
+import { wm } from "@/lib/watermark";
 
 const NEW_UPDATE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -51,7 +52,7 @@ export function BusinessCard({
     >
       <div className="relative h-44">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={biz.image} alt={biz.name} className="w-full h-full object-cover" loading="lazy" />
+        <img src={wm(biz.image)} alt={biz.name} className="w-full h-full object-cover" loading="lazy" />
         {biz.featured && (
           <span className="absolute top-3 left-3 px-2.5 py-1 bg-yellow-400 text-white text-xs font-bold rounded-full shadow flex items-center gap-1">
             <Star size={12} fill="white" /> 热门

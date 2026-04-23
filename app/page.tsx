@@ -35,6 +35,7 @@ import {
 } from "@/components/BusinessCardUI";
 import { homeUsefulItems } from "@/lib/useful-items";
 import { FrenchWordDot } from "@/components/FrenchWordDot";
+import { wm } from "@/lib/watermark";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -900,7 +901,7 @@ function BusinessDetailView({
         <div className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
           <div className="relative h-56 md:h-72">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={biz.image} alt={biz.name} className="w-full h-full object-cover" />
+            <img src={wm(biz.image)} alt={biz.name} className="w-full h-full object-cover" />
             {biz.featured && (
               <span className="absolute top-3 left-3 px-2.5 py-1 bg-yellow-400 text-white text-xs font-bold rounded-full shadow flex items-center gap-1">
                 <Star size={12} fill="white" /> 热门
@@ -965,7 +966,7 @@ function BusinessDetailView({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={`${src}-${i}`}
-                  src={src}
+                  src={wm(src)}
                   alt={`${biz.name} 相册 ${i + 1}`}
                   loading="lazy"
                   className="aspect-square w-full rounded-lg object-cover border border-sky-50"
@@ -1003,7 +1004,7 @@ function BusinessDetailView({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           key={`${src}-${i}`}
-                          src={src}
+                          src={wm(src)}
                           alt={`动态图片 ${i + 1}`}
                           loading="lazy"
                           className="h-24 w-auto rounded-lg object-cover border border-sky-50 shrink-0"

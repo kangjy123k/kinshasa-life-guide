@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
 import {
   Lock,
   Loader2,
@@ -17,8 +16,10 @@ import {
   ClipboardList,
   CalendarHeart,
   Sparkles,
-  ArrowRight,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
+import { AdminFwodPanel } from "@/components/AdminFwodPanel";
 
 type SubmissionType =
   | "merchant"
@@ -61,6 +62,7 @@ export default function AdminPage() {
   const [activeType, setActiveType] = useState<SubmissionType | "all">("all");
   const [activeStatus, setActiveStatus] = useState<Status | "all">("all");
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
+  const [fwodOpen, setFwodOpen] = useState(false);
 
   // 自动尝试读已存密码
   useEffect(() => {
@@ -250,34 +252,52 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* 每日法语上传快捷入口 — 醒目 banner */}
+      {/* 每日法语上传区（与下方审核区视觉明显区分）— 直接在当前页操作 */}
       <section className="max-w-6xl mx-auto px-4 pt-4">
-        <Link
-          href="/admin/fwod"
-          className="group relative block rounded-2xl overflow-hidden shadow-md bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 text-white active:scale-[0.99] transition"
-        >
-          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/15" />
-          <div className="absolute -bottom-12 -left-6 w-40 h-40 rounded-full bg-white/10" />
-          <div className="relative flex items-center gap-3 px-5 py-4">
-            <span className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 text-2xl">
-              🇫🇷
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-base font-bold drop-shadow">每日法语一词 · 上传</h2>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] font-bold">
-                  <Sparkles size={10} fill="currentColor" /> 后台
-                </span>
+        <div className="rounded-2xl shadow-md overflow-hidden border-2 border-rose-200 bg-rose-50/50">
+          <button
+            onClick={() => setFwodOpen((v) => !v)}
+            className="group relative w-full text-left bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 text-white active:scale-[0.997] transition"
+            aria-expanded={fwodOpen}
+          >
+            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/15 pointer-events-none" />
+            <div className="absolute -bottom-12 -left-6 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
+            <div className="relative flex items-center gap-3 px-5 py-4">
+              <span className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 text-2xl">
+                🇫🇷
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-base font-bold drop-shadow">每日法语一词 · 上传</h2>
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] font-bold">
+                    <Sparkles size={10} fill="currentColor" /> 独立区
+                  </span>
+                </div>
+                <p className="text-xs text-white/90 mt-0.5 leading-snug">
+                  {fwodOpen
+                    ? "填好下方表单保存即上线，与用户提交审核互不影响"
+                    : "点击展开：上传今日单词、释义图片、近似读音，立即上线前台"}
+                </p>
               </div>
-              <p className="text-xs text-white/90 mt-0.5 leading-snug">
-                上传今日单词、释义图片、近似读音，立即上线前台
-              </p>
+              <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-white text-rose-600 rounded-full text-xs font-bold shadow group-hover:scale-105 transition">
+                {fwodOpen ? (
+                  <>
+                    收起 <ChevronUp size={13} />
+                  </>
+                ) : (
+                  <>
+                    展开 <ChevronDown size={13} />
+                  </>
+                )}
+              </span>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-white text-rose-600 rounded-full text-xs font-bold shadow group-hover:scale-105 transition">
-              进入 <ArrowRight size={13} />
-            </span>
-          </div>
-        </Link>
+          </button>
+          {fwodOpen && (
+            <div className="p-4 border-t border-rose-100 bg-rose-50/30">
+              <AdminFwodPanel password={password} />
+            </div>
+          )}
+        </div>
       </section>
 
       {/* 类型 tab */}

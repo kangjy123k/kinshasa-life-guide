@@ -21,6 +21,7 @@ import {
   mergeEntries,
   type FrenchDailyEntry,
 } from "@/lib/french-word-of-the-day";
+import { wm } from "@/lib/watermark";
 
 const LS_KEY = "fwod-progress-v1";
 
@@ -407,12 +408,13 @@ function WordCard({ entry }: { entry: FrenchDailyEntry }) {
       {/* 释义图 */}
       <div className="relative w-full bg-rose-50 aspect-[4/3]">
         <Image
-          src={entry.image}
+          src={wm(entry.image)}
           alt={entry.zh}
           fill
           sizes="(max-width: 768px) 100vw, 640px"
           className="object-contain p-2"
           priority={false}
+          unoptimized
         />
       </div>
 

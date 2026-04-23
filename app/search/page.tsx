@@ -14,6 +14,7 @@ import {
   submissionToBusiness,
 } from "@/lib/businesses";
 import { BusinessCard } from "@/components/BusinessCardUI";
+import { wm } from "@/lib/watermark";
 
 interface PurchaseHit {
   id: string;
@@ -315,11 +316,12 @@ function PurchaseHitCard({ p }: { p: PurchaseHit }) {
         {p.images[0] ? (
           <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-orange-50 shrink-0">
             <Image
-              src={p.images[0]}
+              src={wm(p.images[0])}
               alt={p.itemName}
               fill
               sizes="64px"
               className="object-cover"
+              unoptimized
             />
           </div>
         ) : (

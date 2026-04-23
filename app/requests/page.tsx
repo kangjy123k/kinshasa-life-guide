@@ -21,6 +21,7 @@ import {
 import type { RawSubmission } from "@/lib/businesses";
 import { CallChip, CopyChip, WhatsAppChip } from "@/components/BusinessCardUI";
 import { SubmissionModal } from "@/components/SubmissionModal";
+import { wm } from "@/lib/watermark";
 
 interface DemandCard {
   id: string;
@@ -278,17 +279,18 @@ function DemandCardView({ d }: { d: DemandCard }) {
           {d.images.map((src, i) => (
             <a
               key={`${d.id}-${i}`}
-              href={src}
+              href={wm(src)}
               target="_blank"
               rel="noopener noreferrer"
               className="relative aspect-square overflow-hidden rounded-lg bg-orange-50"
             >
               <Image
-                src={src}
+                src={wm(src)}
                 alt={`${d.itemName} ${i + 1}`}
                 fill
                 sizes="(max-width: 768px) 33vw, 200px"
                 className="object-cover"
+                unoptimized
               />
             </a>
           ))}
