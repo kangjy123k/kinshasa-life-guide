@@ -60,12 +60,8 @@ const ads: AdSlide[] = [
     imageBg: "#fd645a", // 与图片边缘红珊瑚色一致，避免 contain 模式下出现可见留白
   },
   {
-    title: "混凝土搅拌站",
-    subtitle: "工程建材一站供应 · 价格实惠",
-    image: "/images/concrete-plant.jpg",
-    emoji: "🏗️",
-    phone: "+243823170887",
-    address: "中国城",
+    image: "/images/concrete-plant-v2.webp",
+    plainImage: true,
     adTag: true,
   },
 ];
@@ -624,21 +620,20 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
   return (
     <div>
     <div
-      className={`relative rounded-2xl overflow-hidden shadow-lg min-h-[108px] md:min-h-[128px] ${bgGradient}`}
+      className={`relative rounded-2xl overflow-hidden shadow-lg aspect-[10/3] ${bgGradient}`}
       style={plain && slide.imageBg ? { background: slide.imageBg } : undefined}
     >
       {/* 切换时整块内容一起淡入，图/字同步出现 */}
       <div key={index} className="absolute inset-0 animate-slide-in">
         {slide.image && plain ? (
-          // 纯图模式：图片整张显示（object-contain，不裁切边缘），
-          // 边缘如有空隙由容器同色底色兜底，视觉上仍是满屏
+          // 纯图模式：容器 aspect 与图片比例一致（10:3），cover 刚好贴合零裁切
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={slide.image}
             alt={slide.title ?? "广告"}
             fetchPriority="high"
             loading="eager"
-            className="absolute inset-0 w-full h-full object-contain"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : slide.image ? (
           <>
