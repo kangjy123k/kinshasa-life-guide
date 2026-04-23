@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, Download } from "lucide-react";
-import QRCode from "qrcode";
 
 const STORAGE_KEY = "klg-share-fab-pos";
 const TAB_SIZE = 56;
@@ -16,7 +15,6 @@ export function ShareFab() {
   const [dragging, setDragging] = useState(false);
   const [dragXY, setDragXY] = useState<{ x: number; y: number } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const dragRef = useRef({ px: 0, py: 0, startX: 0, startY: 0, moved: false });
 
   // 初始定位：优先读 storage；否则默认 "首页蓝色 hero 右下角" —— 通过锚点元素定位
@@ -46,15 +44,6 @@ export function ShareFab() {
     if (!pos) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pos));
   }, [pos]);
-
-  // 打开对话框时生成二维码（指向当前站点首页）
-  useEffect(() => {
-    if (!dialogOpen || qrDataUrl) return;
-    const url = typeof window !== "undefined" ? `${window.location.origin}/` : "/";
-    QRCode.toDataURL(url, { margin: 1, width: 240, color: { dark: "#000000", light: "#ffffff" } })
-      .then(setQrDataUrl)
-      .catch((e) => console.error("[ShareFab] qr gen failed", e));
-  }, [dialogOpen, qrDataUrl]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!pos) return;
@@ -186,58 +175,40 @@ export function ShareFab() {
 
       {dialogOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center p-3"
           onClick={() => setDialogOpen(false)}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDialogOpen(false);
+            }}
+            aria-label="关闭"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center backdrop-blur"
           >
-            <div className="flex items-center justify-between px-5 pt-4 pb-2">
-              <h3 className="text-base font-bold text-gray-800">分享小程序</h3>
-              <button
-                type="button"
-                onClick={() => setDialogOpen(false)}
-                aria-label="关闭"
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
-              >
-                <X size={16} className="text-gray-500" />
-              </button>
-            </div>
+            <X size={18} />
+          </button>
 
-            <div className="px-5 pb-5 flex flex-col items-center gap-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/share.png"
-                alt="刚果金华人生活服务指南"
-                className="w-40 rounded-xl shadow-md"
-                draggable={false}
-              />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/share.png"
+            alt="刚果金华人生活服务指南"
+            className="max-h-[80vh] max-w-full w-auto rounded-xl shadow-2xl"
+            draggable={false}
+            onClick={(e) => e.stopPropagation()}
+          />
 
-              <button
-                type="button"
-                onClick={triggerSave}
-                className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 text-white text-sm font-bold shadow-md active:scale-[0.98] transition"
-              >
-                <Download size={16} /> 保存到相册
-              </button>
-
-              <div className="w-full flex flex-col items-center gap-1 pt-1 border-t border-gray-100 pt-3">
-                <p className="text-xs text-gray-500">扫码直接进入小程序</p>
-                {qrDataUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={qrDataUrl}
-                    alt="小程序链接二维码"
-                    className="w-36 h-36"
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="w-36 h-36 rounded-lg bg-gray-100 animate-pulse" />
-                )}
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              triggerSave();
+            }}
+            className="mt-4 inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white text-sm font-bold shadow-xl active:scale-[0.98] transition"
+          >
+            <Download size={16} /> 保存到相册
+          </button>
         </div>
       )}
     </>
