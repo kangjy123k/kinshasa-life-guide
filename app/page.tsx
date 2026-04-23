@@ -41,23 +41,24 @@ import { FrenchWordDot } from "@/components/FrenchWordDot";
 /*  轮播广告位                                                          */
 /* ------------------------------------------------------------------ */
 interface AdSlide {
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
   bg?: string;       // tailwind 渐变 class 片段
   image?: string;    // 图片背景（优先于 bg）
-  emoji: string;
+  emoji?: string;
   phone?: string;
   address?: string;
   darkText?: boolean; // 浅底时用深字
   adTag?: boolean;    // 右上角"广告"角标
+  plainImage?: boolean; // 纯图片（不加文字/蒙层/emoji，整张居中显示）
+  imageBg?: string;    // plainImage 时的底色
 }
 
 const ads: AdSlide[] = [
   {
-    title: "欢迎商家入驻名录",
-    subtitle: "免费收录 · 让客户更快找到你",
     image: "/images/sponsor.webp",
-    emoji: "🏪",
+    plainImage: true,
+    imageBg: "#fff1f2", // 与图片背景接近的淡粉色
   },
   {
     title: "混凝土搅拌站",
@@ -605,6 +606,7 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
     });
   }, []);
 
+  const plain = !!slide.plainImage;
   const darkText = !!slide.darkText;
   const bgGradient = slide.bg ? `bg-gradient-to-r ${slide.bg}` : "";
   const textClass = slide.image ? "text-white" : darkText ? "text-gray-900" : "text-white";
@@ -613,12 +615,17 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
     : darkText
       ? "text-gray-700"
       : "text-white/90";
-  const navBtnClass =
-    !slide.image && darkText
+  const navBtnClass = plain
+    ? "bg-black/25 hover:bg-black/40 text-white"
+    : !slide.image && darkText
       ? "bg-black/15 hover:bg-black/25 text-gray-800"
       : "bg-white/20 hover:bg-white/30 text-white";
-  const dotActive = !slide.image && darkText ? "bg-gray-900" : "bg-white";
-  const dotInactive = !slide.image && darkText ? "bg-gray-400/60" : "bg-white/60";
+  const dotActive = plain ? "bg-gray-800" : !slide.image && darkText ? "bg-gray-900" : "bg-white";
+  const dotInactive = plain
+    ? "bg-gray-400/70"
+    : !slide.image && darkText
+      ? "bg-gray-400/60"
+      : "bg-white/60";
   const phoneChipClass = slide.image
     ? "bg-white/25 hover:bg-white/40 text-white"
     : darkText
@@ -626,10 +633,23 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
       : "bg-white/25 hover:bg-white/40 text-white";
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden shadow-lg min-h-[108px] md:min-h-[128px] ${bgGradient}`}>
+    <div
+      className={`relative rounded-2xl overflow-hidden shadow-lg min-h-[108px] md:min-h-[128px] ${bgGradient}`}
+      style={plain && slide.imageBg ? { background: slide.imageBg } : undefined}
+    >
       {/* 切换时整块内容一起淡入，图/字同步出现 */}
       <div key={index} className="absolute inset-0 animate-slide-in">
-        {slide.image && (
+        {slide.image && plain ? (
+          // 纯图模式：图片完整居中显示，不加文字、emoji、蒙层
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={slide.image}
+            alt={slide.title ?? "广告"}
+            fetchPriority="high"
+            loading="eager"
+            className="absolute inset-0 w-full h-full object-contain"
+          />
+        ) : slide.image ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -644,32 +664,40 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
             <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-black/10" />
             <div className="absolute inset-0 bg-black/10" />
           </>
-        )}
+        ) : null}
 
-        <div className={`absolute inset-0 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 ${textClass}`}>
-          <span className="text-4xl md:text-5xl shrink-0 drop-shadow">{slide.emoji}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-base md:text-xl font-bold leading-snug truncate drop-shadow">{slide.title}</p>
-            <p className={`text-xs md:text-sm ${subtitleClass} mt-0.5 leading-snug drop-shadow`}>
-              {slide.subtitle}
-              {slide.address && (
-                <>
-                  <span className="mx-1 opacity-60">·</span>
-                  <MapPin size={11} className="inline -mt-0.5" /> {slide.address}
-                </>
-              )}
-            </p>
-            {slide.phone && (
-              <a
-                href={`tel:${slide.phone.replace(/\s+/g, "")}`}
-                onClick={(e) => e.stopPropagation()}
-                className={`mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full backdrop-blur text-xs md:text-sm font-semibold ${phoneChipClass}`}
-              >
-                <Phone size={12} /> {slide.phone}
-              </a>
+        {!plain && (
+          <div className={`absolute inset-0 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 ${textClass}`}>
+            {slide.emoji && (
+              <span className="text-4xl md:text-5xl shrink-0 drop-shadow">{slide.emoji}</span>
             )}
+            <div className="flex-1 min-w-0">
+              {slide.title && (
+                <p className="text-base md:text-xl font-bold leading-snug truncate drop-shadow">{slide.title}</p>
+              )}
+              {(slide.subtitle || slide.address) && (
+                <p className={`text-xs md:text-sm ${subtitleClass} mt-0.5 leading-snug drop-shadow`}>
+                  {slide.subtitle}
+                  {slide.address && (
+                    <>
+                      <span className="mx-1 opacity-60">·</span>
+                      <MapPin size={11} className="inline -mt-0.5" /> {slide.address}
+                    </>
+                  )}
+                </p>
+              )}
+              {slide.phone && (
+                <a
+                  href={`tel:${slide.phone.replace(/\s+/g, "")}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full backdrop-blur text-xs md:text-sm font-semibold ${phoneChipClass}`}
+                >
+                  <Phone size={12} /> {slide.phone}
+                </a>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {slide.adTag && (
           <span className="absolute top-1.5 right-2 text-[9px] font-normal text-white/55 tracking-[0.2em] leading-none select-none">
