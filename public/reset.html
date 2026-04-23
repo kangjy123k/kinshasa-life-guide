@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>正在更新到最新版…</title>
+    <style>
+      html,body{margin:0;height:100%;background:#f0f9ff;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;}
+      .wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#0c4a6e;text-align:center;}
+      .spin{width:44px;height:44px;border:4px solid #bae6fd;border-top-color:#0ea5e9;border-radius:50%;animation:s 0.9s linear infinite;margin-bottom:18px;}
+      @keyframes s{to{transform:rotate(360deg)}}
+      h1{font-size:17px;font-weight:600;margin:0 0 6px;}
+      p{font-size:13px;color:#0369a1;margin:0;line-height:1.6;max-width:280px;}
+      code{background:#e0f2fe;padding:1px 6px;border-radius:4px;font-size:12px;}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="spin"></div>
+      <h1>正在更新到最新版</h1>
+      <p>正在清理旧缓存并重新加载…</p>
+    </div>
+    <script>
+      (async () => {
+        try {
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
+          }
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k).catch(() => false)));
+          }
+        } catch (e) {
+          /* ignore */
+        }
+        // 带时间戳回到首页，彻底绕开任何中间缓存
+        const target = new URL('/', location.origin);
+        target.searchParams.set('_reset', String(Date.now()));
+        location.replace(target.toString());
+      })();
+    </script>
+  </body>
+</html>
