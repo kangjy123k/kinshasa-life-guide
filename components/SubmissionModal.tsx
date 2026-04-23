@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { X, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
@@ -305,6 +306,11 @@ export function SubmissionModal({
     });
   };
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const update = (name: string, v: string) =>
     setValues((prev) => {
       const next = { ...prev, [name]: v };
@@ -432,7 +438,8 @@ export function SubmissionModal({
     }
   };
 
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <div
       onClick={(e) => e.stopPropagation()}
       className={`fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out ${
@@ -562,7 +569,8 @@ export function SubmissionModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

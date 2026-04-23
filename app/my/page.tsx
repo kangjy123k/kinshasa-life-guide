@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -449,9 +450,11 @@ function ReadOnlyDetailModal({
   onClose: () => void;
 }) {
   const [closing, setClosing] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const SIcon = status.Icon;
 
   useEffect(() => {
+    setMounted(true);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -467,7 +470,8 @@ function ReadOnlyDetailModal({
     });
   };
 
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4 transition-opacity duration-300 ease-out ${
         closing ? "opacity-0" : "opacity-100"
@@ -510,7 +514,8 @@ function ReadOnlyDetailModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -528,6 +533,11 @@ function MerchantUpdateModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClose = () => {
     setClosing((c) => {
@@ -567,7 +577,8 @@ function MerchantUpdateModal({
     }
   };
 
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300 ease-out ${
         closing ? "opacity-0" : "opacity-100"
@@ -651,6 +662,7 @@ function MerchantUpdateModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
