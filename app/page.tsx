@@ -7,7 +7,6 @@ import {
   Search,
   MapPin,
   Phone,
-  ChevronLeft,
   ChevronRight,
   Star,
   X,
@@ -592,8 +591,6 @@ function HomeView({
 /* ------------------------------------------------------------------ */
 function Carousel({ index, onChange }: { index: number; onChange: (n: number) => void }) {
   const slide = ads[index];
-  const next = () => onChange((index + 1) % ads.length);
-  const prev = () => onChange((index - 1 + ads.length) % ads.length);
 
   // 首次挂载时预取带图片的广告，避免第一次切到时文字先出、图片后出的错位感
   useEffect(() => {
@@ -615,11 +612,6 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
     : darkText
       ? "text-gray-700"
       : "text-white/90";
-  const navBtnClass = plain
-    ? "bg-black/25 hover:bg-black/40 text-white"
-    : !slide.image && darkText
-      ? "bg-black/15 hover:bg-black/25 text-gray-800"
-      : "bg-white/20 hover:bg-white/30 text-white";
   const dotActive = plain ? "bg-gray-800" : !slide.image && darkText ? "bg-gray-900" : "bg-white";
   const dotInactive = plain
     ? "bg-gray-400/70"
@@ -706,21 +698,6 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
           </span>
         )}
       </div>
-
-      <button
-        onClick={prev}
-        aria-label="上一条"
-        className={`absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full backdrop-blur flex items-center justify-center ${navBtnClass}`}
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <button
-        onClick={next}
-        aria-label="下一条"
-        className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full backdrop-blur flex items-center justify-center ${navBtnClass}`}
-      >
-        <ChevronRight size={16} />
-      </button>
 
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
         {ads.map((_, i) => (
