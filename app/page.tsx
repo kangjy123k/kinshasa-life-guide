@@ -1069,7 +1069,7 @@ function WeChatGroupBanner() {
         <div className="p-4 flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/qr/community-wechat.png"
+            src="/images/qr/community-wechat.png?v=2"
             alt="刚果金华人社群客服二维码"
             className="w-56 h-56 md:w-64 md:h-64 object-contain"
           />
