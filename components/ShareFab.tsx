@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { X, Download } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 
 const STORAGE_KEY = "klg-share-fab-pos-v2";
 const TAB_SIZE = 56;
@@ -97,36 +97,6 @@ export function ShareFab() {
     setDragXY(null);
   };
 
-  const triggerSave = useCallback(async () => {
-    try {
-      const res = await fetch("/share.png");
-      const blob = await res.blob();
-      const file = new File([blob], "刚果金华人生活服务指南.png", { type: "image/png" });
-      if (
-        typeof navigator !== "undefined" &&
-        "canShare" in navigator &&
-        navigator.canShare?.({ files: [file] })
-      ) {
-        try {
-          await navigator.share({ files: [file], title: "刚果金华人生活服务指南" });
-          return;
-        } catch {
-          /* 用户取消或不支持 → 回落下载 */
-        }
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "刚果金华人生活服务指南.png";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    } catch (e) {
-      console.error("[ShareFab] save failed", e);
-    }
-  }, []);
-
   if (!pos) return null;
 
   // ---- 视觉定位 ----
@@ -194,21 +164,14 @@ export function ShareFab() {
           <img
             src="/share.png"
             alt="刚果金华人生活服务指南"
-            className="max-h-[80vh] max-w-full w-auto rounded-xl shadow-2xl"
+            className="max-h-[82vh] max-w-full w-auto rounded-xl shadow-2xl"
             draggable={false}
             onClick={(e) => e.stopPropagation()}
           />
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              triggerSave();
-            }}
-            className="mt-4 inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white text-sm font-bold shadow-xl active:scale-[0.98] transition"
-          >
-            <Download size={16} /> 保存到相册
-          </button>
+          <p className="mt-4 text-white text-sm font-medium px-4 text-center">
+            长按海报即可保存到相册
+          </p>
         </div>
       )}
     </>
