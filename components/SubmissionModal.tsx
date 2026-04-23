@@ -141,6 +141,18 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
         type: "gallery",
         helpText: "从手机相册多选，展示门店 / 产品 / 服务现场照。在详情页以九宫格展示。",
       },
+      {
+        name: "latestUpdateText",
+        label: "最新动态（可选）",
+        type: "textarea",
+        placeholder: "新品到货 / 限时折扣 / 营业时间变更…审核通过后可随时在「我的发布」里再次编辑。",
+      },
+      {
+        name: "latestUpdateImages",
+        label: "最新动态配图（可选 · 最多 6 张）",
+        type: "gallery",
+        helpText: "从手机相册选择，用于展示最新产品或打折活动。",
+      },
     ],
   },
   secondhand: {
@@ -172,6 +184,13 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
     title: "发布活动申请",
     fields: [
       { name: "eventName", label: "活动名称", type: "text", required: true },
+      {
+        name: "recurrence",
+        label: "重复性",
+        type: "radio",
+        required: true,
+        options: ["单次活动", "常规活动"],
+      },
       { name: "eventDate", label: "活动日期", type: "date", required: true },
       { name: "eventVenue", label: "活动地点", type: "text", required: true, placeholder: "场地名 + 区域，例：Pullman · Gombe" },
       {

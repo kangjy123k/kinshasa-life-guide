@@ -646,6 +646,25 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
         /* 破损数据忽略 */
       }
     }
+    // 入驻表单自带的"最新动态"字段 → 合成一条排在最前（始终展示当前版本，被商家再次编辑即更新）
+    const latestText = get("latestUpdateText");
+    const latestImgsRaw = get("latestUpdateImages");
+    if (latestText) {
+      const latestImgs = latestImgsRaw
+        ? latestImgsRaw
+            .split(/\r?\n/)
+            .map((u) => u.trim())
+            .filter(isValidImg)
+            .slice(0, 6)
+        : [];
+      const formUpdate: BusinessUpdate = {
+        id: `form-${s.id}`,
+        at: s.timestamp || new Date().toISOString(),
+        text: latestText,
+        ...(latestImgs.length ? { images: latestImgs } : {}),
+      };
+      updates = [formUpdate, ...updates].slice(0, 20);
+    }
     return {
       id: baseId,
       submissionId: s.id,

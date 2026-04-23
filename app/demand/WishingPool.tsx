@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Search, Plus, X, Loader2, Trophy, Sparkles, Info } from "lucide-react";
+import { ArrowLeft, Search, Plus, X, Loader2, Trophy } from "lucide-react";
 
 const Scene3D = dynamic(() => import("./Scene3D"), { ssr: false });
 
@@ -32,16 +32,14 @@ export interface BubbleInstance {
 }
 
 const FP_KEY = "klg_demand_fp";
+const VOTED_KEY = "klg_demand_voted"; // { [wishId]: isoTimestamp } — 客户端 24h 隐藏用
+const VOTED_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const MAX_VISIBLE = 8;
 const SPAWN_INTERVAL_MIN = 320;
 const SPAWN_INTERVAL_MAX = 720;
 // 椭圆采样范围（横窄纵宽，贴合 1:1.1 竖屏画幅；留足边距给气泡半径 + 漂移 + 晃动不切边）
 const POOL_RADIUS_X = 1.9;
 const POOL_RADIUS_Y = 2.2;
-// 兜底：任何时刻气泡中心都不得超出此范围
-const SAFE_X = 2.3;
-const SAFE_Y = 2.6;
-// 最小间距按两颗气泡的峰值尺寸动态算：r1+r2+0.1；避免大气泡吃小气泡
 const LIFESPAN_MIN = 4200;  // 抛物线总时长：小→大→小
 const LIFESPAN_MAX = 5500;
 
@@ -55,9 +53,38 @@ function getFingerprint(): string {
   return fp;
 }
 
+function loadVotedMap(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(VOTED_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    if (!parsed || typeof parsed !== "object") return {};
+    const now = Date.now();
+    const next: Record<string, number> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v !== "number") continue;
+      if (now - v < VOTED_COOLDOWN_MS) next[k] = v;
+    }
+    return next;
+  } catch {
+    return {};
+  }
+}
+
+function saveVotedMap(m: Record<string, number>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(VOTED_KEY, JSON.stringify(m));
+  } catch {
+    /* quota or disabled — fine */
+  }
+}
+
 export function peakScaleFromVotes(votes: number): number {
-  // 0 票 → 0.80，100+ 票 → 1.55；最大 ≈ 最小 × 1.94，人气阶梯一眼看得出
-  return 0.80 + Math.min(0.75, Math.log10(votes + 1) * 0.38);
+  // 心愿数越多，泡泡越大；1 票时极小（视觉上约 10×10 像素）
+  // 0 票：0.14（微点），10 票：~0.7，100 票：~1.55，1000+：~2.4
+  return 0.14 + Math.min(2.3, Math.log10(votes + 1) * 0.75);
 }
 
 export function colorFromVotes(votes: number): { h: number; s: number; l: number } {
@@ -73,12 +100,18 @@ export function colorFromVotes(votes: number): { h: number; s: number; l: number
 function pickNextWishId(
   all: Wish[],
   excludeIds: Set<number>,
-  query: string
+  query: string,
+  votedMap: Record<string, number>,
 ): number | null {
   const q = query.trim().toLowerCase();
-  const pool = all.filter(
-    (w) => !excludeIds.has(w.id) && (!q || w.name.toLowerCase().includes(q))
-  );
+  const now = Date.now();
+  const pool = all.filter((w) => {
+    if (excludeIds.has(w.id)) return false;
+    if (q && !w.name.toLowerCase().includes(q)) return false;
+    const votedAt = votedMap[String(w.id)];
+    if (votedAt && now - votedAt < VOTED_COOLDOWN_MS) return false;
+    return true;
+  });
   if (pool.length === 0) return null;
   const weights = pool.map((w) => Math.sqrt(w.votes + 1));
   const total = weights.reduce((a, b) => a + b, 0);
@@ -98,18 +131,24 @@ export default function WishingPool() {
   const [toast, setToast] = useState<{ text: string; type: "ok" | "warn" | "err" } | null>(null);
   const [votingId, setVotingId] = useState<number | null>(null);
   const [bubbles, setBubbles] = useState<BubbleInstance[]>([]);
+  const [votedMap, setVotedMap] = useState<Record<string, number>>({});
 
   const fingerprint = useRef<string>("");
-  useEffect(() => { fingerprint.current = getFingerprint(); }, []);
+  useEffect(() => {
+    fingerprint.current = getFingerprint();
+    setVotedMap(loadVotedMap());
+  }, []);
 
   const wishesRef = useRef<Wish[]>([]);
   const bubblesRef = useRef<BubbleInstance[]>([]);
   const queryRef = useRef("");
   const addingOpenRef = useRef(false);
+  const votedMapRef = useRef<Record<string, number>>({});
   useEffect(() => { wishesRef.current = wishes; }, [wishes]);
   useEffect(() => { bubblesRef.current = bubbles; }, [bubbles]);
   useEffect(() => { queryRef.current = query; }, [query]);
   useEffect(() => { addingOpenRef.current = addingOpen; }, [addingOpen]);
+  useEffect(() => { votedMapRef.current = votedMap; }, [votedMap]);
 
   async function reload() {
     setLoading(true);
@@ -162,7 +201,12 @@ export default function WishingPool() {
     const active = bubblesRef.current.filter((b) => b.poppedAt === null);
     if (active.length >= MAX_VISIBLE) return;
     const excluded = new Set(bubblesRef.current.map((b) => b.wishId));
-    const wid = pickNextWishId(wishesRef.current, excluded, queryRef.current);
+    const wid = pickNextWishId(
+      wishesRef.current,
+      excluded,
+      queryRef.current,
+      votedMapRef.current,
+    );
     if (wid === null) return;
 
     // 椭圆内撒点，偏向中心（幂次 >1 聚拢中心视觉重心），避开已在池中的气泡
@@ -220,7 +264,6 @@ export default function WishingPool() {
 
 
   // 回收已结束的气泡（定时检查）
-  // 回收已结束的气泡
   useEffect(() => {
     const iv = setInterval(() => {
       const now = performance.now();
@@ -283,19 +326,38 @@ export default function WishingPool() {
         | { ok: false; reason: string; cooldownHours?: number };
       if (!data.ok) {
         setToast({ text: data.reason, type: "warn" });
+        // 服务器说已投过 → 本地也记一下，避免重复冒上来
+        if (data.cooldownHours) {
+          const next = { ...votedMapRef.current, [String(wish.id)]: Date.now() };
+          setVotedMap(next);
+          saveVotedMap(next);
+        }
         return;
       }
-      setToast({ text: `🪷 已为「${wish.name}」许愿 · 愿力 +1（总 ${data.votes}）`, type: "ok" });
+      setToast({ text: `🪷 已为「${wish.name}」助力 · 愿力 +1（总 ${data.votes}）`, type: "ok" });
       setWishes((prev) => prev.map((p) => (p.id === wish.id ? { ...p, votes: data.votes } : p)));
 
+      // 本地记录：已助力的心愿 24h 内不再出现
+      const next = { ...votedMapRef.current, [String(wish.id)]: Date.now() };
+      setVotedMap(next);
+      saveVotedMap(next);
+
+      // 立即把该心愿所有仍在池中的气泡爆掉（包括自己）
+      const popAt = performance.now();
+      setBubbles((prev) =>
+        prev.map((b) =>
+          b.wishId === wish.id && b.poppedAt === null
+            ? { ...b, poppedAt: popAt, popKind: "wish" as const }
+            : b,
+        ),
+      );
       if (target && target.poppedAt === null) {
-        const now = performance.now();
         setBubbles((prev) =>
           prev.map((b) =>
-            b.instanceId === target.instanceId
-              ? { ...b, poppedAt: now, popKind: "wish" as const }
-              : b
-          )
+            b.instanceId === target.instanceId && b.poppedAt === null
+              ? { ...b, poppedAt: popAt, popKind: "wish" as const }
+              : b,
+          ),
         );
       }
     } catch {
@@ -313,12 +375,17 @@ export default function WishingPool() {
 
   const leaderboard = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const now = Date.now();
     return wishes
       .filter((p) => !q || p.name.toLowerCase().includes(q))
+      .filter((p) => {
+        const v = votedMap[String(p.id)];
+        return !v || now - v >= VOTED_COOLDOWN_MS;
+      })
       .slice()
       .sort((a, b) => b.votes - a.votes || a.id - b.id)
       .slice(0, 10);
-  }, [wishes, query]);
+  }, [wishes, query, votedMap]);
 
   const wishById = useMemo(
     () => new Map(wishes.map((w) => [w.id, w])),
@@ -328,42 +395,35 @@ export default function WishingPool() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#020711] via-[#041326] to-[#000208] text-white">
       <header className="sticky top-0 z-30 backdrop-blur bg-[#020711]/80 border-b border-white/5">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
+        <div className="max-w-4xl mx-auto px-4 pt-3 pb-4 flex items-start gap-3">
           <Link
             href="/"
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center shrink-0"
+            className="mt-1 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center shrink-0"
             aria-label="返回"
           >
             <ArrowLeft size={18} />
           </Link>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold leading-tight">🪷 许愿池</h1>
-            <p className="text-[11px] text-white/60 leading-tight">
-              水底翻涌 · 泡泡一簇簇冒上水面 · 抢在爆开前双击许愿
+          <div className="flex-1 min-w-0 text-center">
+            <div className="flex items-center justify-center gap-2 leading-none mb-1.5">
+              <span className="text-3xl md:text-4xl drop-shadow">🪷</span>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight drop-shadow">
+                许愿池
+              </h1>
+            </div>
+            <p className="text-sm md:text-base text-white/85 leading-snug drop-shadow">
+              双击你最需要的商品
+              <br />
+              说不定不久市场上就会出现
             </p>
           </div>
-          <button
-            onClick={() => setAddingOpen(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-amber-400 to-rose-500 hover:brightness-110 text-white text-xs font-semibold rounded-full shadow"
-          >
-            <Plus size={14} /> 加心愿
-          </button>
+          <span className="w-10 shrink-0" aria-hidden />
         </div>
         <div className="max-w-4xl mx-auto px-4 pb-3">
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus-within:border-amber-300/60">
-            <Search size={16} className="text-white/50 shrink-0" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜心愿：老干妈、感冒药、鼠标…"
-              className="flex-1 bg-transparent text-sm placeholder-white/40 focus:outline-none"
-            />
-            {query && (
-              <button onClick={() => setQuery("")} aria-label="清空">
-                <X size={14} className="text-white/50" />
-              </button>
-            )}
-          </div>
+          <SearchOrAddBar
+            query={query}
+            onQueryChange={setQuery}
+            onOpenAdd={() => setAddingOpen(true)}
+          />
         </div>
       </header>
 
@@ -441,17 +501,16 @@ export default function WishingPool() {
           )}
           {!loading && wishes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm px-6 text-center pointer-events-none">
-              水池里还空空的，点右上角「加心愿」投下第一个泡泡 →
+              水池里还空空的，点上方「搜索或添加心愿商品」投下第一个泡泡 →
             </div>
           )}
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-white/55">
-        <span className="inline-flex items-center gap-1"><Info size={11} />真·3D 水池</span>
-        <span>· 单击确认</span>
-        <span>· 双击许愿</span>
-        <span>· 每心愿 24h 限 1 次</span>
+        <span>单击确认</span>
+        <span>· 双击助力</span>
+        <span>· 已助力的心愿 24 小时内不再出现</span>
       </div>
 
       <section className="max-w-4xl mx-auto px-4 mt-6 pb-10">
@@ -461,7 +520,11 @@ export default function WishingPool() {
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden divide-y divide-white/5">
           {leaderboard.length === 0 ? (
-            <p className="px-4 py-6 text-center text-white/50 text-sm">没有匹配结果</p>
+            <p className="px-4 py-6 text-center text-white/50 text-sm">
+              {Object.keys(votedMap).length > 0
+                ? "已助力过的心愿 24 小时内暂不展示，换一个试试 ✨"
+                : "没有匹配结果"}
+            </p>
           ) : (
             leaderboard.map((w, i) => {
               const c = colorFromVotes(w.votes);
@@ -492,7 +555,7 @@ export default function WishingPool() {
                   >
                     ✨ {w.votes}
                   </span>
-                  <span className="text-[10px] text-white/40">许愿</span>
+                  <span className="text-[10px] text-white/40">助力</span>
                 </button>
               );
             })
@@ -502,9 +565,11 @@ export default function WishingPool() {
 
       {addingOpen && (
         <AddWishModal
+          initialName={query.trim()}
           onClose={() => setAddingOpen(false)}
           onAdded={async () => {
             setAddingOpen(false);
+            setQuery("");
             await reload();
             setToast({ text: "新心愿已落入水中 ✨", type: "ok" });
           }}
@@ -531,16 +596,62 @@ export default function WishingPool() {
   );
 }
 
+/* ---------------------------------------------------------------- */
+/*  搜索 / 添加 · 合体按钮（搜不到时直接变成"添加"）                      */
+/* ---------------------------------------------------------------- */
+function SearchOrAddBar({
+  query,
+  onQueryChange,
+  onOpenAdd,
+}: {
+  query: string;
+  onQueryChange: (v: string) => void;
+  onOpenAdd: () => void;
+}) {
+  const placeholder = "搜索或添加心愿商品（老干妈、感冒药、鼠标…）";
+  return (
+    <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 focus-within:border-amber-300/60 shadow-inner">
+      <Search size={16} className="text-white/50 shrink-0" />
+      <input
+        value={query}
+        onChange={(e) => onQueryChange(e.target.value)}
+        placeholder={placeholder}
+        className="flex-1 bg-transparent text-sm placeholder-white/40 focus:outline-none"
+      />
+      {query && (
+        <button
+          type="button"
+          onClick={() => onQueryChange("")}
+          aria-label="清空"
+          className="shrink-0"
+        >
+          <X size={14} className="text-white/50" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onOpenAdd}
+        className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-amber-400 to-rose-500 hover:brightness-110 text-white text-xs font-semibold rounded-full shadow"
+      >
+        <Plus size={13} />
+        {query.trim() ? "添加" : "添加心愿"}
+      </button>
+    </div>
+  );
+}
+
 function AddWishModal({
+  initialName,
   onClose,
   onAdded,
   onToast,
 }: {
+  initialName?: string;
   onClose: () => void;
   onAdded: () => void;
   onToast: (text: string, type: "ok" | "warn" | "err") => void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName ?? "");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {

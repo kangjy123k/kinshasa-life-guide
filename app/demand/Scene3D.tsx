@@ -134,26 +134,27 @@ const Bubble3D = memo(function Bubble3D({
     // 3D 垂直高度：抛物线，从深水 -2.5 升到 +0.5（破水面）再落回 -2.5
     const arcY = -2.5 + 3.0 * bell;
 
+    const baseScale = peak * (0.22 + 0.78 * bell);
     let scale: number;
     let opacity: number;
 
     if (bubble.poppedAt !== null && bubble.popKind === "wish") {
-      // 用户点中 → 爆裂：急速膨胀 + 塌缩 + 金闪
+      // 用户点中 → 爆裂：急速膨胀到本身 3 倍 + 塌缩 + 金闪
       const popAge = now - bubble.poppedAt;
       const EXPAND = 120;
       const COLLAPSE = 380;
       if (popAge < EXPAND) {
         const k = popAge / EXPAND;
-        scale = peak * (0.22 + 0.78 * bell) * (1 + k * 1.2); // 在当时大小基础上急速放大
+        scale = baseScale * (1 + k * 2); // 1 → 3 倍
         opacity = 1;
       } else {
         const k = Math.min(1, (popAge - EXPAND) / COLLAPSE);
-        scale = peak * 2.2 * (1 - k * k);
+        scale = baseScale * 3 * (1 - k * k);
         opacity = 1 - k;
       }
     } else {
       // 正常生命周期：小→大→小
-      scale = peak * (0.22 + 0.78 * bell);
+      scale = baseScale;
       // 透明度在两头稍快淡入/淡出，中段保持清晰
       opacity = Math.pow(bell, 0.6);
     }
@@ -189,9 +190,8 @@ const Bubble3D = memo(function Bubble3D({
     }
 
     if (labelRef.current) {
-      // 文字跟着气泡当前大小缩放 + 同步透明度 → 融为一体
+      // 文字字号统一 — 不随泡泡大小缩放，只跟透明度
       labelRef.current.style.opacity = String(opacity);
-      labelRef.current.style.transform = `scale(${Math.max(0.25, Math.min(1.25, scale))})`;
     }
 
     // 爆裂：中心冲击波环 + 放射光线（仅 wish-pop）

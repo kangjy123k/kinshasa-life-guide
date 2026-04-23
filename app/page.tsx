@@ -11,9 +11,7 @@ import {
   Star,
   X,
   ArrowLeft,
-  QrCode,
   Megaphone,
-  Sparkles,
 } from "lucide-react";
 
 import {
@@ -1037,24 +1035,24 @@ function WishingPoolBanner() {
         <div className="absolute top-8 right-20 w-3 h-3 rounded-full bg-white/40" />
         <div className="absolute bottom-10 left-24 w-2 h-2 rounded-full bg-white/50" />
 
-        <div className="relative flex items-center gap-3 px-4 py-4 md:px-6 md:py-5">
-          <span className="text-5xl md:text-6xl drop-shadow shrink-0">🪷</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <h3 className="text-lg md:text-xl font-black leading-tight drop-shadow">
-                许愿池
-              </h3>
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-yellow-300 text-rose-600 text-[10px] font-black rounded-full shadow">
-                <Sparkles size={10} fill="currentColor" /> 新
-              </span>
-            </div>
-            <p className="text-xs md:text-sm text-white/95 leading-snug drop-shadow">
-              在刚果金最想要什么？投一颗愿望泡泡，双击给别人愿望助力
+        <div className="relative flex items-start gap-3 px-4 py-5 md:px-6 md:py-6">
+          <span className="text-6xl md:text-7xl drop-shadow shrink-0 leading-none">🪷</span>
+          <div className="flex-1 min-w-0 pb-8">
+            <h3 className="text-2xl md:text-3xl font-black leading-tight drop-shadow mb-1">
+              许愿池
+            </h3>
+            <p className="text-sm md:text-base text-white/95 leading-snug drop-shadow font-semibold">
+              你一愿 我一愿
+              <br />
+              刚果金变家里面
             </p>
-            <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 bg-white/25 backdrop-blur rounded-full text-[11px] md:text-xs font-semibold">
-              去许愿 <ChevronRight size={12} />
-            </span>
+            <p className="text-xs md:text-sm text-white/85 mt-1 drop-shadow">
+              无聊就点我一下
+            </p>
           </div>
+          <span className="absolute bottom-3 right-3 md:bottom-4 md:right-4 inline-flex items-center gap-1 px-3 py-1.5 bg-white/90 text-teal-600 rounded-full text-xs md:text-sm font-bold shadow">
+            进入 <ChevronRight size={14} />
+          </span>
         </div>
       </Link>
     </section>
@@ -1067,36 +1065,27 @@ function WishingPoolBanner() {
 function WeChatGroupBanner() {
   return (
     <section className="max-w-4xl mx-auto px-4 mt-8 pb-8">
-      <div className="rounded-2xl overflow-hidden shadow-md border border-emerald-100 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-        <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white px-4 py-2.5">
-          <QrCode size={16} />
-          <span className="text-sm font-bold">加入刚果金华人微信群</span>
-          <span className="ml-auto text-[10.5px] font-semibold bg-white/20 backdrop-blur rounded-full px-2 py-0.5">
-            群已满 200 · 需邀请
-          </span>
+      <div className="rounded-2xl overflow-hidden shadow-md border border-emerald-100 bg-white">
+        <p className="px-4 pt-4 text-center text-sm md:text-base font-semibold text-gray-800 leading-snug">
+          欢迎添加小程序客服，加入
+          <br className="sm:hidden" />
+          <span className="text-emerald-600">【刚果金华人社群】</span>微信群聊
+        </p>
+        <div className="p-4 flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/qr/community-wechat.png"
+            alt="刚果金华人社群客服二维码"
+            className="w-56 h-56 md:w-64 md:h-64 object-contain"
+          />
         </div>
-        <div className="p-4 flex flex-col sm:flex-row items-center gap-4">
-          <div className="shrink-0 bg-white rounded-xl p-2 shadow-sm border border-emerald-100">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/qr/host-wechat.jpg"
-              alt="群主微信二维码"
-              className="w-36 h-36 md:w-40 md:h-40 object-cover rounded-lg"
-            />
-          </div>
-          <div className="flex-1 min-w-0 text-center sm:text-left">
-            <p className="text-sm md:text-base font-semibold text-gray-800">
-              扫码加群主微信 · 验证后邀请进群
-            </p>
-            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              当前群已满 200 人，无法直接扫码进群。
-              <br className="hidden sm:block" />
-              加群主个人微信，备注"刚果金 · 入群"即可邀请进群。
-            </p>
-            <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
-              商家上新、线下活动、生活求助、代购代运，群内第一时间同步。
-            </p>
-          </div>
+        <div className="px-4 pb-5 text-center space-y-1">
+          <p className="text-base md:text-lg font-black text-gray-900">
+            小程序不能解决的问题，来群聊解决！
+          </p>
+          <p className="text-[11px] md:text-xs text-gray-500 leading-relaxed">
+            任何商家或个人，在本平台如有推广需求，欢迎联系客服
+          </p>
         </div>
       </div>
     </section>
@@ -1111,7 +1100,9 @@ function Footer() {
     <footer className="bg-gray-900 text-gray-400 py-8 mt-4">
       <div className="max-w-4xl mx-auto px-4 text-center text-sm space-y-2">
         <p className="text-white font-semibold">刚果金华人生活服务指南</p>
-        <p>刚果金本地华人商家与生活服务平台</p>
+        <p className="text-[11px] leading-relaxed text-gray-500 text-left max-w-md mx-auto">
+          本小程序仅作为同城信息与服务对接平台，平台内容由相关发布方提供，请用户自行核实并审慎判断。因交易或合作引起的风险、纠纷及损失，由相关方自行承担。
+        </p>
         <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} 版权所有</p>
       </div>
     </footer>
