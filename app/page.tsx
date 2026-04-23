@@ -404,12 +404,17 @@ function HomeView({
   onOpenBusiness: (id: number) => void;
 }) {
   const router = useRouter();
-  // 所有 featured 商家进轮播池，按 id 稳定排序避免新数据插队
-  const featured = useMemo(
-    () =>
-      allBusinesses.filter((b) => b.featured).sort((a, b) => a.id - b.id),
-    [allBusinesses]
-  );
+  // 人工精选（b.featured）优先；没有时回落到全部真实商家（排除二手）按新→旧
+  // 种子数据全部 hidden 之后，精选池是空的，回落避免"热门商家"板块彻底消失
+  const featured = useMemo(() => {
+    const explicit = allBusinesses
+      .filter((b) => b.featured)
+      .sort((a, b) => a.id - b.id);
+    if (explicit.length > 0) return explicit;
+    return allBusinesses
+      .filter((b) => b.category !== "secondhand")
+      .sort((a, b) => b.id - a.id);
+  }, [allBusinesses]);
 
   const [homeQuery, setHomeQuery] = useState("");
 
