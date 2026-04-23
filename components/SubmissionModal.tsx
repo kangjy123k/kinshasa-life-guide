@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { X, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
@@ -289,6 +289,14 @@ export function SubmissionModal({
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
 
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   const handleClose = () => {
     setClosing((c) => {
       if (c) return c;
@@ -426,14 +434,17 @@ export function SubmissionModal({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300 ease-out ${
-        closing ? "opacity-0" : "opacity-100"
-      }`}
+      onClick={(e) => e.stopPropagation()}
+      className={`fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out ${
+        editing ? "p-0 sm:p-4" : "p-4"
+      } ${closing ? "opacity-0" : "opacity-100"}`}
     >
       <div
-        className={`w-full max-w-[22rem] md:max-w-sm bg-white rounded-2xl shadow-xl max-h-[85dvh] flex flex-col overflow-hidden transition-all duration-300 ease-out ${
-          closing ? "opacity-0 scale-95" : "opacity-100 scale-100"
-        }`}
+        className={`bg-white shadow-xl flex flex-col overflow-hidden transition-all duration-300 ease-out ${
+          editing
+            ? "w-screen h-[100dvh] max-w-none rounded-none sm:w-full sm:h-auto sm:max-w-lg sm:max-h-[92dvh] sm:rounded-2xl"
+            : "w-full max-w-[22rem] md:max-w-sm rounded-2xl max-h-[85dvh]"
+        } ${closing ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
           <h3 className="text-[15px] font-semibold text-gray-800 flex-1 min-w-0 truncate">

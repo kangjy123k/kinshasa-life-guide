@@ -18,7 +18,6 @@ import {
   RefreshCw,
   Sparkles,
   X,
-  Pencil,
 } from "lucide-react";
 import { getOwnerToken } from "@/lib/owner-token-client";
 import { MultiImageUploader } from "@/components/ImageUploader";
@@ -238,12 +237,12 @@ function RecordCard({
   const TIcon = meta.Icon;
   const SIcon = status.Icon;
 
-  const [expanded, setExpanded] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
 
   // 除问卷外都可编辑（问卷是一次性答题）；编辑后后端会重置为 pending
   const canEdit = record.type !== "survey";
@@ -292,16 +291,31 @@ function RecordCard({
     }
   }
 
+  const openDetail = () => {
+    if (confirming || working) return;
+    if (canEdit) setEditOpen(true);
+    else setViewOpen(true);
+  };
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all duration-300 ease-out ${
+      onClick={openDetail}
+      role="button"
+      tabIndex={0}
+      aria-disabled={confirming || working}
+      onKeyDown={(e) => {
+        if (confirming || working) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openDetail();
+        }
+      }}
+      className={`bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all duration-300 ease-out cursor-pointer active:scale-[0.99] ${
         leaving ? "opacity-0 scale-95" : "opacity-100 scale-100"
       }`}
     >
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
-      >
+      <div className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left">
         <span className={`w-9 h-9 rounded-xl ${meta.bg} flex items-center justify-center shrink-0`}>
           <TIcon size={16} className={meta.color} />
         </span>
@@ -318,34 +332,15 @@ function RecordCard({
         >
           <SIcon size={11} /> {status.label}
         </span>
-      </button>
-
-      <div
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
-          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
-      >
-        <div className="overflow-hidden">
-          <div className="px-3.5 pb-3 text-xs text-gray-600 space-y-1 border-t border-sky-50 pt-2.5">
-            <p className="text-[11px] text-gray-500 italic">{status.hint}</p>
-            {entries.length === 0 ? (
-              <p className="text-gray-400">（无详情）</p>
-            ) : (
-              entries.slice(0, 18).map(([k, v]) => (
-                <div key={k} className="flex gap-1.5">
-                  <span className="text-gray-400 shrink-0">{k}:</span>
-                  <span className="text-gray-700 break-words">{v}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </div>
 
-      <div className="px-3.5 py-2.5 border-t border-sky-50 flex items-center justify-end gap-2 flex-wrap">
+      <div className="px-3.5 py-2.5 border-t border-sky-50 flex items-center justify-end gap-2 flex-wrap" onClick={stop}>
         {canPostUpdate && !confirming && (
           <button
-            onClick={() => setUpdateOpen(true)}
+            onClick={(e) => {
+              stop(e);
+              setUpdateOpen(true);
+            }}
             disabled={working}
             className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-rose-500 to-orange-500 text-white rounded-lg shadow-sm active:scale-95 transition"
           >
@@ -358,19 +353,12 @@ function RecordCard({
             )}
           </button>
         )}
-        {canEdit && !confirming && (
-          <button
-            onClick={() => setEditOpen(true)}
-            disabled={working}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg active:scale-95 transition"
-          >
-            <Pencil size={13} />
-            编辑
-          </button>
-        )}
         {!confirming ? (
           <button
-            onClick={() => setConfirming(true)}
+            onClick={(e) => {
+              stop(e);
+              setConfirming(true);
+            }}
             disabled={working}
             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-red-500 active:scale-95 transition"
           >
@@ -381,14 +369,20 @@ function RecordCard({
           <>
             <span className="text-[11px] text-gray-500 mr-auto">确认撤回？</span>
             <button
-              onClick={() => setConfirming(false)}
+              onClick={(e) => {
+                stop(e);
+                setConfirming(false);
+              }}
               disabled={working}
               className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg active:scale-95 transition"
             >
               取消
             </button>
             <button
-              onClick={withdraw}
+              onClick={(e) => {
+                stop(e);
+                withdraw();
+              }}
               disabled={working}
               className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg active:scale-95 transition disabled:opacity-50"
             >
@@ -419,6 +413,92 @@ function RecordCard({
           onSaved={onUpdatesChanged}
         />
       )}
+
+      {viewOpen && !canEdit && (
+        <ReadOnlyDetailModal
+          title={`${meta.label}：${title}`}
+          status={status}
+          entries={entries}
+          onClose={() => setViewOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReadOnlyDetailModal({
+  title,
+  status,
+  entries,
+  onClose,
+}: {
+  title: string;
+  status: { label: string; cls: string; hint: string; Icon: React.ComponentType<{ size?: number; className?: string }> };
+  entries: [string, string][];
+  onClose: () => void;
+}) {
+  const [closing, setClosing] = useState(false);
+  const SIcon = status.Icon;
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const handleClose = () => {
+    setClosing((c) => {
+      if (c) return c;
+      setTimeout(onClose, 260);
+      return true;
+    });
+  };
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4 transition-opacity duration-300 ease-out ${
+        closing ? "opacity-0" : "opacity-100"
+      }`}
+      onClick={(e) => {
+        e.stopPropagation();
+        handleClose();
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`bg-white shadow-xl flex flex-col overflow-hidden transition-all duration-300 ease-out w-screen h-[100dvh] max-w-none rounded-none sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[92dvh] sm:rounded-2xl ${
+          closing ? "opacity-0 scale-95" : "opacity-100 scale-100"
+        }`}
+      >
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
+          <h3 className="text-[15px] font-semibold text-gray-800 flex-1 min-w-0 truncate">{title}</h3>
+          <span className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${status.cls}`}>
+            <SIcon size={11} /> {status.label}
+          </span>
+          <button
+            onClick={handleClose}
+            aria-label="关闭"
+            className="w-7 h-7 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center active:scale-95 transition"
+          >
+            <X size={16} className="text-gray-500" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 text-[13px]">
+          <p className="text-[11px] text-gray-500 italic">{status.hint}</p>
+          {entries.length === 0 ? (
+            <p className="text-gray-400">（无详情）</p>
+          ) : (
+            entries.map(([k, v]) => (
+              <div key={k} className="flex gap-2 py-0.5">
+                <span className="text-gray-400 shrink-0 min-w-[5.5rem]">{k}</span>
+                <span className="text-gray-800 break-words whitespace-pre-wrap">{v}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -481,7 +561,10 @@ function MerchantUpdateModal({
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300 ease-out ${
         closing ? "opacity-0" : "opacity-100"
       }`}
-      onClick={handleClose}
+      onClick={(e) => {
+        e.stopPropagation();
+        handleClose();
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
