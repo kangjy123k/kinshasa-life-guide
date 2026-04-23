@@ -612,12 +612,9 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
     : darkText
       ? "text-gray-700"
       : "text-white/90";
-  const dotActive = plain ? "bg-gray-800" : !slide.image && darkText ? "bg-gray-900" : "bg-white";
-  const dotInactive = plain
-    ? "bg-gray-400/70"
-    : !slide.image && darkText
-      ? "bg-gray-400/60"
-      : "bg-white/60";
+  // 指示点放在轮播容器外、首页浅色底上，固定用深灰，保证对比度一致
+  const dotActive = "bg-sky-500";
+  const dotInactive = "bg-sky-200";
   const phoneChipClass = slide.image
     ? "bg-white/25 hover:bg-white/40 text-white"
     : darkText
@@ -625,6 +622,7 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
       : "bg-white/25 hover:bg-white/40 text-white";
 
   return (
+    <div>
     <div
       className={`relative rounded-2xl overflow-hidden shadow-lg min-h-[108px] md:min-h-[128px] ${bgGradient}`}
       style={plain && slide.imageBg ? { background: slide.imageBg } : undefined}
@@ -699,7 +697,9 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
         )}
       </div>
 
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+    </div>
+      {/* 指示点放在轮播外部，不遮挡广告主体 */}
+      <div className="mt-2 flex justify-center gap-1.5">
         {ads.map((_, i) => (
           <button
             key={i}
