@@ -1,16 +1,21 @@
 /**
- * 给展示图片 URL 套上水印代理。服务端会拉源图、叠上"@刚果金华人生活服务指南"
- * 斜向平铺水印，再以 webp 返回。用户长按/右键另存拿到的就是带水印版本。
+ * 展示 URL 与"下载 URL"分离：
+ *   - wm(src)         → 原图，直接显示，无水印
+ *   - wmDownload(src) → /api/wm?src=...，带水印 webp，给长按/右键保存用
  *
- * 加水印的范围：
- *   - /api/media/*   用户提交的商家 / 二手 / 求购 / 活动图
- *   - /fwod/*        每日法语释义图
+ * 使用方式见 components/ProtectedImg.tsx：视觉层是 wm() 原图，
+ * 上面叠一张 opacity:0 的 wmDownload() 水印版，长按/右键菜单命中的
+ * 是它 → 用户点"保存图片"时下载到的是水印版。
+ *
+ * 允许走水印代理的范围：
+ *   - /api/media/*           用户提交的商家 / 二手 / 求购 / 活动图
+ *   - /fwod/*                每日法语释义图
  *   - /images/businesses/*   站内内置商家图
  *
- * 明确不加水印（首页赞助位 / 混凝土广告等）：
+ * 明确不加水印（首页赞助位 / 混凝土广告 / 水印源本身）：
  *   - /images/sponsor-*
  *   - /images/concrete-plant-*
- *   - /images/watermark-tile.png（水印源本身）
+ *   - /images/watermark-tile.png
  */
 function shouldWatermark(src: string): boolean {
   if (src.startsWith("/api/media/")) return true;
@@ -20,6 +25,11 @@ function shouldWatermark(src: string): boolean {
 }
 
 export function wm(src: string | undefined | null): string {
+  if (!src) return "";
+  return src.trim();
+}
+
+export function wmDownload(src: string | undefined | null): string {
   if (!src) return "";
   const s = src.trim();
   if (!s) return "";

@@ -33,7 +33,7 @@ import {
 } from "@/components/BusinessCardUI";
 import { homeUsefulItems } from "@/lib/useful-items";
 import { FrenchWordDot } from "@/components/FrenchWordDot";
-import { wm } from "@/lib/watermark";
+import { ProtectedImg } from "@/components/ProtectedImg";
 
 /* ------------------------------------------------------------------ */
 /*  轮播广告位                                                          */
@@ -898,8 +898,7 @@ function BusinessDetailView({
       <div className="max-w-4xl mx-auto px-4 py-5 space-y-5">
         <div className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
           <div className="relative h-56 md:h-72">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={wm(biz.image)} alt={biz.name} className="w-full h-full object-cover" />
+            <ProtectedImg src={biz.image} alt={biz.name} className="w-full h-full object-cover" />
             {biz.featured && (
               <span className="absolute top-3 left-3 px-2.5 py-1 bg-yellow-400 text-white text-xs font-bold rounded-full shadow flex items-center gap-1">
                 <Star size={12} fill="white" /> 热门
@@ -961,14 +960,14 @@ function BusinessDetailView({
             <h3 className="text-sm font-bold text-gray-800 mb-3">相册</h3>
             <div className="grid grid-cols-3 gap-2">
               {biz.gallery.map((src, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={`${src}-${i}`}
-                  src={wm(src)}
-                  alt={`${biz.name} 相册 ${i + 1}`}
-                  loading="lazy"
-                  className="aspect-square w-full rounded-lg object-cover border border-sky-50"
-                />
+                <div key={`${src}-${i}`} className="relative aspect-square">
+                  <ProtectedImg
+                    src={src}
+                    alt={`${biz.name} 相册 ${i + 1}`}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full rounded-lg object-cover border border-sky-50"
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -999,14 +998,14 @@ function BusinessDetailView({
                   {u.images && u.images.length > 0 && (
                     <div className="mt-2 flex gap-1.5 overflow-x-auto scrollbar-none">
                       {u.images.map((src, i) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={`${src}-${i}`}
-                          src={wm(src)}
-                          alt={`动态图片 ${i + 1}`}
-                          loading="lazy"
-                          className="h-24 w-auto rounded-lg object-cover border border-sky-50 shrink-0"
-                        />
+                        <div key={`${src}-${i}`} className="relative h-24 shrink-0">
+                          <ProtectedImg
+                            src={src}
+                            alt={`动态图片 ${i + 1}`}
+                            loading="lazy"
+                            className="h-24 w-auto rounded-lg object-cover border border-sky-50 block"
+                          />
+                        </div>
                       ))}
                     </div>
                   )}

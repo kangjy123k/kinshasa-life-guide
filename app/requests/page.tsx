@@ -21,7 +21,7 @@ import {
 import type { RawSubmission } from "@/lib/businesses";
 import { CallChip, CopyChip, WhatsAppChip } from "@/components/BusinessCardUI";
 import { SubmissionModal } from "@/components/SubmissionModal";
-import { wm } from "@/lib/watermark";
+import { wm, wmDownload } from "@/lib/watermark";
 
 interface DemandCard {
   id: string;
@@ -296,24 +296,41 @@ function DemandCardView({ d }: { d: DemandCard }) {
 
       {d.images.length > 0 && (
         <div className="mt-3 grid grid-cols-3 gap-1.5">
-          {d.images.map((src, i) => (
-            <a
-              key={`${d.id}-${i}`}
-              href={wm(src)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="relative aspect-square overflow-hidden rounded-lg bg-orange-50"
-            >
-              <Image
-                src={wm(src)}
-                alt={`${d.itemName} ${i + 1}`}
-                fill
-                sizes="(max-width: 768px) 33vw, 200px"
-                className="object-cover"
-                unoptimized
-              />
-            </a>
-          ))}
+          {d.images.map((src, i) => {
+            const clean = wm(src);
+            const marked = wmDownload(src);
+            return (
+              <a
+                key={`${d.id}-${i}`}
+                href={clean}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square overflow-hidden rounded-lg bg-orange-50"
+              >
+                <Image
+                  src={clean}
+                  alt={`${d.itemName} ${i + 1}`}
+                  fill
+                  sizes="(max-width: 768px) 33vw, 200px"
+                  className="object-cover"
+                  unoptimized
+                  draggable={false}
+                />
+                {marked && marked !== clean && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={marked}
+                    alt=""
+                    aria-hidden
+                    tabIndex={-1}
+                    loading="lazy"
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full opacity-0 select-none"
+                  />
+                )}
+              </a>
+            );
+          })}
         </div>
       )}
 

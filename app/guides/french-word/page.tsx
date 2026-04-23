@@ -21,7 +21,7 @@ import {
   mergeEntries,
   type FrenchDailyEntry,
 } from "@/lib/french-word-of-the-day";
-import { wm } from "@/lib/watermark";
+import { wm, wmDownload } from "@/lib/watermark";
 
 const LS_KEY = "fwod-progress-v1";
 
@@ -415,7 +415,20 @@ function WordCard({ entry }: { entry: FrenchDailyEntry }) {
           className="object-contain p-2"
           priority={false}
           unoptimized
+          draggable={false}
         />
+        {wmDownload(entry.image) && wmDownload(entry.image) !== wm(entry.image) && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={wmDownload(entry.image)}
+            alt=""
+            aria-hidden
+            tabIndex={-1}
+            loading="lazy"
+            draggable={false}
+            className="absolute inset-0 w-full h-full opacity-0 select-none"
+          />
+        )}
       </div>
 
       <div className="px-5 py-5 space-y-4">

@@ -14,7 +14,7 @@ import {
   submissionToBusiness,
 } from "@/lib/businesses";
 import { BusinessCard } from "@/components/BusinessCardUI";
-import { wm } from "@/lib/watermark";
+import { wm, wmDownload } from "@/lib/watermark";
 
 interface PurchaseHit {
   id: string;
@@ -322,7 +322,20 @@ function PurchaseHitCard({ p }: { p: PurchaseHit }) {
               sizes="64px"
               className="object-cover"
               unoptimized
+              draggable={false}
             />
+            {wmDownload(p.images[0]) && wmDownload(p.images[0]) !== wm(p.images[0]) && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={wmDownload(p.images[0])}
+                alt=""
+                aria-hidden
+                tabIndex={-1}
+                loading="lazy"
+                draggable={false}
+                className="absolute inset-0 w-full h-full opacity-0 select-none"
+              />
+            )}
           </div>
         ) : (
           <div className="w-16 h-16 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
