@@ -1035,23 +1035,18 @@ function WishingPoolBanner() {
         <div className="absolute top-8 right-20 w-3 h-3 rounded-full bg-white/40" />
         <div className="absolute bottom-10 left-24 w-2 h-2 rounded-full bg-white/50" />
 
-        <div className="relative flex items-start gap-3 px-4 py-5 md:px-6 md:py-6">
-          <span className="text-6xl md:text-7xl drop-shadow shrink-0 leading-none">🪷</span>
-          <div className="flex-1 min-w-0 pb-8">
-            <h3 className="text-2xl md:text-3xl font-black leading-tight drop-shadow mb-1">
-              许愿池
-            </h3>
-            <p className="text-sm md:text-base text-white/95 leading-snug drop-shadow font-semibold">
-              你一愿 我一愿
-              <br />
-              刚果金变家里面
-            </p>
-            <p className="text-xs md:text-sm text-white/85 mt-1 drop-shadow">
-              无聊就点我一下
-            </p>
-          </div>
-          <span className="absolute bottom-3 right-3 md:bottom-4 md:right-4 inline-flex items-center gap-1 px-3 py-1.5 bg-white/90 text-teal-600 rounded-full text-xs md:text-sm font-bold shadow">
-            进入 <ChevronRight size={14} />
+        <div className="relative flex flex-col items-center text-center px-4 py-6 md:px-6 md:py-8">
+          <span className="text-[7rem] md:text-[9rem] leading-none drop-shadow-lg">🪷</span>
+          <h3 className="mt-2 text-3xl md:text-4xl font-black leading-tight drop-shadow">
+            许愿池
+          </h3>
+          <p className="mt-2 text-base md:text-lg text-white/95 leading-snug drop-shadow font-semibold">
+            你一愿 我一愿
+            <br />
+            刚果金变家里面
+          </p>
+          <span className="mt-4 inline-flex items-center gap-1 px-5 py-2 bg-white/95 text-teal-600 rounded-full text-sm md:text-base font-bold shadow">
+            无聊就点我一下 <ChevronRight size={16} />
           </span>
         </div>
       </Link>
