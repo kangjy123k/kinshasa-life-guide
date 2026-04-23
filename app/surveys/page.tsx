@@ -27,22 +27,6 @@ export default function SurveysHubPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
-        <section className="rounded-2xl bg-white border border-amber-100 p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="text-3xl leading-none">🎯</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-800">
-                帮商家做调研，自己也拿奖品
-              </p>
-              <p className="text-xs text-gray-500 leading-relaxed mt-1">
-                认真填一份问卷大概 1-2 分钟；填写完成即可参与抽奖。
-                <br />
-                想做市场调研的商家可联系我们上刊，我们只收 1 个要求：真的给用户奖品。
-              </p>
-            </div>
-          </div>
-        </section>
-
         <div className="space-y-3">
           {SURVEYS.map((s) => (
             <Link
@@ -82,14 +66,6 @@ export default function SurveysHubPage() {
             </Link>
           ))}
         </div>
-
-        <section className="rounded-2xl bg-amber-50 border border-amber-100 p-4 mt-6">
-          <p className="text-[11px] text-amber-700 leading-relaxed">
-            💡 想为自己的业务做市场调研？联系平台运营，我们帮你把问卷放上来。
-            <br />
-            每份问卷都会反馈调研结果给付费赞助方。
-          </p>
-        </section>
       </main>
     </div>
   );
