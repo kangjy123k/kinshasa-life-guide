@@ -56,9 +56,8 @@ const ads: AdSlide[] = [
   {
     title: "欢迎商家入驻名录",
     subtitle: "免费收录 · 让客户更快找到你",
-    bg: "from-red-300 via-rose-300 to-red-400",
+    image: "/images/sponsor.webp",
     emoji: "🏪",
-    darkText: true,
   },
   {
     title: "混凝土搅拌站",
