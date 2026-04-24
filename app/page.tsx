@@ -695,8 +695,8 @@ function FeaturedSwipeStack({
     onOpen(top.id);
   };
 
-  // 衬底卡只缩一点 + 降透明，不再 translateY（避免露在底部半张），
-  // 绝对定位盖在顶卡下面。顶卡 relative 撑起父容器高度，没多余空白。
+  // 所有卡层都 absolute inset-0，高度由外层容器统一固定。
+  // [&>div]:h-full 强制 BusinessCard 根节点填满 → 每张卡视觉尺寸一致。
   const behind = (
     biz: Business,
     depth: 1 | 2,
@@ -704,7 +704,7 @@ function FeaturedSwipeStack({
   ) => (
     <div
       key={key}
-      className="absolute inset-0 pointer-events-none"
+      className="absolute inset-0 pointer-events-none [&>div]:h-full"
       style={{
         transform: depth === 1 ? "scale(0.97)" : "scale(0.94)",
         opacity: depth === 1 ? 0.75 : 0.45,
@@ -727,7 +727,7 @@ function FeaturedSwipeStack({
         </span>
       </div>
 
-      <div className="relative mx-auto w-full">
+      <div className="relative mx-auto w-full h-[420px] md:h-[460px]">
         {third && behind(third, 2, `bg2-${(index + 2) % n}`)}
         {second && behind(second, 1, `bg1-${(index + 1) % n}`)}
 
@@ -738,7 +738,7 @@ function FeaturedSwipeStack({
           onPointerUp={finish}
           onPointerCancel={finish}
           onClick={handleTopClick}
-          className="relative select-none"
+          className="absolute inset-0 select-none [&>div]:h-full"
           style={{
             touchAction: "pan-y",
             transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg)`,
