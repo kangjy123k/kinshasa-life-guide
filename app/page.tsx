@@ -995,6 +995,17 @@ function BusinessDetailView({
               {biz.subcategory ? ` · ${biz.subcategory}` : ""}
             </p>
           </div>
+          {hasUpdates && (
+            <button
+              type="button"
+              onClick={scrollToUpdates}
+              className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-rose-500 active:bg-rose-600 text-white text-xs font-bold rounded-full shadow animate-pulse-red"
+              aria-label="跳到最新动态"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+              新动态 ↓
+            </button>
+          )}
         </div>
       </section>
 
@@ -1058,17 +1069,6 @@ function BusinessDetailView({
             <ContactButtons biz={biz} className="mt-5" />
           </div>
         </div>
-
-        {hasUpdates && (
-          <button
-            type="button"
-            onClick={scrollToUpdates}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-rose-400 to-pink-500 active:from-rose-500 active:to-pink-600 text-white text-base font-bold rounded-2xl shadow-md"
-            aria-label="跳到最新动态"
-          >
-            📢 查看最新动态 ↓
-          </button>
-        )}
 
         {biz.gallery && biz.gallery.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4">
