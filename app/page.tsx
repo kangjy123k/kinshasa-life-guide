@@ -722,8 +722,8 @@ function FeaturedSwipeStack({
       <div className="flex items-center gap-2 mb-3">
         <span className="w-1 h-5 bg-red-400 rounded-full" />
         <h2 className="text-base font-bold text-gray-800">热门商家</h2>
-        <span className="ml-auto text-[11px] text-gray-400 font-medium tabular-nums">
-          {(index % n) + 1} / {n}
+        <span className="ml-auto text-[11px] text-gray-400 font-medium flex items-center gap-1">
+          <span className="inline-block animate-pulse">←</span> 左滑查看
         </span>
       </div>
 
