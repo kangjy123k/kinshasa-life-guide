@@ -81,6 +81,8 @@ export default function FrenchWordPage() {
   const todayIdx = useMemo(() => todayIndex(entries), [entries]);
   const totalEntries = entries.length;
   const [index, setIndex] = useState(() => todayIndex(BANK));
+  // 用户是否已手动翻页 — 没翻过就一直锁在今日(跟着 entries 更新)
+  const userMovedRef = useRef(false);
   const [progress, setProgress] = useState<Progress>(() =>
     typeof window === "undefined"
       ? { learned: {}, streak: 0, lastStudy: null, longestStreak: 0 }
@@ -111,9 +113,15 @@ export default function FrenchWordPage() {
     };
   }, []);
 
-  // 动态词条到达后，若当前仍停留在旧今日且存在更新的今日，则自动跳到新今日
+  // 用户没手动翻过 → 始终跟随今日。动态 API 到达后、日期跨天后都能正确追上。
+  // 一旦用户按 prev/next / 滑动 / 词库点选，userMovedRef 置 true，之后保留用户位置。
   useEffect(() => {
-    setIndex((cur) => (cur === todayIdx ? cur : Math.min(cur, entries.length - 1)));
+    if (userMovedRef.current) {
+      // 用户已翻页：只做范围夹取，避免 entries 变短后越界
+      setIndex((cur) => Math.min(cur, Math.max(0, entries.length - 1)));
+      return;
+    }
+    setIndex(todayIdx);
   }, [entries.length, todayIdx]);
 
   const entry = entries[Math.min(index, entries.length - 1)];
@@ -188,8 +196,13 @@ export default function FrenchWordPage() {
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     touchStartX.current = null;
     if (Math.abs(dx) < 50) return;
-    if (dx > 0 && canBackward) setIndex((i) => i - 1);
-    else if (dx < 0 && canForward) setIndex((i) => i + 1);
+    if (dx > 0 && canBackward) {
+      userMovedRef.current = true;
+      setIndex((i) => i - 1);
+    } else if (dx < 0 && canForward) {
+      userMovedRef.current = true;
+      setIndex((i) => i + 1);
+    }
   };
 
   const shareText = useMemo(
@@ -270,7 +283,11 @@ export default function FrenchWordPage() {
         <div className="flex items-center justify-between mb-3">
           <button
             type="button"
-            onClick={() => canBackward && setIndex((i) => i - 1)}
+            onClick={() => {
+              if (!canBackward) return;
+              userMovedRef.current = true;
+              setIndex((i) => i - 1);
+            }}
             disabled={!canBackward}
             aria-label="前一天"
             className="w-9 h-9 rounded-full bg-white border border-rose-200 text-gray-600 hover:bg-rose-50 flex items-center justify-center active:scale-95 transition disabled:opacity-30 disabled:cursor-not-allowed"
@@ -296,7 +313,11 @@ export default function FrenchWordPage() {
           </div>
           <button
             type="button"
-            onClick={() => canForward && setIndex((i) => i + 1)}
+            onClick={() => {
+              if (!canForward) return;
+              userMovedRef.current = true;
+              setIndex((i) => i + 1);
+            }}
             disabled={!canForward}
             aria-label="后一天"
             className="w-9 h-9 rounded-full bg-white border border-rose-200 text-gray-600 hover:bg-rose-50 flex items-center justify-center active:scale-95 transition disabled:opacity-30 disabled:cursor-not-allowed"
@@ -355,6 +376,7 @@ export default function FrenchWordPage() {
           todayIdx={todayIdx}
           onClose={() => setShowList(false)}
           onPick={(i) => {
+            userMovedRef.current = true;
             setIndex(i);
             setShowList(false);
           }}
