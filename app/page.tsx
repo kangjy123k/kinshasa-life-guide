@@ -1039,19 +1039,18 @@ function BusinessDetailView({
             </button>
 
             {hasUpdates && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+              <a
+                href="#biz-updates-section"
+                onClick={() => {
+                  // 兜底 JS 平滑滚（原生 hash 跳转也会跳，即使 JS 挂了）
                   scrollToUpdates();
                 }}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-50 active:bg-rose-200 hover:bg-rose-100 text-rose-600 text-sm font-semibold rounded-xl transition-colors border border-rose-100 cursor-pointer"
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-50 active:bg-rose-200 hover:bg-rose-100 text-rose-600 text-sm font-semibold rounded-xl transition-colors border border-rose-100 cursor-pointer no-underline"
                 aria-label="跳到最新动态"
               >
                 <span className="pointer-events-none">查看最新动态</span>
                 <ChevronDown size={16} className="animate-bounce pointer-events-none" />
-              </button>
+              </a>
             )}
 
             <div className="mt-5 space-y-3 text-sm">
