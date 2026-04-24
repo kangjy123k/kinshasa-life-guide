@@ -5,7 +5,7 @@
 //   - _next/static 与 /images：cache-first（指纹化/immutable 资源）
 //   - /api/*：始终走网络，由 CDN 的 s-maxage 控制
 
-const CACHE = "klg-v20";
+const CACHE = "klg-v21";
 const STATIC_PREFIXES = ["/_next/static/", "/images/"];
 const HTML_NETWORK_TIMEOUT_MS = 3000;
 

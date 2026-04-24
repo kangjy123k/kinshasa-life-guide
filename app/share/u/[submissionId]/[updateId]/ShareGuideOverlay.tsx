@@ -14,6 +14,17 @@ export default function ShareGuideOverlay({
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
+    // 进页后立刻把 ?g=chat/moments 从地址栏去掉 — 微信点右上角「…」
+    // 抓的是当前 URL；带 query 时部分微信版本会降级为纯链接
+    try {
+      if (typeof window !== "undefined" && window.location.search) {
+        const cleanUrl =
+          window.location.origin + window.location.pathname + window.location.hash;
+        window.history.replaceState(null, "", cleanUrl);
+      }
+    } catch {
+      /* X5 某些版本 replaceState 可能失败，静默 */
+    }
     return () => cancelAnimationFrame(id);
   }, []);
 
