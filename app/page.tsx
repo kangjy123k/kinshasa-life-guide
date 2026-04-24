@@ -1080,9 +1080,11 @@ function BusinessDetailView({
                       minute: "2-digit",
                     })}
                   </p>
-                  <p className="text-sm text-gray-700 leading-relaxed mt-0.5 whitespace-pre-wrap">
-                    {u.text}
-                  </p>
+                  {u.text && (
+                    <p className="text-sm text-gray-700 leading-relaxed mt-0.5 whitespace-pre-wrap">
+                      {u.text}
+                    </p>
+                  )}
                   {u.images && u.images.length > 0 && (
                     <div className="mt-2 flex gap-1.5 overflow-x-auto scrollbar-none">
                       {u.images.map((src, i) => (

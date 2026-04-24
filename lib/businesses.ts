@@ -593,16 +593,17 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
       }
     }
     // 入驻表单自带的"最新动态"字段 → 合成一条排在最前（始终展示当前版本，被商家再次编辑即更新）
+    // 只要 text 或 图片任一有内容就展示，之前只看 text 导致"只传图"被吞
     const latestText = get("latestUpdateText");
     const latestImgsRaw = get("latestUpdateImages");
-    if (latestText) {
-      const latestImgs = latestImgsRaw
-        ? latestImgsRaw
-            .split(/\r?\n/)
-            .map((u) => u.trim())
-            .filter(isValidImg)
-            .slice(0, 6)
-        : [];
+    const latestImgs = latestImgsRaw
+      ? latestImgsRaw
+          .split(/\r?\n/)
+          .map((u) => u.trim())
+          .filter(isValidImg)
+          .slice(0, 6)
+      : [];
+    if (latestText || latestImgs.length > 0) {
       const formUpdate: BusinessUpdate = {
         id: `form-${s.id}`,
         at: s.timestamp || new Date().toISOString(),
