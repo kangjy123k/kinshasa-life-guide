@@ -601,7 +601,8 @@ function HomeView({
 /* ------------------------------------------------------------------ */
 /*  热门商家 — Tinder 卡片栈：拖拽、旋转、飞出切换                        */
 /* ------------------------------------------------------------------ */
-const SWIPE_THRESHOLD = 110;
+// 阈值降到 60px —— 单手大拇指移动幅度就能触发切换
+const SWIPE_THRESHOLD = 60;
 const SWIPE_FLY_MS = 320;
 
 function FeaturedSwipeStack({
@@ -694,6 +695,8 @@ function FeaturedSwipeStack({
     onOpen(top.id);
   };
 
+  // 衬底卡只缩一点 + 降透明，不再 translateY（避免露在底部半张），
+  // 绝对定位盖在顶卡下面。顶卡 relative 撑起父容器高度，没多余空白。
   const behind = (
     biz: Business,
     depth: 1 | 2,
@@ -703,11 +706,8 @@ function FeaturedSwipeStack({
       key={key}
       className="absolute inset-0 pointer-events-none"
       style={{
-        transform:
-          depth === 1
-            ? "translateY(10px) scale(0.95)"
-            : "translateY(22px) scale(0.9)",
-        opacity: depth === 1 ? 0.88 : 0.55,
+        transform: depth === 1 ? "scale(0.97)" : "scale(0.94)",
+        opacity: depth === 1 ? 0.75 : 0.45,
         filter: depth === 1 ? "none" : "brightness(0.95)",
         zIndex: depth === 1 ? 2 : 1,
         transition: "transform 300ms cubic-bezier(.2,.8,.2,1), opacity 300ms",
@@ -727,10 +727,7 @@ function FeaturedSwipeStack({
         </span>
       </div>
 
-      <div
-        className="relative mx-auto w-full"
-        style={{ height: 500 }}
-      >
+      <div className="relative mx-auto w-full">
         {third && behind(third, 2, `bg2-${(index + 2) % n}`)}
         {second && behind(second, 1, `bg1-${(index + 1) % n}`)}
 
@@ -741,7 +738,7 @@ function FeaturedSwipeStack({
           onPointerUp={finish}
           onPointerCancel={finish}
           onClick={handleTopClick}
-          className="absolute inset-0 select-none"
+          className="relative select-none"
           style={{
             touchAction: "pan-y",
             transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg)`,
@@ -1089,12 +1086,6 @@ function BusinessDetailView({
                 <Star size={12} fill="white" /> 热门
               </span>
             )}
-            {hasUpdates && (
-              <UpdatesNotch
-                count={biz.updates!.length}
-                onClick={() => setUpdatesOpen(true)}
-              />
-            )}
           </div>
           <div className="p-5">
             <h2 className="text-xl font-bold text-gray-900">{biz.name}</h2>
@@ -1167,6 +1158,13 @@ function BusinessDetailView({
 
       </div>
 
+      {hasUpdates && (
+        <UpdatesNotch
+          count={biz.updates!.length}
+          onOpen={() => setUpdatesOpen(true)}
+        />
+      )}
+
       {hasUpdates && updatesOpen && (
         <UpdatesSheet
           biz={biz}
@@ -1178,32 +1176,76 @@ function BusinessDetailView({
 }
 
 /* ------------------------------------------------------------------ */
-/*  首图上的"刘海"—— 下拉提示                                           */
+/*  顶部"刘海"—— 周期性探头 + 下拉展开最新动态                           */
 /* ------------------------------------------------------------------ */
 function UpdatesNotch({
   count,
-  onClick,
+  onOpen,
 }: {
   count: number;
-  onClick: () => void;
+  onOpen: () => void;
 }) {
+  // dragY === null 表示未拖拽；正在拖拽时覆盖 CSS 动画并跟手
+  const [dragY, setDragY] = useState<number | null>(null);
+  const startRef = useRef<number | null>(null);
+
+  const down = (e: React.PointerEvent<HTMLButtonElement>) => {
+    startRef.current = e.clientY;
+    setDragY(0);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+  };
+  const move = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (startRef.current == null) return;
+    const dy = Math.max(0, e.clientY - startRef.current);
+    setDragY(Math.min(dy, 220));
+  };
+  const up = () => {
+    const cur = dragY;
+    startRef.current = null;
+    setDragY(null);
+    if (cur !== null && cur > 50) {
+      onOpen();
+    }
+  };
+
+  const dragging = dragY !== null;
+
   return (
     <button
       type="button"
-      onClick={onClick}
-      aria-label={`展开最新动态（${count} 条）`}
-      className="absolute left-1/2 -translate-x-1/2 -bottom-4 z-10 flex items-center gap-1.5 px-4 py-2 bg-rose-500 active:bg-rose-600 text-white text-xs font-bold rounded-full shadow-lg animate-pulse-red"
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onClick={() => {
+        // 纯 tap（没拖动过）也算触发
+        if (!dragging) onOpen();
+      }}
+      aria-label={`下拉查看最新动态（${count} 条）`}
+      className={`fixed top-0 left-1/2 z-40 flex items-center gap-1.5 px-4 py-2 pt-2.5 bg-rose-500 active:bg-rose-600 text-white text-xs font-bold rounded-b-[20px] shadow-lg ${
+        dragging ? "" : "updates-notch-peek"
+      }`}
       style={{
-        // 顶上两个小"耳朵"做出真·刘海的感觉
-        boxShadow: "0 4px 12px rgba(244, 63, 94, 0.35)",
+        touchAction: "none",
+        boxShadow: "0 6px 16px rgba(244, 63, 94, 0.4)",
+        ...(dragging
+          ? {
+              transform: `translate(-50%, ${dragY}px)`,
+              transition: "none",
+            }
+          : {
+              transition: "transform 300ms cubic-bezier(.3,1.5,.4,1)",
+            }),
       }}
     >
       <span className="w-1.5 h-1.5 rounded-full bg-white" />
-      下拉查看最新动态
-      <span className="px-1.5 py-0.5 bg-white/25 rounded-full text-[10px]">
+      下拉 · 最新动态
+      <span className="px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] tabular-nums">
         {count}
       </span>
-      <ChevronDown size={13} className="animate-bounce" />
+      <ChevronDown size={13} />
     </button>
   );
 }
