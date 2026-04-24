@@ -4,9 +4,23 @@ import BottomNav from "@/components/BottomNav";
 import VersionChecker from "@/components/VersionChecker";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://kinshasa-life-guide.vercel.app"),
   title: "刚果金华人生活服务指南",
   description:
     "帮助刚果金华人更快找到本地服务 — 商品 · 餐厅 · 住宿 · 服务 · 租赁 · 二手专区 · 线下活动",
+  openGraph: {
+    type: "website",
+    siteName: "刚果金华人生活服务指南",
+    title: "刚果金华人生活服务指南",
+    // 换行符在微信小卡片里会被压成空格/分隔，用"·"让两句都露出来
+    description: "商家免费入驻中 · 随便逛逛有惊喜",
+    locale: "zh_CN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "刚果金华人生活服务指南",
+    description: "商家免费入驻中 · 随便逛逛有惊喜",
+  },
 };
 
 export const viewport = {
