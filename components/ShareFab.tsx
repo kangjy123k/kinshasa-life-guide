@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
+
+import { getDeployVersion } from "@/lib/deploy-version";
 
 const STORAGE_KEY = "klg-share-fab-pos-v2";
 const TAB_SIZE = 56;
@@ -15,7 +17,35 @@ export function ShareFab() {
   const [dragging, setDragging] = useState(false);
   const [dragXY, setDragXY] = useState<{ x: number; y: number } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "done">("idle");
   const dragRef = useRef({ px: 0, py: 0, startX: 0, startY: 0, moved: false });
+
+  const copyShareLink = async () => {
+    if (typeof window === "undefined") return;
+    const url = new URL("/", window.location.origin);
+    const v = await getDeployVersion();
+    if (v) url.searchParams.set("v", v);
+    const href = url.toString();
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(href);
+      } else {
+        // 微信内置浏览器偶有 clipboard API 不可用，回落到 execCommand
+        const ta = document.createElement("textarea");
+        ta.value = href;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopyState("done");
+      setTimeout(() => setCopyState("idle"), 1800);
+    } catch {
+      /* 静默失败，避免弹 alert 吓用户 */
+    }
+  };
 
   // 初始定位：优先读 storage；否则默认 "首页蓝色 hero 右下角" —— 通过锚点元素定位
   useEffect(() => {
@@ -164,14 +194,37 @@ export function ShareFab() {
           <img
             src="/share.png"
             alt="刚果金华人生活服务指南"
-            className="max-h-[82vh] max-w-full w-auto rounded-xl shadow-2xl"
+            className="max-h-[72vh] max-w-full w-auto rounded-xl shadow-2xl"
             draggable={false}
             onClick={(e) => e.stopPropagation()}
           />
 
-          <p className="mt-4 text-white text-sm font-medium px-4 text-center">
+          <p className="mt-3 text-white text-sm font-medium px-4 text-center">
             长按海报即可保存到相册
           </p>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              copyShareLink();
+            }}
+            className={`mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold shadow-lg active:scale-95 transition ${
+              copyState === "done"
+                ? "bg-emerald-500 text-white"
+                : "bg-white text-orange-600"
+            }`}
+          >
+            {copyState === "done" ? (
+              <>
+                <Check size={16} /> 已复制，去微信粘贴
+              </>
+            ) : (
+              <>
+                <Copy size={16} /> 复制分享链接（最新版）
+              </>
+            )}
+          </button>
         </div>
       )}
     </>

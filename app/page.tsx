@@ -107,7 +107,13 @@ export default function GuidePage() {
     const params = new URLSearchParams(window.location.search);
     const rawBiz = params.get("biz");
     const rawCat = params.get("cat");
-    const cleanPath = window.location.pathname;
+    // cleanPath 只去掉 biz/cat，保留 v（部署版本号）和其他未来参数
+    const kept = new URLSearchParams(window.location.search);
+    kept.delete("biz");
+    kept.delete("cat");
+    const cleanPath =
+      window.location.pathname +
+      (kept.toString() ? `?${kept.toString()}` : "");
     // 栈底：home state
     window.history.replaceState({ klgView: "home" }, "", cleanPath);
     if (rawBiz) {

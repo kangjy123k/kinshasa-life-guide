@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import VersionChecker from "@/components/VersionChecker";
+import VersionStamp from "@/components/VersionStamp";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kinshasa-life-guide.vercel.app"),
@@ -61,6 +62,7 @@ export default function RootLayout({
         {children}
         <BottomNav />
         <VersionChecker />
+        <VersionStamp />
       </body>
     </html>
   );
