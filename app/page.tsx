@@ -1055,6 +1055,16 @@ function BusinessDetailView({
   const cat = categories.find((c) => c.key === biz.category);
   const hasUpdates = !!biz.updates && biz.updates.length > 0;
   const [updatesOpen, setUpdatesOpen] = useState(false);
+  const [bizShareOpen, setBizShareOpen] = useState(false);
+
+  // 商家主页分享 key：用户提交的用 submissionId；seed 用 seed-{id}
+  const bizShareKey = biz.submissionId ?? `seed-${biz.id}`;
+  const bizShareConfig: ShareConfig = {
+    url: `${SHARE_ORIGIN}/share/b/${bizShareKey}`,
+    displayTitle: biz.name,
+    displayCaption: "刚果金华人生活服务指南",
+    navTitle: biz.name,
+  };
 
   return (
     <>
@@ -1098,6 +1108,14 @@ function BusinessDetailView({
               className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 bg-red-400 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors"
             >
               <MapPin size={16} /> 在地图上查看
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setBizShareOpen(true)}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 active:opacity-85 text-white text-sm font-semibold rounded-xl"
+            >
+              <Share2 size={15} /> 分享到微信
             </button>
 
             <div className="mt-5 space-y-3 text-sm">
@@ -1169,6 +1187,13 @@ function BusinessDetailView({
         <UpdatesSheet
           biz={biz}
           onClose={() => setUpdatesOpen(false)}
+        />
+      )}
+
+      {bizShareOpen && (
+        <ShareSheet
+          config={bizShareConfig}
+          onClose={() => setBizShareOpen(false)}
         />
       )}
     </>
@@ -1328,6 +1353,8 @@ function UpdatesSheet({
 /* ------------------------------------------------------------------ */
 /*  单条动态卡（带分享按钮）                                             */
 /* ------------------------------------------------------------------ */
+const SHARE_ORIGIN = "https://share.blackstream.site";
+
 function UpdateCard({
   biz,
   u,
@@ -1337,11 +1364,20 @@ function UpdateCard({
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  const shareConfig: ShareConfig | null = biz.submissionId
+    ? {
+        url: `${SHARE_ORIGIN}/share/u/${biz.submissionId}/${u.id}`,
+        displayTitle: u.title || `${biz.name} · 最新动态`,
+        displayCaption: `@【${biz.name}】的最新活动`,
+        navTitle: u.title || `${biz.name} · 最新动态`,
+      }
+    : null;
+
   return (
     <>
       <UpdateCardBody biz={biz} u={u} onShare={() => setSheetOpen(true)} />
-      {sheetOpen && (
-        <ShareSheet biz={biz} u={u} onClose={() => setSheetOpen(false)} />
+      {sheetOpen && shareConfig && (
+        <ShareSheet config={shareConfig} onClose={() => setSheetOpen(false)} />
       )}
     </>
   );
@@ -1415,13 +1451,22 @@ function UpdateCardBody({
 /* ------------------------------------------------------------------ */
 /*  分享底部 Sheet — 小红书 / 微信风格                                    */
 /* ------------------------------------------------------------------ */
+interface ShareConfig {
+  // 最终分享链接（绝对 URL，微信爬取目标）
+  url: string;
+  // Sheet 顶部大字（卡片主标题预览）
+  displayTitle: string;
+  // Sheet 顶部小字（卡片副标题预览）
+  displayCaption: string;
+  // 系统分享表用的标题（较短）
+  navTitle: string;
+}
+
 function ShareSheet({
-  biz,
-  u,
+  config,
   onClose,
 }: {
-  biz: Business;
-  u: BusinessUpdate;
+  config: ShareConfig;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -1437,13 +1482,8 @@ function ShareSheet({
     };
   }, []);
 
-  // 分享 URL 固定走独立域名（非 *.vercel.app）— 微信对共享子域
-  // 整体降级为纯链接，独立域名才会出卡片
-  const SHARE_ORIGIN = "https://share.blackstream.site";
-  const shareUrl = biz.submissionId
-    ? `${SHARE_ORIGIN}/share/u/${biz.submissionId}/${u.id}`
-    : "";
-  const shareTitle = u.title || `${biz.name} · 最新动态`;
+  const shareUrl = config.url;
+  const shareTitle = config.navTitle;
   const inWeChat =
     typeof navigator !== "undefined" &&
     /MicroMessenger/i.test(navigator.userAgent);
@@ -1543,10 +1583,10 @@ function ShareSheet({
         </div>
         <div className="px-5 pt-2 pb-3 text-center">
           <p className="text-sm text-gray-800 font-semibold truncate">
-            {shareTitle}
+            {config.displayTitle}
           </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            @【{biz.name}】的最新活动
+          <p className="text-[11px] text-gray-400 mt-0.5 truncate">
+            {config.displayCaption}
           </p>
         </div>
 
