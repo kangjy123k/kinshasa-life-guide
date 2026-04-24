@@ -14,10 +14,16 @@ interface Params {
   updateId: string;
 }
 
+function isValidImg(u: string) {
+  return /^https?:\/\//i.test(u) || u.startsWith("/api/media/");
+}
+
 async function loadData(params: Params) {
   const rec = await getSubmission(params.submissionId);
   if (!rec || rec.type !== "merchant" || rec.status !== "approved") return null;
   const bizName = rec.data?.nameZh || rec.data?.name || "商家";
+
+  // 1) DB 里真实存的 updates
   let updates: MerchantUpdate[] = [];
   try {
     const raw = rec.data?.updates;
@@ -28,6 +34,30 @@ async function loadData(params: Params) {
   } catch {
     /* ignore */
   }
+
+  // 2) 前端合成的 "form-${id}" update (来自初始表单的 latestUpdateText /
+  //    latestUpdateImages)。前端分享页若走 form-xxx，后端也要能找到它。
+  const formId = `form-${rec.id}`;
+  if (params.updateId === formId) {
+    const latestText = (rec.data?.latestUpdateText || "").trim();
+    const latestImgs = (rec.data?.latestUpdateImages || "")
+      .split(/\r?\n/)
+      .map((u) => u.trim())
+      .filter((u) => isValidImg(u))
+      .slice(0, 6);
+    if (latestText || latestImgs.length > 0) {
+      return {
+        bizName,
+        update: {
+          id: formId,
+          at: rec.timestamp || new Date().toISOString(),
+          text: latestText,
+          ...(latestImgs.length ? { images: latestImgs } : {}),
+        } as MerchantUpdate,
+      };
+    }
+  }
+
   const u = updates.find((x) => x.id === params.updateId);
   if (!u) return null;
   return { bizName, update: u };
