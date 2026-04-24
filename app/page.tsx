@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   MapPin,
   Phone,
   ChevronRight,
+  ChevronDown,
   Star,
   X,
   ArrowLeft,
@@ -960,6 +961,11 @@ function BusinessDetailView({
   onFocusMap: () => void;
 }) {
   const cat = categories.find((c) => c.key === biz.category);
+  const updatesRef = useRef<HTMLDivElement | null>(null);
+  const hasUpdates = !!biz.updates && biz.updates.length > 0;
+  const scrollToUpdates = () => {
+    updatesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <>
@@ -1004,6 +1010,17 @@ function BusinessDetailView({
             >
               <MapPin size={16} /> 在地图上查看
             </button>
+
+            {hasUpdates && (
+              <button
+                onClick={scrollToUpdates}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-semibold rounded-xl transition-colors border border-rose-100"
+                aria-label="滑到最新动态"
+              >
+                查看最新动态
+                <ChevronDown size={16} className="animate-bounce" />
+              </button>
+            )}
 
             <div className="mt-5 space-y-3 text-sm">
               {biz.address && (
@@ -1061,16 +1078,19 @@ function BusinessDetailView({
           </div>
         )}
 
-        {biz.updates && biz.updates.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4">
+        {hasUpdates && (
+          <div
+            ref={updatesRef}
+            className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4 scroll-mt-4"
+          >
             <h3 className="text-sm font-bold text-gray-800 flex items-center gap-1.5 mb-3">
               <span>最新动态</span>
               <span className="px-1.5 py-0.5 bg-rose-100 text-rose-600 rounded-full text-[10px] font-bold">
-                {biz.updates.length}
+                {biz.updates!.length}
               </span>
             </h3>
-            <ul className="space-y-3">
-              {biz.updates.slice(0, 8).map((u) => (
+            <ul className="space-y-4">
+              {biz.updates!.slice(0, 8).map((u) => (
                 <li key={u.id} className="border-l-2 border-rose-200 pl-3">
                   <p className="text-[11px] text-gray-400">
                     {new Date(u.at).toLocaleString("zh-CN", {
@@ -1086,16 +1106,15 @@ function BusinessDetailView({
                     </p>
                   )}
                   {u.images && u.images.length > 0 && (
-                    <div className="mt-2 flex gap-1.5 overflow-x-auto scrollbar-none">
+                    <div className="mt-2 -mr-1 flex flex-col gap-2">
                       {u.images.map((src, i) => (
-                        <div key={`${src}-${i}`} className="relative h-24 shrink-0">
-                          <ProtectedImg
-                            src={src}
-                            alt={`动态图片 ${i + 1}`}
-                            loading="lazy"
-                            className="h-24 w-auto rounded-lg object-cover border border-sky-50 block"
-                          />
-                        </div>
+                        <ProtectedImg
+                          key={`${src}-${i}`}
+                          src={src}
+                          alt={`动态图片 ${i + 1}`}
+                          loading="lazy"
+                          className="w-full rounded-lg object-cover border border-sky-50 block aspect-[4/3]"
+                        />
                       ))}
                     </div>
                   )}
