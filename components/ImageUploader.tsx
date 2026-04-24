@@ -24,9 +24,15 @@ export function SingleImageUploader({
   const pick = () => inputRef.current?.click();
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    // 微信 X5 有概率在 value="" 后把 files 清空，先 Array.from 拷贝
+    const list = e.target.files;
+    const file = list && list.length > 0 ? list[0] : null;
+    if (!file) {
+      // 选图了却拿不到 File（X5 某些版本的已知 bug）
+      if (list !== null) setError("相册返回异常，请再点一次");
+      return;
+    }
     e.target.value = "";
-    if (!file) return;
     setError(null);
     setBusy(true);
     try {
@@ -44,13 +50,24 @@ export function SingleImageUploader({
     setError(null);
   };
 
+  // 微信 X5 对 display:none 的 file input 触发不稳：弹得出选图 但 onChange 回不来
+  // 用绝对定位 + 0 尺寸代替，保持元素挂在 DOM 里可交互
+  const hiddenInputStyle: React.CSSProperties = {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0,
+    overflow: "hidden",
+    pointerEvents: "none",
+  };
+
   return (
-    <div>
+    <div className="relative">
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
-        className="hidden"
+        style={hiddenInputStyle}
         onChange={onFile}
       />
       {value ? (
@@ -133,14 +150,20 @@ export function MultiImageUploader({
 
   const onFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
+    // 先拿到文件数组，再清 value；顺序反了 X5 上会连带把 files 抹掉
+    const picked = list && list.length > 0 ? Array.from(list) : [];
     e.target.value = "";
-    if (!list || list.length === 0) return;
+    if (picked.length === 0) {
+      // 选图了却拿不到 File（X5 已知 bug）
+      if (list !== null) setError("相册返回异常，请再点一次");
+      return;
+    }
     const remaining = max - values.length;
     if (remaining <= 0) {
       setError(`最多 ${max} 张`);
       return;
     }
-    const files = Array.from(list).slice(0, remaining);
+    const files = picked.slice(0, remaining);
     setBusy(true);
     setError(null);
     setProgress({ done: 0, total: files.length });
@@ -151,7 +174,9 @@ export function MultiImageUploader({
           const { url } = await uploadImage(f, scope);
           uploaded.push(url);
         } catch (err: unknown) {
-          setError(err instanceof Error ? err.message : "部分图片上传失败");
+          const msg = err instanceof Error ? err.message : "图片上传失败";
+          // 多张时把失败原因追加，不覆盖；让用户看到每张的问题
+          setError((prev) => (prev ? `${prev}；${msg}` : msg));
         } finally {
           setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
         }
@@ -171,14 +196,24 @@ export function MultiImageUploader({
 
   const canAdd = values.length < max;
 
+  // 微信 X5 对 display:none 的 file input 触发不稳，用绝对定位 0 尺寸替代
+  const hiddenInputStyle: React.CSSProperties = {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0,
+    overflow: "hidden",
+    pointerEvents: "none",
+  };
+
   return (
-    <div>
+    <div className="relative">
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
         multiple
-        className="hidden"
+        style={hiddenInputStyle}
         onChange={onFiles}
       />
       <div className="grid grid-cols-3 gap-2">
