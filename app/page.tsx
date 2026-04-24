@@ -14,6 +14,8 @@ import {
   ArrowLeft,
   Megaphone,
   Share2,
+  MessageCircle,
+  Link2,
 } from "lucide-react";
 
 import {
@@ -1291,37 +1293,27 @@ function UpdateCard({
   biz: Business;
   u: BusinessUpdate;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const shareUrl =
-    typeof window !== "undefined" && biz.submissionId
-      ? `${window.location.origin}/share/u/${biz.submissionId}/${u.id}`
-      : "";
+  return (
+    <>
+      <UpdateCardBody biz={biz} u={u} onShare={() => setSheetOpen(true)} />
+      {sheetOpen && (
+        <ShareSheet biz={biz} u={u} onClose={() => setSheetOpen(false)} />
+      )}
+    </>
+  );
+}
 
-  const shareText = `${u.title || u.text.slice(0, 28)}\n@【${biz.name}】的最新活动\n刚果金华人生活服务指南`;
-
-  const share = async () => {
-    if (!shareUrl) return;
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: u.title || `${biz.name} · 最新动态`,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch {
-        /* 用户取消 → 落到复制兜底 */
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* 无权限也静默 */
-    }
-  };
+function UpdateCardBody({
+  biz,
+  u,
+  onShare,
+}: {
+  biz: Business;
+  u: BusinessUpdate;
+  onShare: () => void;
+}) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden">
@@ -1367,11 +1359,314 @@ function UpdateCard({
       <div className="px-4 py-3 mt-2 border-t border-rose-50 flex items-center justify-end gap-2">
         <button
           type="button"
-          onClick={share}
+          onClick={onShare}
           className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 active:opacity-80 text-white text-xs font-bold rounded-full shadow-sm"
         >
           <Share2 size={13} />
-          {copied ? "链接已复制" : "分享到微信"}
+          分享
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  分享底部 Sheet — 小红书 / 微信风格                                    */
+/* ------------------------------------------------------------------ */
+function ShareSheet({
+  biz,
+  u,
+  onClose,
+}: {
+  biz: Business;
+  u: BusinessUpdate;
+  onClose: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [guide, setGuide] = useState<null | "chat" | "moments">(null);
+
+  useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const shareUrl =
+    typeof window !== "undefined" && biz.submissionId
+      ? `${window.location.origin}/share/u/${biz.submissionId}/${u.id}`
+      : "";
+  const shareTitle = u.title || `${biz.name} · 最新动态`;
+  const inWeChat =
+    typeof navigator !== "undefined" &&
+    /MicroMessenger/i.test(navigator.userAgent);
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 260);
+  };
+
+  const copy = async () => {
+    if (!shareUrl) return false;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      return true;
+    } catch {
+      // execCommand 兜底
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = shareUrl;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  };
+
+  const toChat = async () => {
+    if (inWeChat) {
+      setGuide("chat");
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, url: shareUrl });
+        handleClose();
+        return;
+      } catch {
+        /* 用户取消 → 兜底复制 */
+      }
+    }
+    const ok = await copy();
+    setToast(ok ? "链接已复制，打开微信粘贴给好友" : "复制失败，请手动长按链接");
+    window.setTimeout(() => {
+      setToast(null);
+      handleClose();
+    }, 1600);
+  };
+
+  const toMoments = async () => {
+    if (inWeChat) {
+      setGuide("moments");
+      return;
+    }
+    const ok = await copy();
+    setToast(ok ? "链接已复制，打开微信发到朋友圈" : "复制失败，请手动长按链接");
+    window.setTimeout(() => {
+      setToast(null);
+      handleClose();
+    }, 1600);
+  };
+
+  const copyOnly = async () => {
+    const ok = await copy();
+    setToast(ok ? "链接已复制" : "复制失败");
+    window.setTimeout(() => {
+      setToast(null);
+      handleClose();
+    }, 1400);
+  };
+
+  if (guide) {
+    return (
+      <WeChatShareGuide
+        type={guide}
+        shareTitle={shareTitle}
+        onClose={() => {
+          setGuide(null);
+          handleClose();
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`fixed inset-0 z-[60] bg-black/50 flex items-end justify-center transition-opacity duration-300 ${
+        mounted && !closing ? "opacity-100" : "opacity-0"
+      }`}
+      onClick={handleClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-md bg-white rounded-t-3xl shadow-2xl pb-[max(1rem,env(safe-area-inset-bottom))] transition-transform duration-300 ease-out ${
+          mounted && !closing ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <span className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
+        <div className="px-5 pt-2 pb-3 text-center">
+          <p className="text-sm text-gray-800 font-semibold truncate">
+            {shareTitle}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            @【{biz.name}】的最新活动
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 px-5 pt-3 pb-4">
+          <ShareTile
+            label="微信好友"
+            color="from-emerald-500 to-green-500"
+            icon={<MessageCircle size={22} />}
+            onClick={toChat}
+          />
+          <ShareTile
+            label="朋友圈"
+            color="from-teal-500 to-cyan-500"
+            icon={
+              <div className="relative w-6 h-6 flex items-center justify-center">
+                <span className="absolute w-2 h-2 rounded-full bg-white -translate-x-2 -translate-y-1" />
+                <span className="absolute w-2 h-2 rounded-full bg-white translate-x-2 -translate-y-1" />
+                <span className="absolute w-2 h-2 rounded-full bg-white translate-y-2" />
+              </div>
+            }
+            onClick={toMoments}
+          />
+          <ShareTile
+            label="复制链接"
+            color="from-gray-400 to-gray-500"
+            icon={<Link2 size={22} />}
+            onClick={copyOnly}
+          />
+        </div>
+
+        <div className="border-t border-gray-100 mx-5" />
+        <button
+          type="button"
+          onClick={handleClose}
+          className="w-full py-3.5 text-sm text-gray-500 font-medium active:bg-gray-50"
+        >
+          取消
+        </button>
+      </div>
+
+      {toast && (
+        <div className="fixed left-1/2 -translate-x-1/2 top-[30%] z-[70] pointer-events-none">
+          <div className="px-4 py-2 rounded-2xl bg-black/75 text-white text-sm font-medium shadow-lg backdrop-blur">
+            {toast}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShareTile({
+  label,
+  color,
+  icon,
+  onClick,
+}: {
+  label: string;
+  color: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-1.5 py-2 active:scale-95 transition"
+    >
+      <span
+        className={`w-12 h-12 rounded-full bg-gradient-to-br ${color} text-white shadow-md flex items-center justify-center`}
+      >
+        {icon}
+      </span>
+      <span className="text-[11px] text-gray-600 font-medium">{label}</span>
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  微信内引导层 — 点右上角 「…」 发送给好友/朋友圈                        */
+/* ------------------------------------------------------------------ */
+function WeChatShareGuide({
+  type,
+  shareTitle,
+  onClose,
+}: {
+  type: "chat" | "moments";
+  shareTitle: string;
+  onClose: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return (
+    <div
+      className={`fixed inset-0 z-[70] bg-black/85 flex flex-col items-end p-4 transition-opacity duration-300 ${
+        mounted ? "opacity-100" : "opacity-0"
+      }`}
+      onClick={onClose}
+    >
+      <div className="flex flex-col items-end gap-2 pr-3">
+        <svg
+          width="72"
+          height="90"
+          viewBox="0 0 72 90"
+          fill="none"
+          aria-hidden
+        >
+          <path
+            d="M56 80 Q56 40 56 15"
+            stroke="white"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray="6 6"
+            fill="none"
+          />
+          <path
+            d="M48 18 L56 8 L64 18"
+            stroke="white"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </svg>
+      </div>
+      <div className="mt-2 w-full max-w-xs mx-auto text-center">
+        <p className="text-white text-lg font-black">
+          点右上角「…」
+        </p>
+        <p className="text-white/90 text-base mt-1">
+          选择「
+          {type === "chat" ? "发送给朋友" : "分享到朋友圈"}
+          」
+        </p>
+      </div>
+      <div className="mt-auto w-full max-w-xs mx-auto mb-6 space-y-3">
+        <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-center">
+          <p className="text-[11px] text-white/60">即将分享</p>
+          <p className="text-sm text-white font-bold mt-0.5 truncate">
+            {shareTitle}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="w-full py-2.5 bg-white/15 text-white text-sm font-semibold rounded-full active:bg-white/25"
+        >
+          我知道了
         </button>
       </div>
     </div>
