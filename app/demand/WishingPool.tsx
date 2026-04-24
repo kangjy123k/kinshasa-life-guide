@@ -292,21 +292,35 @@ export default function WishingPool() {
     return () => clearInterval(iv);
   }, []);
 
+  // 移动端的 dblclick 基本不响应；用"两次 click 间隔 < 400ms"做双击判定
+  const lastTapRef = useRef<{ id: number; at: number } | null>(null);
+
   const handleBubbleClick = useCallback(
     (instanceId: number) => {
       const b = bubblesRef.current.find((x) => x.instanceId === instanceId);
       const w = b ? wishesRef.current.find((x) => x.id === b.wishId) : null;
       if (!b || !w || b.poppedAt !== null) return;
-      setToast({ text: `双击为「${w.name}」许愿`, type: "ok" });
+
+      const now = performance.now();
+      const last = lastTapRef.current;
+      if (last && last.id === instanceId && now - last.at < 450) {
+        lastTapRef.current = null;
+        void doWish(w, b);
+        return;
+      }
+      lastTapRef.current = { id: instanceId, at: now };
+      setToast({ text: `再点一次为「${w.name}」助力`, type: "ok" });
     },
     []
   );
 
+  // 桌面端快速 dblclick 仍然直接助力（作为兜底）
   const handleBubbleDoubleClick = useCallback(
     async (instanceId: number) => {
       const b = bubblesRef.current.find((x) => x.instanceId === instanceId);
       const w = b ? wishesRef.current.find((x) => x.id === b.wishId) : null;
       if (!b || !w || b.poppedAt !== null) return;
+      lastTapRef.current = null;
       await doWish(w, b);
     },
     []
@@ -508,8 +522,7 @@ export default function WishingPool() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-white/55">
-        <span>单击确认</span>
-        <span>· 双击助力</span>
+        <span>连点两下助力</span>
         <span>· 已助力的心愿 24 小时内不再出现</span>
       </div>
 
