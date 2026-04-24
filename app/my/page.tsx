@@ -18,6 +18,7 @@ import {
   Inbox,
   RefreshCw,
   Sparkles,
+  Pencil,
   X,
 } from "lucide-react";
 import { getOwnerToken } from "@/lib/owner-token-client";
@@ -303,29 +304,34 @@ function RecordCard({
     }
   }
 
-  const openDetail = () => {
-    if (confirming || working) return;
-    if (canEdit) setEditOpen(true);
-    else setViewOpen(true);
-  };
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+  // 可编辑类型（商家/二手/求购/活动）改用"更新基础信息"按钮进入编辑，
+  // 不再整张卡片点开。问卷（!canEdit）仍保留"点卡片查看详情"的老路径。
+  const openView = () => {
+    if (confirming || working) return;
+    setViewOpen(true);
+  };
 
   return (
     <div
-      onClick={openDetail}
-      role="button"
-      tabIndex={0}
+      onClick={canEdit ? undefined : openView}
+      role={canEdit ? undefined : "button"}
+      tabIndex={canEdit ? undefined : 0}
       aria-disabled={confirming || working}
-      onKeyDown={(e) => {
-        if (confirming || working) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openDetail();
-        }
-      }}
-      className={`bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all duration-300 ease-out cursor-pointer active:scale-[0.99] ${
-        leaving ? "opacity-0 scale-95" : "opacity-100 scale-100"
-      }`}
+      onKeyDown={
+        canEdit
+          ? undefined
+          : (e) => {
+              if (confirming || working) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openView();
+              }
+            }
+      }
+      className={`bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all duration-300 ease-out ${
+        canEdit ? "" : "cursor-pointer active:scale-[0.99]"
+      } ${leaving ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}
     >
       <div className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left">
         <span className={`w-9 h-9 rounded-xl ${meta.bg} flex items-center justify-center shrink-0`}>
@@ -347,6 +353,19 @@ function RecordCard({
       </div>
 
       <div className="px-3.5 py-2.5 border-t border-sky-50 flex items-center justify-end gap-2 flex-wrap" onClick={stop}>
+        {canEdit && !confirming && (
+          <button
+            onClick={(e) => {
+              stop(e);
+              setEditOpen(true);
+            }}
+            disabled={working}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg active:scale-95 transition"
+          >
+            <Pencil size={13} />
+            更新基础信息
+          </button>
+        )}
         {canPostUpdate && !confirming && (
           <button
             onClick={(e) => {
