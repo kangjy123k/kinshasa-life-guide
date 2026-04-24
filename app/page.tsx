@@ -1021,17 +1021,6 @@ function BusinessDetailView({
               <MapPin size={16} /> 在地图上查看
             </button>
 
-            {hasUpdates && (
-              <button
-                type="button"
-                onClick={scrollToUpdates}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-50 active:bg-rose-200 text-rose-600 text-sm font-semibold rounded-xl border border-rose-100"
-                aria-label="跳到最新动态"
-              >
-                查看最新动态 ↓
-              </button>
-            )}
-
             <div className="mt-5 space-y-3 text-sm">
               {biz.address && (
                 <Field
@@ -1069,6 +1058,17 @@ function BusinessDetailView({
             <ContactButtons biz={biz} className="mt-5" />
           </div>
         </div>
+
+        {hasUpdates && (
+          <button
+            type="button"
+            onClick={scrollToUpdates}
+            className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-rose-400 to-pink-500 active:from-rose-500 active:to-pink-600 text-white text-base font-bold rounded-2xl shadow-md"
+            aria-label="跳到最新动态"
+          >
+            📢 查看最新动态 ↓
+          </button>
+        )}
 
         {biz.gallery && biz.gallery.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4">
