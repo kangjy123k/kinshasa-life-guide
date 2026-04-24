@@ -67,6 +67,8 @@ function MapPageInner() {
     () =>
       [...businesses, ...approvedExtras]
         .filter((b) => !b.hidden)
+        // 无门店的不上地图（用户表单填"无"，种子数据也可能写"无固定店面 — …"）
+        .filter((b) => !/^\s*无/.test(b.hasStore ?? ""))
         .map((b) => {
           if (typeof b.lat === "number" && typeof b.lng === "number") return b;
           const [lat, lng] = coordsForArea(b.area, b.id);
