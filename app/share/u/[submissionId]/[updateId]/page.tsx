@@ -68,6 +68,22 @@ function firstImage(u: MerchantUpdate): string | null {
   return img || null;
 }
 
+/**
+ * 把原始图片地址包一层 Next.js 图片优化器 —— 微信爬虫超时很短，
+ * 原图(1600×1200, ~300KB) 慢；转成 640 宽度的 webp/jpg 后 ~30-60KB，
+ * 边缘命中缓存只要 ms 级。
+ */
+function ogImageUrl(src: string, origin: string): string {
+  // 已经是绝对 URL 直接拼；否则相对路径用 origin
+  const abs = /^https?:\/\//i.test(src) ? src : `${origin}${src}`;
+  const params = new URLSearchParams({
+    url: abs,
+    w: "640",
+    q: "80",
+  });
+  return `${origin}/_next/image?${params.toString()}`;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -88,9 +104,10 @@ export async function generateMetadata({
   const img = firstImage(update);
   // 分享域名：OG 标签里所有 URL 都用这个域名（图片、页面自身），避免微信
   // 看到 *.vercel.app 的图片 URL 又降级。metadataBase 只影响本页的 OG。
-  const shareBase = new URL("https://share.blackstream.site");
+  const shareBase = "https://share.blackstream.site";
+  const ogImg = img ? ogImageUrl(img, shareBase) : null;
   return {
-    metadataBase: shareBase,
+    metadataBase: new URL(shareBase),
     title: `${title} · 刚果金华人生活服务指南`,
     description,
     openGraph: {
@@ -98,13 +115,15 @@ export async function generateMetadata({
       title,
       description,
       siteName: "刚果金华人生活服务指南",
-      ...(img ? { images: [{ url: img }] } : {}),
+      ...(ogImg
+        ? { images: [{ url: ogImg, width: 640, height: 480 }] }
+        : {}),
     },
     twitter: {
-      card: img ? "summary_large_image" : "summary",
+      card: ogImg ? "summary_large_image" : "summary",
       title,
       description,
-      ...(img ? { images: [img] } : {}),
+      ...(ogImg ? { images: [ogImg] } : {}),
     },
   };
 }
