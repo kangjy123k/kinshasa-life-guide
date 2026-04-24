@@ -86,7 +86,11 @@ export async function generateMetadata({
   const textSnippet = (update.text || "").replace(/\s+/g, " ").slice(0, 28);
   const description = `${textSnippet ? textSnippet + " · " : ""}@【${bizName}】的最新活动 · 刚果金华人生活服务指南`;
   const img = firstImage(update);
+  // 分享域名：OG 标签里所有 URL 都用这个域名（图片、页面自身），避免微信
+  // 看到 *.vercel.app 的图片 URL 又降级。metadataBase 只影响本页的 OG。
+  const shareBase = new URL("https://share.blackstream.site");
   return {
+    metadataBase: shareBase,
     title: `${title} · 刚果金华人生活服务指南`,
     description,
     openGraph: {

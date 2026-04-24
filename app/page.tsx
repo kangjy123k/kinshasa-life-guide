@@ -1395,10 +1395,12 @@ function ShareSheet({
     };
   }, []);
 
-  const shareUrl =
-    typeof window !== "undefined" && biz.submissionId
-      ? `${window.location.origin}/share/u/${biz.submissionId}/${u.id}`
-      : "";
+  // 分享 URL 固定走独立域名（非 *.vercel.app）— 微信对共享子域
+  // 整体降级为纯链接，独立域名才会出卡片
+  const SHARE_ORIGIN = "https://share.blackstream.site";
+  const shareUrl = biz.submissionId
+    ? `${SHARE_ORIGIN}/share/u/${biz.submissionId}/${u.id}`
+    : "";
   const shareTitle = u.title || `${biz.name} · 最新动态`;
   const inWeChat =
     typeof navigator !== "undefined" &&
