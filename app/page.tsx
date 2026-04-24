@@ -1120,15 +1120,19 @@ function BusinessDetailView({
                     </p>
                   )}
                   {u.images && u.images.length > 0 && (
-                    <div className="mt-2 -mr-1 flex flex-col gap-2">
+                    <div className="mt-2 flex flex-col gap-2">
                       {u.images.map((src, i) => (
-                        <ProtectedImg
+                        <div
                           key={`${src}-${i}`}
-                          src={src}
-                          alt={`动态图片 ${i + 1}`}
-                          loading="lazy"
-                          className="w-full rounded-lg object-cover border border-sky-50 block aspect-[4/3]"
-                        />
+                          className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border border-sky-50"
+                        >
+                          <ProtectedImg
+                            src={src}
+                            alt={`动态图片 ${i + 1}`}
+                            loading="lazy"
+                            className="absolute inset-0 w-full h-full object-cover block"
+                          />
+                        </div>
                       ))}
                     </div>
                   )}
