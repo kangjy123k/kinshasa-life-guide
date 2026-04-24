@@ -232,7 +232,10 @@ export function MultiImageUploader({
         {note ?? `从手机相册选择，支持多选 · 自动压缩 · 最多 ${max} 张`}
       </p>
       {error && (
-        <p className="mt-1 text-[11px] text-red-500 bg-red-50 px-2 py-1 rounded-md">{error}</p>
+        <div className="mt-2 flex items-start gap-1.5 text-[13px] text-red-600 bg-red-50 border border-red-200 px-2.5 py-1.5 rounded-lg">
+          <span aria-hidden className="mt-0.5">⚠️</span>
+          <span className="flex-1 leading-snug">{error}</span>
+        </div>
       )}
     </div>
   );

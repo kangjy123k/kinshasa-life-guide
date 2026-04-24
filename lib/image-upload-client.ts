@@ -49,17 +49,37 @@ function drawToCanvas(
 function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("canvas.toBlob empty"))),
+      (b) => {
+        if (b) return resolve(b);
+        // 微信 X5 WebView 的 toBlob 有时返回 null，用 toDataURL 兜底
+        try {
+          const dataUrl = canvas.toDataURL("image/jpeg", quality);
+          const comma = dataUrl.indexOf(",");
+          if (comma === -1) throw new Error("bad dataURL");
+          const bin = atob(dataUrl.slice(comma + 1));
+          const arr = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          resolve(new Blob([arr], { type: "image/jpeg" }));
+        } catch (e) {
+          reject(new Error("图片编码失败，请重试或换一张"));
+        }
+      },
       "image/jpeg",
       quality,
     );
   });
 }
 
+// 某些微信 Android WebView 从"图库"选图时返回的 File 没有 mime（或 octet-stream），
+// 按文件名后缀兜底识别，避免上传第一步就被挡掉。
+function looksLikeImage(file: File): boolean {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp|heic|heif|gif|bmp)$/i.test(file.name || "");
+}
+
 export async function compressImage(file: File): Promise<Blob> {
-  // 非图像或超大 gif / svg 不处理，直接抛
-  if (!file.type.startsWith("image/")) {
-    throw new Error("not an image");
+  if (!looksLikeImage(file)) {
+    throw new Error("请选择图片文件");
   }
   const bitmap = await loadBitmap(file);
   let edge = MAX_EDGE;
@@ -95,18 +115,46 @@ export interface UploadedImage {
 }
 
 export async function uploadImage(file: File, scope = "merchant"): Promise<UploadedImage> {
-  const blob = await compressImage(file);
+  let blob: Blob;
+  try {
+    blob = await compressImage(file);
+  } catch (e) {
+    // 压缩失败时兜底：如果原图本身就在 1.5MB 以内且是合法 mime，直接原图上传
+    // 主要是给微信 X5 在 canvas 异常时留条活路
+    const mime = file.type || "";
+    const underCap = file.size > 0 && file.size <= 1_400_000;
+    if (underCap && /^image\/(jpeg|jpg|png|webp)$/i.test(mime)) {
+      console.warn("[upload] compress failed, sending original", e);
+      blob = file;
+    } else {
+      throw e;
+    }
+  }
+
   const form = new FormData();
-  const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
-  const named = new File([blob], `upload.${ext}`, { type: blob.type });
+  const mimeOut = (blob.type && blob.type.startsWith("image/")) ? blob.type : "image/jpeg";
+  const ext = mimeOut === "image/png" ? "png" : mimeOut === "image/webp" ? "webp" : "jpg";
+  const named = new File([blob], `upload.${ext}`, { type: mimeOut });
   form.append("file", named);
   form.append("scope", scope);
-  const res = await fetch("/api/upload", { method: "POST", body: form });
+  let res: Response;
+  try {
+    res = await fetch("/api/upload", { method: "POST", body: form });
+  } catch (e) {
+    console.error("[upload] network error", e);
+    throw new Error("网络不稳，请稍后重试");
+  }
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error || `upload failed (${res.status})`);
+    const msg =
+      res.status === 413 ? "图片太大，换一张小一点的" :
+      res.status === 415 ? "这种图片格式不支持，请用 JPG / PNG" :
+      res.status >= 500 ? "服务器开小差，请稍后重试" :
+      err.error || `上传失败（${res.status}）`;
+    console.error("[upload] server reject", res.status, err);
+    throw new Error(msg);
   }
   const data = (await res.json()) as { url?: string; pathname?: string };
-  if (!data.url || !data.pathname) throw new Error("bad response");
+  if (!data.url || !data.pathname) throw new Error("服务器返回异常");
   return { url: data.url, pathname: data.pathname };
 }
