@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSubmission, type MerchantUpdate } from "@/lib/submissions";
 import { ArrowRight } from "lucide-react";
+import ShareGuideOverlay from "./ShareGuideOverlay";
 
 export const runtime = "nodejs";
 // Dynamic — 每次请求都拉最新数据
@@ -34,10 +35,7 @@ async function loadData(params: Params) {
 
 function firstImage(u: MerchantUpdate): string | null {
   const img = u.images?.[0];
-  if (!img) return null;
-  if (img.startsWith("http")) return img;
-  // /api/media/... 需要转成绝对 URL，但 metadata 里 Next.js 会用 metadataBase 拼
-  return img;
+  return img || null;
 }
 
 export async function generateMetadata({
@@ -79,10 +77,13 @@ export async function generateMetadata({
 
 export default async function ShareUpdatePage({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const p = await params;
+  const sp = await searchParams;
   const data = await loadData(p);
   if (!data) return notFound();
   const { bizName, update } = data;
@@ -93,6 +94,10 @@ export default async function ShareUpdatePage({
     hour: "2-digit",
     minute: "2-digit",
   });
+  const rawG = sp?.g;
+  const guideMode =
+    rawG === "chat" || rawG === "moments" ? (rawG as "chat" | "moments") : null;
+  const shareTitle = update.title || `${bizName} · 最新动态`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-white pb-16">
@@ -149,6 +154,10 @@ export default async function ShareUpdatePage({
           商家免费入驻 · 随便逛逛有惊喜
         </p>
       </div>
+
+      {guideMode && (
+        <ShareGuideOverlay type={guideMode} shareTitle={shareTitle} />
+      )}
     </div>
   );
 }
