@@ -7,6 +7,7 @@ import {
   Briefcase,
   PartyPopper,
   Wrench,
+  Building2,
   Tag,
 } from "lucide-react";
 import type React from "react";
@@ -120,6 +121,7 @@ export const categories: CategoryDef[] = [
   { key: "business",   label: "商业服务", icon: Briefcase,       sub: ["工程承包商", "建筑相关服务商", "装修队", "物流清关", "商业咨询"], color: "#3b82f6", emoji: "💼" },
   { key: "leisure",    label: "休闲娱乐", icon: PartyPopper,     sub: [], color: "#ec4899", emoji: "🎉" },
   { key: "rental",     label: "租赁设备", icon: Wrench,          sub: ["脚手架", "电气设备", "运输设备"], color: "#64748b", emoji: "🔧" },
+  { key: "realestate", label: "房地产",   icon: Building2,       sub: ["中国房地产", "非中国房地产"], color: "#0ea5e9", emoji: "🏘️" },
   { key: "secondhand", label: "二手专区", icon: Tag,             sub: [], color: "#f97316", emoji: "🏷️" },
 ];
 export const seedBusinesses: Business[] = [
