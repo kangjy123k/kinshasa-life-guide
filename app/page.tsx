@@ -963,8 +963,19 @@ function BusinessDetailView({
   const cat = categories.find((c) => c.key === biz.category);
   const updatesRef = useRef<HTMLDivElement | null>(null);
   const hasUpdates = !!biz.updates && biz.updates.length > 0;
+  const [updatesFlash, setUpdatesFlash] = useState(false);
   const scrollToUpdates = () => {
-    updatesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const el = updatesRef.current;
+    if (!el) return;
+    const top =
+      el.getBoundingClientRect().top + (window.pageYOffset || window.scrollY || 0) - 12;
+    try {
+      window.scrollTo({ top, behavior: "smooth" });
+    } catch {
+      window.scrollTo(0, top);
+    }
+    setUpdatesFlash(true);
+    window.setTimeout(() => setUpdatesFlash(false), 900);
   };
 
   return (
@@ -1081,7 +1092,11 @@ function BusinessDetailView({
         {hasUpdates && (
           <div
             ref={updatesRef}
-            className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4 scroll-mt-4"
+            className={`bg-white rounded-2xl shadow-sm p-4 scroll-mt-4 transition-all duration-300 ${
+              updatesFlash
+                ? "border-2 border-rose-300 ring-4 ring-rose-100"
+                : "border border-sky-100"
+            }`}
           >
             <h3 className="text-sm font-bold text-gray-800 flex items-center gap-1.5 mb-3">
               <span>最新动态</span>
