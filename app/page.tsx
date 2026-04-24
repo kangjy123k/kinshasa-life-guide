@@ -995,17 +995,6 @@ function BusinessDetailView({
               {biz.subcategory ? ` · ${biz.subcategory}` : ""}
             </p>
           </div>
-          {hasUpdates && (
-            <button
-              type="button"
-              onClick={scrollToUpdates}
-              className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-rose-500 active:bg-rose-600 text-white text-xs font-bold rounded-full shadow animate-pulse-red"
-              aria-label="跳到最新动态"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-              新动态 ↓
-            </button>
-          )}
         </div>
       </section>
 
@@ -1031,6 +1020,17 @@ function BusinessDetailView({
             >
               <MapPin size={16} /> 在地图上查看
             </button>
+
+            {hasUpdates && (
+              <button
+                type="button"
+                onClick={scrollToUpdates}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-500 active:bg-rose-600 text-white text-sm font-semibold rounded-xl transition-colors animate-pulse-red"
+                aria-label="跳到最新动态"
+              >
+                🔥 查看最新动态 ↓
+              </button>
+            )}
 
             <div className="mt-5 space-y-3 text-sm">
               {biz.address && (
