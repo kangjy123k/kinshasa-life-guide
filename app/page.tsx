@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -410,12 +410,12 @@ function HomeView({
   onOpenBusiness: (id: number) => void;
 }) {
   const router = useRouter();
-  // 人工精选（b.featured）优先；没有时回落到全部真实商家（排除二手）按新→旧
-  // 种子数据全部 hidden 之后，精选池是空的，回落避免"热门商家"板块彻底消失
+  // 人工精选（b.featured）优先；没有时回落到全部真实商家（排除二手）
+  // 两路都按创建时间从新到旧（id 降序，用户提交从 1_000_000 起，id 越大越新）
   const featured = useMemo(() => {
     const explicit = allBusinesses
       .filter((b) => b.featured)
-      .sort((a, b) => a.id - b.id);
+      .sort((a, b) => b.id - a.id);
     if (explicit.length > 0) return explicit;
     return allBusinesses
       .filter((b) => b.category !== "secondhand")
@@ -581,8 +581,8 @@ function HomeView({
         </div>
       </section>
 
-      {/* ---- 热门商家 ---- */}
-      <FeaturedRotator items={featured} onOpen={onOpenBusiness} />
+      {/* ---- 热门商家（Tinder 卡片栈） ---- */}
+      <FeaturedSwipeStack items={featured} onOpen={onOpenBusiness} />
 
       {/* ---- 许愿池专区 ---- */}
       <WishingPoolBanner />
@@ -594,74 +594,213 @@ function HomeView({
 }
 
 /* ------------------------------------------------------------------ */
-/*  热门商家轮播：每 5 秒切 3 个，fade 进出                             */
+/*  热门商家 — Tinder 卡片栈：拖拽、旋转、飞出切换                        */
 /* ------------------------------------------------------------------ */
-const FEATURED_PAGE_SIZE = 3;
-const FEATURED_INTERVAL_MS = 5000;
-const FEATURED_FADE_MS = 350;
+const SWIPE_THRESHOLD = 110;
+const SWIPE_FLY_MS = 320;
 
-function FeaturedRotator({
+function FeaturedSwipeStack({
   items,
   onOpen,
 }: {
   items: Business[];
   onOpen: (id: number) => void;
 }) {
-  const pageCount = Math.max(1, Math.ceil(items.length / FEATURED_PAGE_SIZE));
-  const [page, setPage] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const [index, setIndex] = useState(0);
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const [animating, setAnimating] = useState(false);
+  const draggingRef = useRef(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickRef = useRef(false);
 
-  // 数据变化时把页码夹回有效范围，避免空页
+  // items 变化时，把 index 夹回有效范围
   useEffect(() => {
-    if (page >= pageCount) setPage(0);
-  }, [page, pageCount]);
-
-  useEffect(() => {
-    if (pageCount <= 1) return; // 只有一组就不滚
-    const tick = setInterval(() => {
-      setVisible(false);
-      const t = setTimeout(() => {
-        setPage((p) => (p + 1) % pageCount);
-        setVisible(true);
-      }, FEATURED_FADE_MS);
-      return () => clearTimeout(t);
-    }, FEATURED_INTERVAL_MS);
-    return () => clearInterval(tick);
-  }, [pageCount]);
+    if (items.length && index >= items.length) setIndex(0);
+  }, [items.length, index]);
 
   if (items.length === 0) return null;
 
-  const start = page * FEATURED_PAGE_SIZE;
-  const slice = items.slice(start, start + FEATURED_PAGE_SIZE);
+  const n = items.length;
+  const top = items[index % n];
+  const second = n > 1 ? items[(index + 1) % n] : null;
+  const third = n > 2 ? items[(index + 2) % n] : null;
+
+  const rot = Math.max(-22, Math.min(22, drag.x * 0.06));
+  const dir: 0 | 1 | -1 = drag.x > 12 ? 1 : drag.x < -12 ? -1 : 0;
+  const indOpacity = Math.min(1, Math.abs(drag.x) / SWIPE_THRESHOLD);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (animating) return;
+    draggingRef.current = true;
+    startRef.current = { x: e.clientX, y: e.clientY };
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current || !startRef.current) return;
+    setDrag({
+      x: e.clientX - startRef.current.x,
+      y: e.clientY - startRef.current.y,
+    });
+  };
+
+  const advance = (direction: 1 | -1) => {
+    suppressClickRef.current = true;
+    setAnimating(true);
+    const vw = typeof window !== "undefined" ? window.innerWidth : 600;
+    setDrag({ x: direction * (vw + 200), y: drag.y * 2 });
+    window.setTimeout(() => {
+      setIndex((i) => (i + 1) % n);
+      setDrag({ x: 0, y: 0 });
+      // 下一帧关掉 animating，让位置瞬间归位，下一张卡从 0 开始动
+      requestAnimationFrame(() => {
+        setAnimating(false);
+        window.setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 60);
+      });
+    }, SWIPE_FLY_MS);
+  };
+
+  const finish = () => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    const dx = drag.x;
+    if (Math.abs(dx) >= SWIPE_THRESHOLD) {
+      advance(dx > 0 ? 1 : -1);
+    } else {
+      // 吸附回弹
+      if (Math.abs(dx) > 5) {
+        suppressClickRef.current = true;
+        window.setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 120);
+      }
+      setAnimating(true);
+      setDrag({ x: 0, y: 0 });
+      window.setTimeout(() => setAnimating(false), 300);
+    }
+  };
+
+  const handleTopClick = () => {
+    if (suppressClickRef.current) return;
+    onOpen(top.id);
+  };
+
+  const behind = (
+    biz: Business,
+    depth: 1 | 2,
+    key: string,
+  ) => (
+    <div
+      key={key}
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        transform:
+          depth === 1
+            ? "translateY(10px) scale(0.95)"
+            : "translateY(22px) scale(0.9)",
+        opacity: depth === 1 ? 0.88 : 0.55,
+        filter: depth === 1 ? "none" : "brightness(0.95)",
+        zIndex: depth === 1 ? 2 : 1,
+        transition: "transform 300ms cubic-bezier(.2,.8,.2,1), opacity 300ms",
+      }}
+    >
+      <BusinessCard biz={biz} />
+    </div>
+  );
 
   return (
     <section className="max-w-4xl mx-auto px-4 mt-8 pb-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="w-1 h-5 bg-red-400 rounded-full" />
         <h2 className="text-base font-bold text-gray-800">热门商家</h2>
-        {pageCount > 1 && (
-          <div className="ml-auto flex gap-1">
-            {Array.from({ length: pageCount }).map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === page ? "w-4 bg-red-400" : "w-1.5 bg-gray-300"
-                }`}
-              />
-            ))}
-          </div>
-        )}
+        <span className="ml-auto text-[11px] text-gray-400 font-medium flex items-center gap-1">
+          <span className="inline-block animate-pulse">← →</span>
+          <span className="hidden sm:inline">左右滑动</span>
+        </span>
       </div>
+
       <div
-        className="grid grid-cols-1 md:grid-cols-3 gap-4 transition-opacity"
-        style={{
-          opacity: visible ? 1 : 0,
-          transitionDuration: `${FEATURED_FADE_MS}ms`,
-        }}
+        className="relative mx-auto"
+        style={{ height: 500, maxWidth: 420 }}
       >
-        {slice.map((biz) => (
-          <BusinessCard key={biz.id} biz={biz} onOpen={onOpen} />
-        ))}
+        {third && behind(third, 2, `bg2-${(index + 2) % n}`)}
+        {second && behind(second, 1, `bg1-${(index + 1) % n}`)}
+
+        <div
+          key={`top-${index % n}`}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={finish}
+          onPointerCancel={finish}
+          onClick={handleTopClick}
+          className="absolute inset-0 select-none"
+          style={{
+            touchAction: "pan-y",
+            transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg)`,
+            transition: animating
+              ? `transform ${SWIPE_FLY_MS}ms cubic-bezier(.2,.8,.2,1)`
+              : draggingRef.current
+                ? "none"
+                : "transform 280ms cubic-bezier(.2,.8,.2,1)",
+            zIndex: 3,
+            willChange: "transform",
+            cursor: draggingRef.current ? "grabbing" : "grab",
+          }}
+        >
+          <BusinessCard biz={top} />
+
+          {dir === 1 && (
+            <div
+              className="absolute top-10 left-5 px-3 py-1.5 border-[3px] border-emerald-500 text-emerald-500 text-2xl font-black rounded-lg pointer-events-none"
+              style={{
+                transform: "rotate(-18deg)",
+                opacity: indOpacity,
+                letterSpacing: "0.08em",
+              }}
+            >
+              ❤️ 喜欢
+            </div>
+          )}
+          {dir === -1 && (
+            <div
+              className="absolute top-10 right-5 px-3 py-1.5 border-[3px] border-rose-500 text-rose-500 text-2xl font-black rounded-lg pointer-events-none"
+              style={{
+                transform: "rotate(18deg)",
+                opacity: indOpacity,
+                letterSpacing: "0.08em",
+              }}
+            >
+              跳过 ✖
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 手动按钮（桌面端 / 手指懒得动时可直接点） */}
+      <div className="flex items-center justify-center gap-4 mt-4">
+        <button
+          type="button"
+          onClick={() => !animating && advance(-1)}
+          className="w-12 h-12 rounded-full bg-white shadow-md border border-rose-100 text-rose-500 active:scale-95 transition-transform flex items-center justify-center"
+          aria-label="跳过"
+        >
+          <X size={22} strokeWidth={2.5} />
+        </button>
+        <span className="text-[11px] text-gray-400">
+          {(index % n) + 1} / {n}
+        </span>
+        <button
+          type="button"
+          onClick={() => !animating && advance(1)}
+          className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 shadow-md text-white active:scale-95 transition-transform flex items-center justify-center"
+          aria-label="喜欢下一张"
+        >
+          <Star size={20} fill="white" />
+        </button>
       </div>
     </section>
   );
