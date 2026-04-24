@@ -117,7 +117,7 @@ export const categories: CategoryDef[] = [
   { key: "goods",      label: "商品",     icon: ShoppingBag,     sub: ["生活用品", "食品", "建材", "交通工具", "能源产品"], color: "#f59e0b", emoji: "🛍️" },
   { key: "restaurant", label: "餐厅",     icon: UtensilsCrossed, sub: ["中国餐厅", "西餐厅", "刚果风味餐厅", "酒吧", "咖啡厅"], color: "#ef4444", emoji: "🍜" },
   { key: "lodging",    label: "住宿",     icon: Hotel,           sub: ["中国酒店", "中国公寓", "国际级酒店", "本地酒店公寓"], color: "#8b5cf6", emoji: "🏨" },
-  { key: "life",       label: "生活服务", icon: HeartPulse,      sub: ["健康", "美容", "教育", "安保", "金融", "运动"], color: "#10b981", emoji: "💗" },
+  { key: "life",       label: "生活服务", icon: HeartPulse,      sub: ["健康", "美容", "教育", "安保", "金融", "运动", "汽修"], color: "#10b981", emoji: "💗" },
   { key: "business",   label: "商业服务", icon: Briefcase,       sub: ["工程承包商", "建筑相关服务商", "装修队", "物流清关", "商业咨询"], color: "#3b82f6", emoji: "💼" },
   { key: "leisure",    label: "休闲娱乐", icon: PartyPopper,     sub: [], color: "#ec4899", emoji: "🎉" },
   { key: "rental",     label: "租赁设备", icon: Wrench,          sub: ["脚手架", "电气设备", "运输设备"], color: "#64748b", emoji: "🔧" },
