@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-/* 全局平滑滚动 — 原生 hash 跳转(<a href="#xx">) 也平滑 */
-html {
-  scroll-behavior: smooth;
-}
-
 /* 移动端给底部 nav 留出空间(56px nav + iOS safe-area + 小 buffer) */
 @media (max-width: 767px) {
   body {
