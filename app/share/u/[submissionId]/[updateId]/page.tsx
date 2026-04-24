@@ -1,0 +1,154 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getSubmission, type MerchantUpdate } from "@/lib/submissions";
+import { ArrowRight } from "lucide-react";
+
+export const runtime = "nodejs";
+// Dynamic — 每次请求都拉最新数据
+export const dynamic = "force-dynamic";
+
+interface Params {
+  submissionId: string;
+  updateId: string;
+}
+
+async function loadData(params: Params) {
+  const rec = await getSubmission(params.submissionId);
+  if (!rec || rec.type !== "merchant" || rec.status !== "approved") return null;
+  const bizName = rec.data?.nameZh || rec.data?.name || "商家";
+  let updates: MerchantUpdate[] = [];
+  try {
+    const raw = rec.data?.updates;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) updates = parsed;
+    }
+  } catch {
+    /* ignore */
+  }
+  const u = updates.find((x) => x.id === params.updateId);
+  if (!u) return null;
+  return { bizName, update: u };
+}
+
+function firstImage(u: MerchantUpdate): string | null {
+  const img = u.images?.[0];
+  if (!img) return null;
+  if (img.startsWith("http")) return img;
+  // /api/media/... 需要转成绝对 URL，但 metadata 里 Next.js 会用 metadataBase 拼
+  return img;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<Metadata> {
+  const p = await params;
+  const data = await loadData(p);
+  if (!data) {
+    return {
+      title: "动态不存在 · 刚果金华人生活服务指南",
+    };
+  }
+  const { bizName, update } = data;
+  const title = update.title || `${bizName} · 最新动态`;
+  // 副标题取详细内容前 28 字符（一行 14 × 两行）
+  const textSnippet = (update.text || "").replace(/\s+/g, " ").slice(0, 28);
+  const description = `${textSnippet ? textSnippet + " · " : ""}@【${bizName}】的最新活动 · 刚果金华人生活服务指南`;
+  const img = firstImage(update);
+  return {
+    title: `${title} · 刚果金华人生活服务指南`,
+    description,
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      siteName: "刚果金华人生活服务指南",
+      ...(img ? { images: [{ url: img }] } : {}),
+    },
+    twitter: {
+      card: img ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(img ? { images: [img] } : {}),
+    },
+  };
+}
+
+export default async function ShareUpdatePage({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
+  const p = await params;
+  const data = await loadData(p);
+  if (!data) return notFound();
+  const { bizName, update } = data;
+  const timeText = new Date(update.at).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-white pb-16">
+      <div className="max-w-2xl mx-auto px-4 pt-6">
+        <div className="text-center mb-5">
+          <p className="text-[11px] tracking-[0.3em] text-rose-500 font-semibold">
+            LATEST · 最新动态
+          </p>
+          <h1 className="mt-2 text-2xl font-black text-gray-900 leading-tight">
+            {update.title || `${bizName} · 最新动态`}
+          </h1>
+          <p className="mt-1 text-xs text-gray-500">
+            @【{bizName}】 · {timeText}
+          </p>
+        </div>
+
+        {update.images && update.images.length > 0 && (
+          <div className="space-y-2 mb-5">
+            {update.images.map((src, i) => (
+              <div
+                key={`${src}-${i}`}
+                className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-rose-100"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={`动态图 ${i + 1}`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading={i === 0 ? "eager" : "lazy"}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {update.text && (
+          <div className="bg-white rounded-2xl border border-rose-100 shadow-sm p-4 mb-5">
+            <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">
+              {update.text}
+            </p>
+          </div>
+        )}
+
+        <Link
+          href="/"
+          className="w-full flex items-center justify-center gap-1 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm font-bold rounded-2xl shadow-md active:opacity-80"
+        >
+          进入【刚果金华人生活服务指南】
+          <ArrowRight size={15} />
+        </Link>
+
+        <p className="mt-5 text-center text-[11px] text-gray-400 leading-relaxed">
+          帮助刚果金华人更快找到本地服务<br />
+          商家免费入驻 · 随便逛逛有惊喜
+        </p>
+      </div>
+    </div>
+  );
+}

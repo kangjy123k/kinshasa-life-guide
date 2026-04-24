@@ -19,18 +19,20 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
       submissionId?: string;
+      title?: string;
       text?: string;
       images?: string[];
     };
     const submissionId = typeof body?.submissionId === "string" ? body.submissionId.trim() : "";
+    const title = typeof body?.title === "string" ? body.title : "";
     const text = typeof body?.text === "string" ? body.text : "";
     const images = Array.isArray(body?.images)
       ? body.images.filter((s): s is string => typeof s === "string").slice(0, 6)
       : [];
-    if (!submissionId || !text.trim()) {
+    if (!submissionId || !title.trim()) {
       return NextResponse.json({ ok: false, error: "missing fields" }, { status: 400 });
     }
-    const entry = await appendMerchantUpdate(submissionId, token, { text, images });
+    const entry = await appendMerchantUpdate(submissionId, token, { title, text, images });
     if (!entry) {
       return NextResponse.json(
         { ok: false, error: "not found / not owned / not approved" },

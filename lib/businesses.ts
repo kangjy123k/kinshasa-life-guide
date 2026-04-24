@@ -15,6 +15,7 @@ import type React from "react";
 export interface BusinessUpdate {
   id: string;
   at: string; // ISO timestamp
+  title?: string;
   text: string;
   images?: string[];
 }

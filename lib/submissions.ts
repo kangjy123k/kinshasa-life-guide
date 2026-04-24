@@ -250,9 +250,22 @@ export async function updateByOwner(
   return rowToRecord(res.rows[0] as unknown as Record<string, unknown>);
 }
 
+export async function getSubmission(id: string): Promise<SubmissionRecord | null> {
+  if (!id) return null;
+  await ensureSchema();
+  const res = await db().execute({
+    sql: `SELECT id, type, timestamp, status, owner_token, data_json
+          FROM user_submission WHERE id = ?`,
+    args: [id],
+  });
+  if (res.rows.length === 0) return null;
+  return rowToRecord(res.rows[0] as unknown as Record<string, unknown>);
+}
+
 export interface MerchantUpdate {
   id: string;
   at: string;
+  title?: string;
   text: string;
   images?: string[];
 }
@@ -262,7 +275,7 @@ const MAX_UPDATES = 20;
 export async function appendMerchantUpdate(
   submissionId: string,
   ownerToken: string,
-  entry: { text: string; images?: string[] },
+  entry: { title?: string; text: string; images?: string[] },
 ): Promise<MerchantUpdate | null> {
   await ensureSchema();
   if (!submissionId || !ownerToken) return null;
@@ -297,8 +310,10 @@ export async function appendMerchantUpdate(
       /* 破损就重置 */
     }
   }
+  const trimmedTitle = (entry.title ?? "").trim().slice(0, 40);
   const trimmedText = entry.text.trim().slice(0, 500);
-  if (!trimmedText) return null;
+  // 标题必填（至少 2 字），正文可空
+  if (trimmedTitle.length < 2) return null;
   const cleanImages = (entry.images ?? [])
     .map((u) => u.trim())
     .filter((u) => /^https?:\/\//i.test(u) || u.startsWith("/api/media/"))
@@ -306,6 +321,7 @@ export async function appendMerchantUpdate(
   const newEntry: MerchantUpdate = {
     id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     at: new Date().toISOString(),
+    title: trimmedTitle,
     text: trimmedText,
     ...(cleanImages.length ? { images: cleanImages } : {}),
   };

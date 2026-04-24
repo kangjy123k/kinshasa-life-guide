@@ -8,14 +8,17 @@ import {
   MapPin,
   Phone,
   ChevronRight,
+  ChevronDown,
   Star,
   X,
   ArrowLeft,
   Megaphone,
+  Share2,
 } from "lucide-react";
 
 import {
   type Business,
+  type BusinessUpdate,
   type RawSubmission,
   categories,
   coordsForArea,
@@ -717,15 +720,14 @@ function FeaturedSwipeStack({
       <div className="flex items-center gap-2 mb-3">
         <span className="w-1 h-5 bg-red-400 rounded-full" />
         <h2 className="text-base font-bold text-gray-800">热门商家</h2>
-        <span className="ml-auto text-[11px] text-gray-400 font-medium flex items-center gap-1">
-          <span className="inline-block animate-pulse">← →</span>
-          <span className="hidden sm:inline">左右滑动</span>
+        <span className="ml-auto text-[11px] text-gray-400 font-medium tabular-nums">
+          {(index % n) + 1} / {n}
         </span>
       </div>
 
       <div
-        className="relative mx-auto"
-        style={{ height: 500, maxWidth: 420 }}
+        className="relative mx-auto w-full"
+        style={{ height: 500 }}
       >
         {third && behind(third, 2, `bg2-${(index + 2) % n}`)}
         {second && behind(second, 1, `bg1-${(index + 1) % n}`)}
@@ -752,56 +754,9 @@ function FeaturedSwipeStack({
           }}
         >
           <BusinessCard biz={top} />
-
-          {dir === 1 && (
-            <div
-              className="absolute top-10 left-5 px-3 py-1.5 border-[3px] border-emerald-500 text-emerald-500 text-2xl font-black rounded-lg pointer-events-none"
-              style={{
-                transform: "rotate(-18deg)",
-                opacity: indOpacity,
-                letterSpacing: "0.08em",
-              }}
-            >
-              ❤️ 喜欢
-            </div>
-          )}
-          {dir === -1 && (
-            <div
-              className="absolute top-10 right-5 px-3 py-1.5 border-[3px] border-rose-500 text-rose-500 text-2xl font-black rounded-lg pointer-events-none"
-              style={{
-                transform: "rotate(18deg)",
-                opacity: indOpacity,
-                letterSpacing: "0.08em",
-              }}
-            >
-              跳过 ✖
-            </div>
-          )}
         </div>
       </div>
 
-      {/* 手动按钮（桌面端 / 手指懒得动时可直接点） */}
-      <div className="flex items-center justify-center gap-4 mt-4">
-        <button
-          type="button"
-          onClick={() => !animating && advance(-1)}
-          className="w-12 h-12 rounded-full bg-white shadow-md border border-rose-100 text-rose-500 active:scale-95 transition-transform flex items-center justify-center"
-          aria-label="跳过"
-        >
-          <X size={22} strokeWidth={2.5} />
-        </button>
-        <span className="text-[11px] text-gray-400">
-          {(index % n) + 1} / {n}
-        </span>
-        <button
-          type="button"
-          onClick={() => !animating && advance(1)}
-          className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 shadow-md text-white active:scale-95 transition-transform flex items-center justify-center"
-          aria-label="喜欢下一张"
-        >
-          <Star size={20} fill="white" />
-        </button>
-      </div>
     </section>
   );
 }
@@ -1100,21 +1055,7 @@ function BusinessDetailView({
 }) {
   const cat = categories.find((c) => c.key === biz.category);
   const hasUpdates = !!biz.updates && biz.updates.length > 0;
-  const [updatesFlash, setUpdatesFlash] = useState(false);
-
-  const scrollToUpdates = () => {
-    // 瞬间跳，不要 smooth — X5 对 smooth 滚动有已知 bug
-    const el = document.getElementById("biz-updates-section");
-    if (el) {
-      el.scrollIntoView();
-    } else {
-      // 兜底：直接跳到文档底（动态区在页尾）
-      const doc = document.scrollingElement || document.documentElement;
-      window.scrollTo(0, doc?.scrollHeight ?? 99999);
-    }
-    setUpdatesFlash(true);
-    window.setTimeout(() => setUpdatesFlash(false), 1200);
-  };
+  const [updatesOpen, setUpdatesOpen] = useState(false);
 
   return (
     <>
@@ -1146,6 +1087,12 @@ function BusinessDetailView({
                 <Star size={12} fill="white" /> 热门
               </span>
             )}
+            {hasUpdates && (
+              <UpdatesNotch
+                count={biz.updates!.length}
+                onClick={() => setUpdatesOpen(true)}
+              />
+            )}
           </div>
           <div className="p-5">
             <h2 className="text-xl font-bold text-gray-900">{biz.name}</h2>
@@ -1159,17 +1106,6 @@ function BusinessDetailView({
             >
               <MapPin size={16} /> 在地图上查看
             </button>
-
-            {hasUpdates && (
-              <button
-                type="button"
-                onClick={scrollToUpdates}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-500 active:bg-rose-600 text-white text-sm font-semibold rounded-xl transition-colors animate-pulse-red"
-                aria-label="跳到最新动态"
-              >
-                🔥 查看最新动态 ↓
-              </button>
-            )}
 
             <div className="mt-5 space-y-3 text-sm">
               {biz.address && (
@@ -1227,61 +1163,218 @@ function BusinessDetailView({
           </div>
         )}
 
-        {hasUpdates && (
-          <div
-            id="biz-updates-section"
-            className={`bg-white rounded-2xl shadow-sm p-4 scroll-mt-4 transition-all duration-300 ${
-              updatesFlash
-                ? "border-2 border-rose-300 ring-4 ring-rose-100"
-                : "border border-sky-100"
-            }`}
+      </div>
+
+      {hasUpdates && updatesOpen && (
+        <UpdatesSheet
+          biz={biz}
+          onClose={() => setUpdatesOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  首图上的"刘海"—— 下拉提示                                           */
+/* ------------------------------------------------------------------ */
+function UpdatesNotch({
+  count,
+  onClick,
+}: {
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`展开最新动态（${count} 条）`}
+      className="absolute left-1/2 -translate-x-1/2 -bottom-4 z-10 flex items-center gap-1.5 px-4 py-2 bg-rose-500 active:bg-rose-600 text-white text-xs font-bold rounded-full shadow-lg animate-pulse-red"
+      style={{
+        // 顶上两个小"耳朵"做出真·刘海的感觉
+        boxShadow: "0 4px 12px rgba(244, 63, 94, 0.35)",
+      }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+      下拉查看最新动态
+      <span className="px-1.5 py-0.5 bg-white/25 rounded-full text-[10px]">
+        {count}
+      </span>
+      <ChevronDown size={13} className="animate-bounce" />
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  最新动态全屏 Sheet —— 从上滑下，占满一屏                             */
+/* ------------------------------------------------------------------ */
+function UpdatesSheet({
+  biz,
+  onClose,
+}: {
+  biz: Business;
+  onClose: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 280);
+  };
+
+  const updates = biz.updates ?? [];
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
+        mounted && !closing ? "opacity-100" : "opacity-0"
+      }`}
+      onClick={handleClose}
+    >
+      <div
+        className={`absolute inset-x-0 top-0 bg-gradient-to-b from-rose-50 via-white to-white shadow-2xl rounded-b-3xl max-h-[100dvh] flex flex-col transition-transform duration-300 ease-out ${
+          mounted && !closing ? "translate-y-0" : "-translate-y-full"
+        }`}
+        style={{ height: "100dvh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 px-4 pt-4 pb-3 border-b border-rose-100 shrink-0">
+          <span className="w-1 h-5 bg-rose-500 rounded-full" />
+          <h3 className="text-base font-bold text-gray-800 flex-1 min-w-0 truncate">
+            {biz.name} · 最新动态
+          </h3>
+          <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-full text-[11px] font-bold">
+            {updates.length} 条
+          </span>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="关闭"
+            className="w-8 h-8 -mr-1 rounded-full hover:bg-rose-100 flex items-center justify-center active:scale-95 transition"
           >
-            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-1.5 mb-3">
-              <span>最新动态</span>
-              <span className="px-1.5 py-0.5 bg-rose-100 text-rose-600 rounded-full text-[10px] font-bold">
-                {biz.updates!.length}
-              </span>
-            </h3>
-            <ul className="space-y-4">
-              {biz.updates!.slice(0, 8).map((u) => (
-                <li key={u.id} className="border-l-2 border-rose-200 pl-3">
-                  <p className="text-[11px] text-gray-400">
-                    {new Date(u.at).toLocaleString("zh-CN", {
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  {u.text && (
-                    <p className="text-sm text-gray-700 leading-relaxed mt-0.5 whitespace-pre-wrap">
-                      {u.text}
-                    </p>
-                  )}
-                  {u.images && u.images.length > 0 && (
-                    <div className="mt-2 flex flex-col gap-2">
-                      {u.images.map((src, i) => (
-                        <div
-                          key={`${src}-${i}`}
-                          className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border border-sky-50"
-                        >
-                          <ProtectedImg
-                            src={src}
-                            alt={`动态图片 ${i + 1}`}
-                            loading="lazy"
-                            className="absolute inset-0 w-full h-full object-cover block"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+            <X size={18} className="text-gray-600" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          {updates.map((u) => (
+            <UpdateCard key={u.id} biz={biz} u={u} />
+          ))}
+          <p className="pt-2 pb-8 text-center text-[11px] text-gray-400">
+            已展示全部 {updates.length} 条动态
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  单条动态卡（带分享按钮）                                             */
+/* ------------------------------------------------------------------ */
+function UpdateCard({
+  biz,
+  u,
+}: {
+  biz: Business;
+  u: BusinessUpdate;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl =
+    typeof window !== "undefined" && biz.submissionId
+      ? `${window.location.origin}/share/u/${biz.submissionId}/${u.id}`
+      : "";
+
+  const shareText = `${u.title || u.text.slice(0, 28)}\n@【${biz.name}】的最新活动\n刚果金华人生活服务指南`;
+
+  const share = async () => {
+    if (!shareUrl) return;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: u.title || `${biz.name} · 最新动态`,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        /* 用户取消 → 落到复制兜底 */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* 无权限也静默 */
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden">
+      <div className="px-4 pt-3.5">
+        {u.title && (
+          <h4 className="text-base font-bold text-gray-900 leading-snug">
+            {u.title}
+          </h4>
+        )}
+        <p className="text-[11px] text-gray-400 mt-0.5">
+          {new Date(u.at).toLocaleString("zh-CN", {
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+        {u.text && (
+          <p className="mt-2 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+            {u.text}
+          </p>
         )}
       </div>
-    </>
+
+      {u.images && u.images.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2 px-4">
+          {u.images.map((src, i) => (
+            <div
+              key={`${src}-${i}`}
+              className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-rose-50"
+            >
+              <ProtectedImg
+                src={src}
+                alt={`动态图 ${i + 1}`}
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover block"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="px-4 py-3 mt-2 border-t border-rose-50 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={share}
+          className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 active:opacity-80 text-white text-xs font-bold rounded-full shadow-sm"
+        >
+          <Share2 size={13} />
+          {copied ? "链接已复制" : "分享到微信"}
+        </button>
+      </div>
+    </div>
   );
 }
 

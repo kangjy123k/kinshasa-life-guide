@@ -305,8 +305,8 @@ function RecordCard({
   }
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
-  // 可编辑类型（商家/二手/求购/活动）改用"更新基础信息"按钮进入编辑，
-  // 不再整张卡片点开。问卷（!canEdit）仍保留"点卡片查看详情"的老路径。
+  // 点卡片 → 展开"我的发布详情"（已提交成功的摘要视图）；编辑/撤回按钮
+  // 在底部独立一条，`stop` 阻止冒泡，不会触发详情弹层
   const openView = () => {
     if (confirming || working) return;
     setViewOpen(true);
@@ -314,24 +314,20 @@ function RecordCard({
 
   return (
     <div
-      onClick={canEdit ? undefined : openView}
-      role={canEdit ? undefined : "button"}
-      tabIndex={canEdit ? undefined : 0}
+      onClick={openView}
+      role="button"
+      tabIndex={0}
       aria-disabled={confirming || working}
-      onKeyDown={
-        canEdit
-          ? undefined
-          : (e) => {
-              if (confirming || working) return;
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openView();
-              }
-            }
-      }
-      className={`bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all duration-300 ease-out ${
-        canEdit ? "" : "cursor-pointer active:scale-[0.99]"
-      } ${leaving ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}
+      onKeyDown={(e) => {
+        if (confirming || working) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openView();
+        }
+      }}
+      className={`bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden transition-all duration-300 ease-out cursor-pointer active:scale-[0.99] ${
+        leaving ? "opacity-0 scale-95" : "opacity-100 scale-100"
+      }`}
     >
       <div className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left">
         <span className={`w-9 h-9 rounded-xl ${meta.bg} flex items-center justify-center shrink-0`}>
@@ -547,6 +543,7 @@ function MerchantUpdateModal({
   onClose: () => void;
   onPosted: () => void;
 }) {
+  const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -567,8 +564,8 @@ function MerchantUpdateModal({
   };
 
   const submit = async () => {
-    if (!text.trim()) {
-      setError("请填写动态内容");
+    if (title.trim().length < 2) {
+      setError("请填写动态标题（至少 2 个字）");
       return;
     }
     setError(null);
@@ -582,7 +579,7 @@ function MerchantUpdateModal({
           "Content-Type": "application/json",
           ...(token ? { "x-owner-token": token } : {}),
         },
-        body: JSON.stringify({ submissionId, text, images: cleanImages }),
+        body: JSON.stringify({ submissionId, title, text, images: cleanImages }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -632,14 +629,27 @@ function MerchantUpdateModal({
         <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
           <div>
             <label className="block text-[12px] font-medium text-gray-600 mb-1">
-              动态内容 <span className="text-red-500">*</span>
+              动态标题 <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={40}
+              placeholder="一句话概括，如：新品到货 / 限时 8 折"
+              className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400"
+            />
+            <p className="mt-0.5 text-[10.5px] text-gray-400">{title.length} / 40</p>
+          </div>
+          <div>
+            <label className="block text-[12px] font-medium text-gray-600 mb-1">
+              详细内容（可选）
             </label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={3}
               maxLength={500}
-              placeholder="新品到货 / 限时折扣 / 营业时间变更…"
+              placeholder="活动/产品详情、注意事项，可留空"
               className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400"
             />
             <p className="mt-0.5 text-[10.5px] text-gray-400">{text.length} / 500</p>
