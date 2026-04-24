@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -961,21 +961,37 @@ function BusinessDetailView({
   onFocusMap: () => void;
 }) {
   const cat = categories.find((c) => c.key === biz.category);
-  const updatesRef = useRef<HTMLDivElement | null>(null);
   const hasUpdates = !!biz.updates && biz.updates.length > 0;
   const [updatesFlash, setUpdatesFlash] = useState(false);
+
   const scrollToUpdates = () => {
-    const el = updatesRef.current;
-    if (!el) return;
-    const top =
-      el.getBoundingClientRect().top + (window.pageYOffset || window.scrollY || 0) - 12;
-    try {
-      window.scrollTo({ top, behavior: "smooth" });
-    } catch {
-      window.scrollTo(0, top);
-    }
+    const run = () => {
+      const el = document.getElementById("biz-updates-section");
+      if (el) {
+        try {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch {
+          // older browsers w/o smooth option
+          el.scrollIntoView();
+        }
+        const scroller = document.scrollingElement || document.documentElement;
+        const top =
+          el.getBoundingClientRect().top + (scroller?.scrollTop ?? 0) - 12;
+        try {
+          window.scrollTo({ top, behavior: "smooth" });
+        } catch {
+          window.scrollTo(0, top);
+        }
+      } else {
+        // 兜底：滚到文档底部（动态区是最后一块）
+        const doc = document.scrollingElement || document.documentElement;
+        window.scrollTo({ top: doc?.scrollHeight ?? 99999, behavior: "smooth" });
+      }
+    };
+    run();
+    requestAnimationFrame(run);
     setUpdatesFlash(true);
-    window.setTimeout(() => setUpdatesFlash(false), 900);
+    window.setTimeout(() => setUpdatesFlash(false), 1000);
   };
 
   return (
@@ -1024,12 +1040,17 @@ function BusinessDetailView({
 
             {hasUpdates && (
               <button
-                onClick={scrollToUpdates}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-semibold rounded-xl transition-colors border border-rose-100"
-                aria-label="滑到最新动态"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  scrollToUpdates();
+                }}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-rose-50 active:bg-rose-200 hover:bg-rose-100 text-rose-600 text-sm font-semibold rounded-xl transition-colors border border-rose-100 cursor-pointer"
+                aria-label="跳到最新动态"
               >
-                查看最新动态
-                <ChevronDown size={16} className="animate-bounce" />
+                <span className="pointer-events-none">查看最新动态</span>
+                <ChevronDown size={16} className="animate-bounce pointer-events-none" />
               </button>
             )}
 
@@ -1091,7 +1112,7 @@ function BusinessDetailView({
 
         {hasUpdates && (
           <div
-            ref={updatesRef}
+            id="biz-updates-section"
             className={`bg-white rounded-2xl shadow-sm p-4 scroll-mt-4 transition-all duration-300 ${
               updatesFlash
                 ? "border-2 border-rose-300 ring-4 ring-rose-100"
