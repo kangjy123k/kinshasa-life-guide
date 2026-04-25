@@ -445,9 +445,14 @@ export function MotShareRecorder({
                   )}
 
                   <div className="rounded-xl bg-rose-50 border border-rose-100 px-3 py-3 text-[12px] text-rose-800 leading-relaxed">
-                    <p className="font-bold">在视频上长按 → 选「保存视频」</p>
-                    <p className="mt-1 text-rose-600">
-                      视频会直接存到手机相册，再到朋友圈相册里选这段视频发布。
+                    <p className="font-bold">两步存到相册：</p>
+                    <p className="mt-1 text-rose-700">
+                      1. 点下面 <b>「打开视频页」</b> 跳到全屏播放器
+                      <br />
+                      2. 在播放页 <b>右上角「···」</b> → 选 <b>「保存视频到本地」</b>
+                    </p>
+                    <p className="mt-1 text-rose-500 text-[11px]">
+                      （直接长按视频不一定有"保存"，必须先跳到全屏播放器）
                     </p>
                   </div>
 
@@ -455,10 +460,20 @@ export function MotShareRecorder({
                     <button
                       type="button"
                       onClick={restart}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold active:scale-95 transition"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold active:scale-95 transition"
                     >
                       <RotateCcw size={14} /> 重做
                     </button>
+                    {serverUrl && (
+                      <a
+                        href={serverUrl}
+                        target="_blank"
+                        rel="noopener"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white text-sm font-bold shadow active:scale-95 transition"
+                      >
+                        <Download size={14} /> 打开视频页
+                      </a>
+                    )}
                   </div>
                 </>
               ) : (
