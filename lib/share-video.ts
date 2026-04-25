@@ -337,3 +337,50 @@ export async function shareVideoFile(blob: Blob, filename: string, text: string)
     return false;
   }
 }
+
+function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  // iOS / iPadOS（iPad 在桌面模式下 ua 也算 Mac，但有 maxTouchPoints>1）
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  if (
+    /Mac/i.test(ua) &&
+    typeof (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints === "number" &&
+    ((navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints ?? 0) > 1
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 真正"存盘"用的统一入口：
+ *   - iOS / 支持 file share 的浏览器：弹出系统分享面板，里面"保存视频"直接进相册
+ *   - Android / 桌面：触发 <a download> 直接落到下载目录
+ * 返回字符串告诉调用方走了哪条路，便于显示对应提示。
+ */
+export async function saveVideoToDevice(
+  blob: Blob,
+  filename: string,
+): Promise<"sheet" | "download"> {
+  // iOS 上 <a download> 不工作，必须走系统分享面板；其它平台先 download 兜底。
+  if (typeof navigator !== "undefined") {
+    const nav = navigator as Navigator & {
+      canShare?: (data: ShareData) => boolean;
+      share?: (data: ShareData) => Promise<void>;
+    };
+    const file = new File([blob], filename, { type: blob.type });
+    const canShareFile = !!nav.canShare && nav.canShare({ files: [file] });
+    if (isIOS() && typeof nav.share === "function" && canShareFile) {
+      try {
+        await nav.share({ files: [file] });
+        return "sheet";
+      } catch {
+        // 用户在弹窗里取消也算流程结束，回 sheet 让 UI 不慌
+        return "sheet";
+      }
+    }
+  }
+  downloadBlob(blob, filename);
+  return "download";
+}

@@ -8,6 +8,7 @@ import {
   decodeAudio,
   downloadBlob,
   pickVideoMime,
+  saveVideoToDevice,
 } from "@/lib/share-video";
 
 type Phase =
@@ -224,7 +225,14 @@ export function MotShareRecorder({
 
   const filename = `${entry.word}-法语-${entry.date}${(videoBlob?.type ?? "").includes("mp4") ? ".mp4" : ".webm"}`;
 
-  const onDownload = useCallback(() => {
+  const [saveHint, setSaveHint] = useState<"sheet" | "download" | null>(null);
+  const onSave = useCallback(async () => {
+    if (!videoBlob) return;
+    const how = await saveVideoToDevice(videoBlob, filename);
+    setSaveHint(how);
+  }, [videoBlob, filename]);
+  // 兜底：系统弹窗都用不了时，仍可强行触发 a[download]
+  const onForceDownload = useCallback(() => {
     if (!videoBlob) return;
     downloadBlob(videoBlob, filename);
   }, [videoBlob, filename]);
@@ -377,15 +385,28 @@ export function MotShareRecorder({
                 </button>
                 <button
                   type="button"
-                  onClick={onDownload}
+                  onClick={onSave}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white text-sm font-bold shadow active:scale-95 transition"
                 >
-                  <Download size={14} /> 下载到相册
+                  <Download size={14} /> 保存到相册
                 </button>
               </div>
               <p className="text-[11px] text-gray-500 leading-relaxed">
-                下载到手机相册 → 打开微信 → 朋友圈 → 选这段视频发布。
+                {saveHint === "sheet"
+                  ? "在弹出的菜单里选「保存视频」/「Save Video」即可存到相册。"
+                  : saveHint === "download"
+                  ? "已下载到「下载」目录，去相册里就能看到。"
+                  : "iPhone 会弹出系统菜单，里面选「保存视频」。Android 会直接存到下载文件夹。"}
               </p>
+              {saveHint === null && (
+                <button
+                  type="button"
+                  onClick={onForceDownload}
+                  className="w-full text-[11px] text-gray-500 underline underline-offset-2 active:text-gray-700"
+                >
+                  没反应？点这里强制下载
+                </button>
+              )}
             </div>
           )}
 
