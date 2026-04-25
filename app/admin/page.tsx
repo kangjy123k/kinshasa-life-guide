@@ -115,6 +115,7 @@ export default function AdminPage() {
   const [activeStatus, setActiveStatus] = useState<Status | "all">("all");
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [fwodOpen, setFwodOpen] = useState(false);
+  const [sortMode, setSortMode] = useState<"created" | "activity">("created");
 
   // 自动尝试读已存密码
   useEffect(() => {
@@ -228,6 +229,27 @@ export default function AdminPage() {
 
   const pendingCount = records.filter((r) => r.status === "pending").length;
 
+  // 取 record 最近一次活动时间：商家若有动态，取最新动态的 at；否则回落到 timestamp
+  const activityTime = (r: SubmissionRecord): number => {
+    const created = new Date(r.timestamp).getTime() || 0;
+    const raw = r.data?.updates;
+    if (!raw) return created;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        let latest = 0;
+        for (const u of parsed) {
+          const t = new Date(u?.at ?? "").getTime();
+          if (Number.isFinite(t) && t > latest) latest = t;
+        }
+        return Math.max(created, latest);
+      }
+    } catch {
+      /* ignore */
+    }
+    return created;
+  };
+
   const visible = records
     .filter((r) => {
       if (activeType !== "all" && r.type !== activeType) return false;
@@ -235,9 +257,9 @@ export default function AdminPage() {
       return true;
     })
     .sort((a, b) => {
-      const ta = new Date(a.timestamp).getTime() || 0;
-      const tb = new Date(b.timestamp).getTime() || 0;
-      return tb - ta;
+      const pick = (r: SubmissionRecord) =>
+        sortMode === "activity" ? activityTime(r) : new Date(r.timestamp).getTime() || 0;
+      return pick(b) - pick(a);
     });
 
   /* ---------- 登录页 ---------- */
@@ -391,7 +413,7 @@ export default function AdminPage() {
             );
           })}
         </div>
-        <div className="max-w-6xl mx-auto px-4 pb-3 flex flex-wrap gap-2">
+        <div className="max-w-6xl mx-auto px-4 pb-3 flex flex-wrap gap-2 items-center">
           {(["all", "pending", "approved", "rejected"] as const).map((s) => (
             <button
               key={s}
@@ -405,6 +427,26 @@ export default function AdminPage() {
               {s === "all" ? "所有状态" : STATUS_META[s].label}
             </button>
           ))}
+          <span className="ml-auto flex items-center gap-1 text-[11px] text-gray-500">
+            <span className="hidden sm:inline">排序：</span>
+            {([
+              ["created", "创建时间"],
+              ["activity", "最近活动"],
+            ] as const).map(([m, label]) => (
+              <button
+                key={m}
+                onClick={() => setSortMode(m)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${
+                  sortMode === m
+                    ? "bg-sky-500 text-white shadow-sm"
+                    : "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                }`}
+                aria-pressed={sortMode === m}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
         </div>
       </div>
 

@@ -441,7 +441,7 @@ function RecordCard({
         />
       )}
 
-      {viewOpen && !canEdit && (
+      {viewOpen && (
         <ReadOnlyDetailModal
           title={`${meta.label}：${title}`}
           status={status}
