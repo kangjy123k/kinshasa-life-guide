@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Square, Share2, Download, RotateCcw, Loader2, Play, Video, X } from "lucide-react";
+import { Mic, Square, Download, RotateCcw, Loader2, Play, Video, X } from "lucide-react";
 import type { FrenchDailyEntry } from "@/lib/french-word-of-the-day";
 import {
   composeShareVideo,
   decodeAudio,
   downloadBlob,
   pickVideoMime,
-  shareVideoFile,
 } from "@/lib/share-video";
 
 type Phase =
@@ -38,7 +37,6 @@ export function MotShareRecorder({
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [recordTimeMs, setRecordTimeMs] = useState(0);
-  const [shareDone, setShareDone] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -172,7 +170,6 @@ export function MotShareRecorder({
     setUserBlob(null);
     setVideoUrl(null);
     setVideoBlob(null);
-    setShareDone(false);
     setPhase("idle");
   }, [userUrl, videoUrl]);
 
@@ -227,18 +224,6 @@ export function MotShareRecorder({
 
   const filename = `${entry.word}-法语-${entry.date}${(videoBlob?.type ?? "").includes("mp4") ? ".mp4" : ".webm"}`;
 
-  const onShare = useCallback(async () => {
-    if (!videoBlob) return;
-    setShareDone(false);
-    const ok = await shareVideoFile(
-      videoBlob,
-      filename,
-      `每日法语一词｜${entry.word}（${entry.zh}）— 来自 @刚果金华人生活指南`,
-    );
-    if (ok) setShareDone(true);
-    else downloadBlob(videoBlob, filename);
-  }, [videoBlob, filename, entry]);
-
   const onDownload = useCallback(() => {
     if (!videoBlob) return;
     downloadBlob(videoBlob, filename);
@@ -281,9 +266,9 @@ export function MotShareRecorder({
           {(phase === "idle" || phase === "permission") && (
             <div className="space-y-4">
               <ol className="text-[13px] text-gray-700 space-y-1.5 leading-snug">
-                <li>1. 按住下方按钮录你自己的法语发音（最多 {MAX_RECORD_MS / 1000} 秒）</li>
-                <li>2. 我们自动拼上原版 + 单词卡 + 水印，做成一段视频</li>
-                <li>3. 一键分享到朋友圈，悄悄学，惊艳所有人</li>
+                <li>1. 按下方按钮录你自己的法语发音（最多 {MAX_RECORD_MS / 1000} 秒）</li>
+                <li>2. 我们自动拼上原版法语和单词卡，做成一段竖屏视频</li>
+                <li>3. 下载到相册，发朋友圈，悄悄学惊艳所有人</li>
               </ol>
               <button
                 type="button"
@@ -366,7 +351,7 @@ export function MotShareRecorder({
               <Loader2 size={32} className="mx-auto animate-spin text-rose-500" />
               <p className="text-sm text-gray-700 font-semibold">视频合成中…</p>
               <p className="text-[11px] text-gray-500">
-                正在拼接你的发音 + 法语原版 + 水印
+                正在拼接你的发音 + 法语原版
                 <br />
                 大约需要 {(((entry.word?.length ?? 4) + 6) * 0.4).toFixed(0)} 秒
               </p>
@@ -392,23 +377,14 @@ export function MotShareRecorder({
                 </button>
                 <button
                   type="button"
-                  onClick={onShare}
+                  onClick={onDownload}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white text-sm font-bold shadow active:scale-95 transition"
                 >
-                  <Share2 size={14} /> {shareDone ? "已分享" : "分享"}
-                </button>
-                <button
-                  type="button"
-                  onClick={onDownload}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 text-sm font-semibold active:scale-95 transition"
-                >
-                  <Download size={14} /> 下载
+                  <Download size={14} /> 下载到相册
                 </button>
               </div>
               <p className="text-[11px] text-gray-500 leading-relaxed">
-                视频里已自带 <b>@刚果金华人生活指南</b> 水印。
-                <br />
-                微信内置浏览器分享受限，建议<b>下载到相册</b> → 打开微信 → 朋友圈 → 拍照按钮选视频上传。
+                下载到手机相册 → 打开微信 → 朋友圈 → 选这段视频发布。
               </p>
             </div>
           )}

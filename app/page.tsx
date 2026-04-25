@@ -1142,7 +1142,11 @@ function BusinessDetailView({
       <div
         style={{
           transform: `translateY(${breathShift}px)`,
-          transition: shiftSnap ? "transform 600ms cubic-bezier(.34,1.5,.4,1)" : "none",
+          transition: shiftSnap
+            ? breathShift > 0
+              ? "transform 900ms cubic-bezier(.22,1,.36,1)"
+              : "transform 700ms cubic-bezier(.4,0,.6,1)"
+            : "none",
           willChange: "transform",
         }}
       >
@@ -1419,8 +1423,7 @@ function BreathingPeek({
   const [dragY, setDragY] = useState<number | null>(null);
   const startRef = useRef<number | null>(null);
 
-  // 周期性呼吸：进页面 1.8s 后第一次 peek，hold 1.6s，缓 12s 再来。
-  // 隐藏时不消耗任何视觉空间，避免持续打扰。
+  // 周期性呼吸：进页面 2s 后第一次 peek，停 3s 让用户看清楚，之后每 10s 再来。
   // 仅在接近顶部（scrollY < 80）且 tab 可见时触发，避免打断阅读。
   useEffect(() => {
     let tid = 0;
@@ -1431,18 +1434,18 @@ function BreathingPeek({
         const nearTop = (window.scrollY ?? 0) < 80;
         const visibleTab = typeof document === "undefined" || !document.hidden;
         if (!nearTop || !visibleTab) {
-          tick(6_000); // 暂时不合适，6s 后再试
+          tick(5_000); // 暂时不合适，5s 后再试
           return;
         }
         setPhase("peeking");
         tid = window.setTimeout(() => {
           if (!alive) return;
           setPhase("hidden");
-          tick(12_000);
-        }, 1600);
+          tick(10_000);
+        }, 3_000);
       }, firstWait);
     };
-    tick(1800);
+    tick(2_000);
     return () => {
       alive = false;
       window.clearTimeout(tid);
@@ -1484,7 +1487,11 @@ function BreathingPeek({
       className="fixed top-0 left-0 right-0 z-40 px-3 pointer-events-none"
       style={{
         transform: `translateY(${visible ? 0 : -130}px)`,
-        transition: dragging ? "none" : "transform 600ms cubic-bezier(.34,1.5,.4,1)",
+        transition: dragging
+          ? "none"
+          : visible
+          ? "transform 900ms cubic-bezier(.22,1,.36,1)"   // 进：缓缓滑出
+          : "transform 700ms cubic-bezier(.4,0,.6,1)",     // 退：丝滑收回
         willChange: "transform",
       }}
       aria-hidden={!visible}
