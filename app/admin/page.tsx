@@ -427,26 +427,27 @@ export default function AdminPage() {
               {s === "all" ? "所有状态" : STATUS_META[s].label}
             </button>
           ))}
-          <span className="ml-auto flex items-center gap-1 text-[11px] text-gray-500">
-            <span className="hidden sm:inline">排序：</span>
+          <div className="ml-auto flex items-center gap-1 text-[11px] text-gray-500">
+            <span className="hidden sm:inline mr-1">排序：</span>
             {([
               ["created", "创建时间"],
               ["activity", "最近活动"],
             ] as const).map(([m, label]) => (
               <button
+                type="button"
                 key={m}
                 onClick={() => setSortMode(m)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${
-                  sortMode === m
-                    ? "bg-sky-500 text-white shadow-sm"
-                    : "bg-sky-50 text-sky-700 hover:bg-sky-100"
-                }`}
                 aria-pressed={sortMode === m}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition active:scale-95 ${
+                  sortMode === m
+                    ? "bg-sky-500 text-white border-sky-500 shadow"
+                    : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
+                }`}
               >
                 {label}
               </button>
             ))}
-          </span>
+          </div>
         </div>
       </div>
 
