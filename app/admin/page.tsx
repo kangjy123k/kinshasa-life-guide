@@ -228,11 +228,17 @@ export default function AdminPage() {
 
   const pendingCount = records.filter((r) => r.status === "pending").length;
 
-  const visible = records.filter((r) => {
-    if (activeType !== "all" && r.type !== activeType) return false;
-    if (activeStatus !== "all" && r.status !== activeStatus) return false;
-    return true;
-  });
+  const visible = records
+    .filter((r) => {
+      if (activeType !== "all" && r.type !== activeType) return false;
+      if (activeStatus !== "all" && r.status !== activeStatus) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const ta = new Date(a.timestamp).getTime() || 0;
+      const tb = new Date(b.timestamp).getTime() || 0;
+      return tb - ta;
+    });
 
   /* ---------- 登录页 ---------- */
   if (!authed) {
