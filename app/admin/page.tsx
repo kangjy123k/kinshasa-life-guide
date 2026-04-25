@@ -16,10 +16,9 @@ import {
   ClipboardList,
   CalendarHeart,
   Sparkles,
-  ChevronUp,
-  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
-import { AdminFwodPanel } from "@/components/AdminFwodPanel";
+import Link from "next/link";
 
 type SubmissionType =
   | "merchant"
@@ -114,7 +113,6 @@ export default function AdminPage() {
   const [activeType, setActiveType] = useState<SubmissionType | "all">("all");
   const [activeStatus, setActiveStatus] = useState<Status | "all">("all");
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
-  const [fwodOpen, setFwodOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"created" | "activity">("created");
 
   // 自动尝试读已存密码
@@ -250,17 +248,21 @@ export default function AdminPage() {
     return created;
   };
 
-  const visible = records
-    .filter((r) => {
-      if (activeType !== "all" && r.type !== activeType) return false;
-      if (activeStatus !== "all" && r.status !== activeStatus) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      const pick = (r: SubmissionRecord) =>
-        sortMode === "activity" ? activityTime(r) : new Date(r.timestamp).getTime() || 0;
-      return pick(b) - pick(a);
-    });
+  // 用 useMemo 让排序模式切换确保触发重排（即使最终顺序相同，引用也变）
+  const visible = useMemo(() => {
+    return records
+      .filter((r) => {
+        if (activeType !== "all" && r.type !== activeType) return false;
+        if (activeStatus !== "all" && r.status !== activeStatus) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const pick = (r: SubmissionRecord) =>
+          sortMode === "activity" ? activityTime(r) : new Date(r.timestamp).getTime() || 0;
+        return pick(b) - pick(a);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records, activeType, activeStatus, sortMode]);
 
   /* ---------- 登录页 ---------- */
   if (!authed) {
@@ -332,52 +334,34 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* 每日法语上传区（与下方审核区视觉明显区分）— 直接在当前页操作 */}
+      {/* 每日法语后台入口 — 独立页面，避免与发布审核混在一起 */}
       <section className="max-w-6xl mx-auto px-4 pt-4">
-        <div className="rounded-2xl shadow-md overflow-hidden border-2 border-rose-200 bg-rose-50/50">
-          <button
-            onClick={() => setFwodOpen((v) => !v)}
-            className="group relative w-full text-left bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 text-white active:scale-[0.997] transition"
-            aria-expanded={fwodOpen}
-          >
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/15 pointer-events-none" />
-            <div className="absolute -bottom-12 -left-6 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
-            <div className="relative flex items-center gap-3 px-5 py-4">
-              <span className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 text-2xl">
-                🇫🇷
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h2 className="text-base font-bold drop-shadow">每日法语一词 · 上传</h2>
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] font-bold">
-                    <Sparkles size={10} fill="currentColor" /> 独立区
-                  </span>
-                </div>
-                <p className="text-xs text-white/90 mt-0.5 leading-snug">
-                  {fwodOpen
-                    ? "填好下方表单保存即上线，与用户提交审核互不影响"
-                    : "点击展开：上传今日单词、释义图片、近似读音，立即上线前台"}
-                </p>
+        <Link
+          href="/admin/fwod"
+          className="group relative block rounded-2xl overflow-hidden shadow-md bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 text-white active:scale-[0.997] transition"
+        >
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/15 pointer-events-none" />
+          <div className="absolute -bottom-12 -left-6 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
+          <div className="relative flex items-center gap-3 px-5 py-4">
+            <span className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 text-2xl">
+              🇫🇷
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-bold drop-shadow">每日法语一词 · 后台</h2>
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] font-bold">
+                  <Sparkles size={10} fill="currentColor" /> 独立页
+                </span>
               </div>
-              <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-white text-rose-600 rounded-full text-xs font-bold shadow group-hover:scale-105 transition">
-                {fwodOpen ? (
-                  <>
-                    收起 <ChevronUp size={13} />
-                  </>
-                ) : (
-                  <>
-                    展开 <ChevronDown size={13} />
-                  </>
-                )}
-              </span>
+              <p className="text-xs text-white/90 mt-0.5 leading-snug">
+                上传今日单词 / 释义图 / 读音；与下方审核区分离
+              </p>
             </div>
-          </button>
-          {fwodOpen && (
-            <div className="p-4 border-t border-rose-100 bg-rose-50/30">
-              <AdminFwodPanel password={password} />
-            </div>
-          )}
-        </div>
+            <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-white text-rose-600 rounded-full text-xs font-bold shadow group-hover:scale-105 transition">
+              进入 <ChevronRight size={13} />
+            </span>
+          </div>
+        </Link>
       </section>
 
       {/* 类型 tab */}
@@ -413,10 +397,11 @@ export default function AdminPage() {
             );
           })}
         </div>
-        <div className="max-w-6xl mx-auto px-4 pb-3 flex flex-wrap gap-2 items-center">
+        <div className="max-w-6xl mx-auto px-4 pb-2 flex flex-wrap gap-2 items-center">
           {(["all", "pending", "approved", "rejected"] as const).map((s) => (
             <button
               key={s}
+              type="button"
               onClick={() => setActiveStatus(s)}
               className={`px-3 py-1 rounded-full text-xs font-medium ${
                 activeStatus === s
@@ -427,27 +412,28 @@ export default function AdminPage() {
               {s === "all" ? "所有状态" : STATUS_META[s].label}
             </button>
           ))}
-          <div className="ml-auto flex items-center gap-1 text-[11px] text-gray-500">
-            <span className="hidden sm:inline mr-1">排序：</span>
-            {([
-              ["created", "创建时间"],
-              ["activity", "最近活动"],
-            ] as const).map(([m, label]) => (
-              <button
-                type="button"
-                key={m}
-                onClick={() => setSortMode(m)}
-                aria-pressed={sortMode === m}
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition active:scale-95 ${
-                  sortMode === m
-                    ? "bg-sky-500 text-white border-sky-500 shadow"
-                    : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        </div>
+        <div className="max-w-6xl mx-auto px-4 pb-3 flex items-center gap-2">
+          <span className="text-[11px] text-gray-500 shrink-0">按</span>
+          {([
+            ["created", "创建时间"],
+            ["activity", "最近活动"],
+          ] as const).map(([m, label]) => (
+            <button
+              type="button"
+              key={m}
+              onClick={() => setSortMode(m)}
+              aria-pressed={sortMode === m}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition active:scale-95 touch-manipulation ${
+                sortMode === m
+                  ? "bg-sky-500 text-white border-sky-500 shadow"
+                  : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="text-[11px] text-gray-500 ml-auto">排序 · 共 {visible.length} 条</span>
         </div>
       </div>
 
@@ -463,6 +449,8 @@ export default function AdminPage() {
               <SubmissionCard
                 key={r.id}
                 record={r}
+                lastActivity={activityTime(r)}
+                sortMode={sortMode}
                 updating={updatingIds.has(r.id)}
                 onApprove={() => updateStatus(r.id, "approved")}
                 onReject={() => updateStatus(r.id, "rejected")}
@@ -507,6 +495,8 @@ function TypeTab({
 
 function SubmissionCard({
   record,
+  lastActivity,
+  sortMode,
   updating,
   onApprove,
   onReject,
@@ -514,6 +504,8 @@ function SubmissionCard({
   onDelete,
 }: {
   record: SubmissionRecord;
+  lastActivity: number;
+  sortMode: "created" | "activity";
   updating: boolean;
   onApprove: () => void;
   onReject: () => void;
@@ -525,13 +517,15 @@ function SubmissionCard({
   const Icon = meta.icon;
   const StatusIcon = status.icon;
 
-  const time = new Date(record.timestamp).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const fmt = (ms: number) =>
+    new Date(ms).toLocaleString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  const createdMs = new Date(record.timestamp).getTime() || 0;
+  const hasActivityDiff = lastActivity > createdMs + 60_000; // 差 1 分钟以上才算有动态
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
@@ -540,9 +534,21 @@ function SubmissionCard({
           <span className={`w-7 h-7 rounded-lg ${meta.color} text-white flex items-center justify-center`}>
             <Icon size={14} />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-800">{meta.label}</p>
-            <p className="text-xs text-gray-400">{time}</p>
+            <p className="text-[11px] text-gray-400 leading-tight">
+              <span className={sortMode === "created" ? "text-sky-600 font-semibold" : ""}>
+                创建 {fmt(createdMs)}
+              </span>
+              {hasActivityDiff && (
+                <>
+                  <span className="text-gray-300 mx-1">·</span>
+                  <span className={sortMode === "activity" ? "text-sky-600 font-semibold" : ""}>
+                    活动 {fmt(lastActivity)}
+                  </span>
+                </>
+              )}
+            </p>
           </div>
         </div>
         <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.cls}`}>

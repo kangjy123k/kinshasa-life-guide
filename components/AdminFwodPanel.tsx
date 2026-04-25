@@ -253,6 +253,7 @@ export function AdminFwodPanel({ password }: { password: string }) {
             onChange={(url) => setForm((f) => ({ ...f, image: url }))}
             scope="fwod"
             placeholder="点击上传释义图片"
+            fit="contain"
           />
           <p className="mt-1 text-[10.5px] text-gray-500">
             从手机相册选图，自动压缩上传。亦可手动填写 /fwod/xxx.webp 路径。
@@ -280,7 +281,9 @@ export function AdminFwodPanel({ password }: { password: string }) {
           </p>
         ) : (
           <ul className="divide-y divide-rose-50">
-            {dynamicEntries.map((e) => (
+            {[...dynamicEntries]
+              .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+              .map((e) => (
               <li key={e.date} className="py-3 flex items-start gap-3">
                 <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-rose-50 shrink-0">
                   {e.image && (

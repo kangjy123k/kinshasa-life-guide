@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,6 +16,7 @@ import {
   Share2,
   MessageCircle,
   Link2,
+  Shuffle,
 } from "lucide-react";
 
 import {
@@ -415,17 +416,55 @@ function HomeView({
   onOpenBusiness: (id: number) => void;
 }) {
   const router = useRouter();
-  // 人工精选（b.featured）优先；没有时回落到全部真实商家（排除二手）
-  // 两路都按创建时间从新到旧（id 降序，用户提交从 1_000_000 起，id 越大越新）
+  const [mySubmissionIds, setMySubmissionIds] = useState<Set<string>>(new Set());
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+
+  // 拉一次本人的发布，找已审核通过的商家 → 默认置顶到热门商家
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/my/submissions", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { records: [] }))
+      .then((d: { records?: Array<{ id: string; type: string; status: string }> }) => {
+        if (cancel) return;
+        const ids = new Set(
+          (d.records ?? [])
+            .filter((r) => r.type === "merchant" && r.status === "approved")
+            .map((r) => r.id),
+        );
+        setMySubmissionIds(ids);
+      })
+      .catch(() => { /* 静默：未发布或断网都允许 */ });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  // 人工精选（b.featured）优先；没有时回落到全部真实商家（排除二手）。
+  // 默认：本人 approved 商家置顶（按 id desc），其它按 id desc。
+  // 洗牌：本人保持置顶，其它 Fisher-Yates 打乱。
   const featured = useMemo(() => {
-    const explicit = allBusinesses
-      .filter((b) => b.featured)
-      .sort((a, b) => b.id - a.id);
-    if (explicit.length > 0) return explicit;
-    return allBusinesses
-      .filter((b) => b.category !== "secondhand")
-      .sort((a, b) => b.id - a.id);
-  }, [allBusinesses]);
+    const explicit = allBusinesses.filter((b) => b.featured);
+    const pool = explicit.length > 0
+      ? explicit
+      : allBusinesses.filter((b) => b.category !== "secondhand");
+
+    const mine: Business[] = [];
+    const rest: Business[] = [];
+    for (const b of pool) {
+      if (b.submissionId && mySubmissionIds.has(b.submissionId)) mine.push(b);
+      else rest.push(b);
+    }
+    mine.sort((a, b) => b.id - a.id);
+    if (shuffleSeed > 0) {
+      for (let i = rest.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [rest[i], rest[j]] = [rest[j], rest[i]];
+      }
+    } else {
+      rest.sort((a, b) => b.id - a.id);
+    }
+    return [...mine, ...rest];
+  }, [allBusinesses, mySubmissionIds, shuffleSeed]);
 
   const [homeQuery, setHomeQuery] = useState("");
 
@@ -587,7 +626,12 @@ function HomeView({
       </section>
 
       {/* ---- 热门商家（Tinder 卡片栈） ---- */}
-      <FeaturedSwipeStack items={featured} onOpen={onOpenBusiness} />
+      <FeaturedSwipeStack
+        key={shuffleSeed}
+        items={featured}
+        onOpen={onOpenBusiness}
+        onShuffle={() => setShuffleSeed((s) => s + 1)}
+      />
 
       {/* ---- 许愿池专区 ---- */}
       <WishingPoolBanner />
@@ -608,9 +652,11 @@ const SWIPE_FLY_MS = 320;
 function FeaturedSwipeStack({
   items,
   onOpen,
+  onShuffle,
 }: {
   items: Business[];
   onOpen: (id: number) => void;
+  onShuffle: () => void;
 }) {
   const [index, setIndex] = useState(0);
   const [drag, setDrag] = useState({ x: 0, y: 0 });
@@ -718,13 +764,21 @@ function FeaturedSwipeStack({
   );
 
   return (
-    <section className="max-w-4xl mx-auto px-4 mt-8 pb-4">
+    <section className="max-w-4xl mx-auto px-4 mt-8">
       <div className="flex items-center gap-2 mb-3">
         <span className="w-1 h-5 bg-red-400 rounded-full" />
         <h2 className="text-base font-bold text-gray-800">热门商家</h2>
-        <span className="ml-auto text-[11px] text-gray-400 font-medium flex items-center gap-1">
-          <span className="inline-block animate-pulse">←</span> 左滑查看
-        </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onShuffle();
+          }}
+          className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 active:scale-95 transition"
+          aria-label="一键打乱热门商家"
+        >
+          <Shuffle size={12} /> 一键打乱
+        </button>
       </div>
 
       <div className="relative mx-auto w-full h-[420px] md:h-[460px]">
@@ -1056,6 +1110,15 @@ function BusinessDetailView({
   const hasUpdates = !!biz.updates && biz.updates.length > 0;
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const [bizShareOpen, setBizShareOpen] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  // BreathingPeek 上报的整页下移量（呼吸时 ~92px / 拖拽时跟手）
+  const [breathShift, setBreathShift] = useState(0);
+  const [shiftSnap, setShiftSnap] = useState(true); // 顺滑过渡 vs 跟手
+  const handleShift = useCallback((n: number) => {
+    setBreathShift(n);
+    // 0 / PEEK_HEIGHT 这种被动状态走 transition；中间值（拖拽中）禁动画
+    setShiftSnap(n === 0 || n === PEEK_HEIGHT);
+  }, []);
 
   // 商家主页分享 key：用户提交的用 submissionId；seed 用 seed-{id}
   const bizShareKey = biz.submissionId ?? `seed-${biz.id}`;
@@ -1068,6 +1131,21 @@ function BusinessDetailView({
 
   return (
     <>
+      {hasUpdates && (
+        <BreathingPeek
+          biz={biz}
+          onOpen={() => setUpdatesOpen(true)}
+          onShiftChange={handleShift}
+        />
+      )}
+
+      <div
+        style={{
+          transform: `translateY(${breathShift}px)`,
+          transition: shiftSnap ? "transform 600ms cubic-bezier(.34,1.5,.4,1)" : "none",
+          willChange: "transform",
+        }}
+      >
       <section className="bg-gradient-to-r from-sky-400 to-blue-500 text-white">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
@@ -1161,27 +1239,27 @@ function BusinessDetailView({
             <h3 className="text-sm font-bold text-gray-800 mb-3">相册</h3>
             <div className="grid grid-cols-3 gap-2">
               {biz.gallery.map((src, i) => (
-                <div key={`${src}-${i}`} className="relative aspect-square">
+                <button
+                  type="button"
+                  key={`${src}-${i}`}
+                  onClick={() => setLightboxIdx(i)}
+                  className="relative aspect-square cursor-zoom-in active:scale-[0.98] transition"
+                  aria-label={`查看 ${biz.name} 相册 ${i + 1}`}
+                >
                   <ProtectedImg
                     src={src}
                     alt={`${biz.name} 相册 ${i + 1}`}
                     loading="lazy"
                     className="absolute inset-0 w-full h-full rounded-lg object-cover border border-sky-50"
                   />
-                </div>
+                </button>
               ))}
             </div>
           </div>
         )}
 
       </div>
-
-      {hasUpdates && (
-        <UpdatesNotch
-          count={biz.updates!.length}
-          onOpen={() => setUpdatesOpen(true)}
-        />
-      )}
+      </div>
 
       {hasUpdates && updatesOpen && (
         <UpdatesSheet
@@ -1196,32 +1274,195 @@ function BusinessDetailView({
           onClose={() => setBizShareOpen(false)}
         />
       )}
+
+      {lightboxIdx !== null && biz.gallery && (
+        <GalleryLightbox
+          images={biz.gallery}
+          index={lightboxIdx}
+          onIndex={setLightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+          alt={biz.name}
+        />
+      )}
     </>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  顶部"刘海"—— 周期性探头 + 下拉展开最新动态                           */
-/* ------------------------------------------------------------------ */
-function UpdatesNotch({
-  count,
-  onOpen,
+function GalleryLightbox({
+  images,
+  index,
+  onIndex,
+  onClose,
+  alt,
 }: {
-  count: number;
-  onOpen: () => void;
+  images: string[];
+  index: number;
+  onIndex: (i: number) => void;
+  onClose: () => void;
+  alt: string;
 }) {
-  // dragY === null 表示未拖拽；正在拖拽时覆盖 CSS 动画并跟手
+  const [closing, setClosing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+      else if (e.key === "ArrowLeft" && index > 0) onIndex(index - 1);
+      else if (e.key === "ArrowRight" && index < images.length - 1) onIndex(index + 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, images.length]);
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 200);
+  };
+
+  const src = images[index];
+  const hasPrev = index > 0;
+  const hasNext = index < images.length - 1;
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 bg-black/90 flex items-center justify-center transition-opacity duration-200 ${
+        mounted && !closing ? "opacity-100" : "opacity-0"
+      }`}
+      onClick={handleClose}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleClose();
+        }}
+        aria-label="关闭"
+        className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-95"
+      >
+        <X size={22} />
+      </button>
+
+      <div
+        className="relative max-w-[100vw] max-h-[100dvh] w-full h-full flex items-center justify-center px-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ProtectedImg
+          src={src}
+          alt={alt}
+          className="max-w-full max-h-[90dvh] object-contain rounded-xl select-none"
+        />
+      </div>
+
+      {hasPrev && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onIndex(index - 1);
+          }}
+          aria-label="上一张"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-95"
+        >
+          <ArrowLeft size={22} />
+        </button>
+      )}
+      {hasNext && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onIndex(index + 1);
+          }}
+          aria-label="下一张"
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-95"
+        >
+          <ArrowLeft size={22} className="rotate-180" />
+        </button>
+      )}
+
+      {images.length > 1 && (
+        <span className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-medium">
+          {index + 1} / {images.length}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  BreathingPeek —— 无显式 chip，进页面后周期性把整页轻微下移，          */
+/*  顶部露出最新动态缩略 + 一行小字"下拉查看最新动态"，再回弹              */
+/* ------------------------------------------------------------------ */
+const PEEK_HEIGHT = 92;
+
+function BreathingPeek({
+  biz,
+  onOpen,
+  onShiftChange,
+}: {
+  biz: Business;
+  onOpen: () => void;
+  onShiftChange: (n: number) => void;
+}) {
+  const [phase, setPhase] = useState<"hidden" | "peeking">("hidden");
   const [dragY, setDragY] = useState<number | null>(null);
   const startRef = useRef<number | null>(null);
 
-  const down = (e: React.PointerEvent<HTMLButtonElement>) => {
+  // 周期性呼吸：进页面 1.8s 后第一次 peek，hold 1.6s，缓 12s 再来。
+  // 隐藏时不消耗任何视觉空间，避免持续打扰。
+  // 仅在接近顶部（scrollY < 80）且 tab 可见时触发，避免打断阅读。
+  useEffect(() => {
+    let tid = 0;
+    let alive = true;
+    const tick = (firstWait: number) => {
+      tid = window.setTimeout(() => {
+        if (!alive) return;
+        const nearTop = (window.scrollY ?? 0) < 80;
+        const visibleTab = typeof document === "undefined" || !document.hidden;
+        if (!nearTop || !visibleTab) {
+          tick(6_000); // 暂时不合适，6s 后再试
+          return;
+        }
+        setPhase("peeking");
+        tid = window.setTimeout(() => {
+          if (!alive) return;
+          setPhase("hidden");
+          tick(12_000);
+        }, 1600);
+      }, firstWait);
+    };
+    tick(1800);
+    return () => {
+      alive = false;
+      window.clearTimeout(tid);
+    };
+  }, []);
+
+  // 把当前 shift 值上报给父组件，触发整页下移
+  useEffect(() => {
+    if (dragY !== null) onShiftChange(Math.min(dragY, PEEK_HEIGHT * 1.2));
+    else onShiftChange(phase === "peeking" ? PEEK_HEIGHT : 0);
+  }, [phase, dragY, onShiftChange]);
+
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
     startRef.current = e.clientY;
     setDragY(0);
     try {
-      e.currentTarget.setPointerCapture(e.pointerId);
+      (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     } catch {}
   };
-  const move = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
     if (startRef.current == null) return;
     const dy = Math.max(0, e.clientY - startRef.current);
     setDragY(Math.min(dy, 220));
@@ -1230,48 +1471,67 @@ function UpdatesNotch({
     const cur = dragY;
     startRef.current = null;
     setDragY(null);
-    if (cur !== null && cur > 50) {
-      onOpen();
-    }
+    if (cur !== null && cur > 60) onOpen();
   };
 
+  const visible = phase === "peeking" || (dragY !== null && dragY > 4);
+  const latest = biz.updates?.[0];
+  const thumbs = (latest?.images ?? []).slice(0, 3);
   const dragging = dragY !== null;
 
   return (
-    <button
-      type="button"
-      onPointerDown={down}
-      onPointerMove={move}
-      onPointerUp={up}
-      onPointerCancel={up}
-      onClick={() => {
-        // 纯 tap（没拖动过）也算触发
-        if (!dragging) onOpen();
-      }}
-      aria-label={`下拉查看最新动态（${count} 条）`}
-      className={`fixed top-0 left-1/2 z-40 flex items-center gap-1.5 px-4 py-2 pt-2.5 bg-rose-500 active:bg-rose-600 text-white text-xs font-bold rounded-b-[20px] shadow-lg ${
-        dragging ? "" : "updates-notch-peek"
-      }`}
+    <div
+      className="fixed top-0 left-0 right-0 z-40 px-3 pointer-events-none"
       style={{
-        touchAction: "none",
-        boxShadow: "0 6px 16px rgba(244, 63, 94, 0.4)",
-        ...(dragging
-          ? {
-              transform: `translate(-50%, ${dragY}px)`,
-              transition: "none",
-            }
-          : {
-              transition: "transform 300ms cubic-bezier(.3,1.5,.4,1)",
-            }),
+        transform: `translateY(${visible ? 0 : -130}px)`,
+        transition: dragging ? "none" : "transform 600ms cubic-bezier(.34,1.5,.4,1)",
+        willChange: "transform",
       }}
+      aria-hidden={!visible}
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-white" />
-      下拉 · 最新动态
-      <span className="px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] tabular-nums">
-        {count}
-      </span>
-      <ChevronDown size={13} />
-    </button>
+      <div
+        role="button"
+        tabIndex={visible ? 0 : -1}
+        onClick={onOpen}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        aria-label={`查看最新动态（${biz.updates?.length ?? 0} 条）`}
+        className="pointer-events-auto mx-auto max-w-2xl bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-b-3xl shadow-xl px-3 py-2.5 flex items-center gap-2 cursor-pointer active:opacity-95"
+        style={{ touchAction: "none", boxShadow: "0 8px 22px rgba(244,63,94,0.35)" }}
+      >
+        {thumbs.length > 0 ? (
+          <div className="flex -space-x-2 shrink-0">
+            {thumbs.map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={`${src}-${i}`}
+                src={src}
+                alt=""
+                aria-hidden
+                className="w-9 h-9 rounded-full border-2 border-rose-500 object-cover bg-rose-200"
+              />
+            ))}
+          </div>
+        ) : (
+          <span className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-base shrink-0">
+            🆕
+          </span>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] text-white/85 leading-tight">
+            最新动态 · {biz.updates?.length ?? 0} 条
+          </div>
+          <div className="text-[13px] font-bold truncate leading-tight">
+            {latest?.title ?? biz.name}
+          </div>
+        </div>
+        <span className="text-[11px] text-white/90 font-semibold shrink-0 flex items-center gap-0.5">
+          下拉查看 <ChevronDown size={12} />
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -1671,7 +1931,7 @@ function ShareTile({
 /* ------------------------------------------------------------------ */
 function WishingPoolBanner() {
   return (
-    <section className="max-w-4xl mx-auto px-4 mt-8">
+    <section className="max-w-4xl mx-auto px-4 mt-3">
       <Link
         href="/demand"
         className="relative block rounded-3xl overflow-hidden shadow-lg bg-gradient-to-br from-sky-400 via-cyan-400 to-teal-400 text-white active:scale-[0.99] transition"

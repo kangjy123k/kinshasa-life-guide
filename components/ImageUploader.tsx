@@ -10,12 +10,14 @@ export function SingleImageUploader({
   scope = "merchant",
   placeholder = "点击上传图片",
   aspect = "16 / 9",
+  fit = "cover",
 }: {
   value: string;
   onChange: (url: string) => void;
   scope?: string;
   placeholder?: string;
   aspect?: string;
+  fit?: "cover" | "contain";
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,9 +73,16 @@ export function SingleImageUploader({
         onChange={onFile}
       />
       {value ? (
-        <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50" style={{ aspectRatio: aspect }}>
+        <div
+          className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50"
+          style={fit === "contain" ? { minHeight: 200 } : { aspectRatio: aspect }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="首图预览" className="w-full h-full object-cover" />
+          <img
+            src={value}
+            alt="首图预览"
+            className={`w-full h-full ${fit === "contain" ? "max-h-[60vh] object-contain" : "object-cover"}`}
+          />
           <button
             type="button"
             onClick={clear}

@@ -50,17 +50,6 @@
   animation: pulseRed 1.6s ease-in-out infinite;
 }
 
-/* 最新动态"刘海"周期性探出 — 像心跳一样，隔几秒露个脸提醒用户 */
-@keyframes updatesNotchPeek {
-  0%, 100%     { transform: translate(-50%, -70%); }
-  5%           { transform: translate(-50%, 10px); }
-  12%          { transform: translate(-50%, 4px); }
-  22%          { transform: translate(-50%, -70%); }
-}
-.updates-notch-peek {
-  animation: updatesNotchPeek 5s cubic-bezier(.25,.9,.3,1.2) infinite;
-}
-
 /* 雨云图标记淡入淡出 */
 .rain-marker {
   transition: opacity 0.7s ease !important;

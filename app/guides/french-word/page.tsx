@@ -12,8 +12,9 @@ import {
   Share2,
   Sparkles,
   Trophy,
+  Video,
 } from "lucide-react";
-import { SpeakButton, CopyChip } from "@/components/BusinessCardUI";
+import { SpeakButton } from "@/components/BusinessCardUI";
 import {
   BANK,
   todayIndex,
@@ -22,6 +23,7 @@ import {
   type FrenchDailyEntry,
 } from "@/lib/french-word-of-the-day";
 import { wm, wmDownload } from "@/lib/watermark";
+import { MotShareRecorder } from "@/components/MotShareRecorder";
 
 const LS_KEY = "fwod-progress-v1";
 
@@ -92,6 +94,7 @@ export default function FrenchWordPage() {
   const [milestone, setMilestone] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showList, setShowList] = useState(false);
+  const [showRecorder, setShowRecorder] = useState(false);
 
   // 客户端挂载后再读取 localStorage，避免 SSR 不一致
   useEffect(() => {
@@ -339,7 +342,14 @@ export default function FrenchWordPage() {
             <Share2 size={15} />
             {copied ? "已复制到剪贴板" : "分享到群里"}
           </button>
-          <CopyChip text={entry.word} label="复制单词" doneLabel="已复制" />
+          <button
+            type="button"
+            onClick={() => setShowRecorder(true)}
+            aria-label="录朋友圈视频"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-white border border-rose-200 text-rose-600 text-sm font-semibold shadow-sm active:scale-95 transition"
+          >
+            <Video size={15} /> 录视频
+          </button>
         </div>
 
         <p className="mt-6 text-center text-[11px] text-gray-400 leading-relaxed">
@@ -381,6 +391,11 @@ export default function FrenchWordPage() {
             setShowList(false);
           }}
         />
+      )}
+
+      {/* 录朋友圈视频 */}
+      {showRecorder && (
+        <MotShareRecorder entry={entry} onClose={() => setShowRecorder(false)} />
       )}
     </div>
   );
