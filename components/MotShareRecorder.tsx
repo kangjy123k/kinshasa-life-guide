@@ -7,8 +7,10 @@ import {
   composeShareVideo,
   decodeAudio,
   downloadBlob,
+  isWeChat,
   pickVideoMime,
   saveVideoToDevice,
+  uploadVideoToServer,
 } from "@/lib/share-video";
 
 type Phase =
@@ -37,6 +39,10 @@ export function MotShareRecorder({
   const [userUrl, setUserUrl] = useState<string | null>(null);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  // 微信里需要把 blob 上传成真实 URL，X5 才肯长按存视频
+  const [serverUrl, setServerUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [recordTimeMs, setRecordTimeMs] = useState(0);
 
   const streamRef = useRef<MediaStream | null>(null);
@@ -171,8 +177,26 @@ export function MotShareRecorder({
     setUserBlob(null);
     setVideoUrl(null);
     setVideoBlob(null);
+    setServerUrl(null);
+    setUploading(false);
+    setUploadError(null);
     setPhase("idle");
   }, [userUrl, videoUrl]);
+
+  const retryUpload = useCallback(async () => {
+    if (!videoBlob) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const remote = await uploadVideoToServer(videoBlob);
+      setServerUrl(remote);
+    } catch (err) {
+      console.error("[MotShareRecorder] retry upload failed", err);
+      setUploadError("上传失败，请检查网络再点重试");
+    } finally {
+      setUploading(false);
+    }
+  }, [videoBlob]);
 
   const compose = useCallback(async () => {
     if (!userBlob) return;
@@ -214,6 +238,20 @@ export function MotShareRecorder({
         return url;
       });
       setPhase("done");
+      // 微信内置浏览器：blob URL 长按不能存，需要上传换成真实 URL
+      if (isWeChat()) {
+        setUploading(true);
+        setUploadError(null);
+        try {
+          const remote = await uploadVideoToServer(result.blob);
+          setServerUrl(remote);
+        } catch (err) {
+          console.error("[MotShareRecorder] upload failed", err);
+          setUploadError("上传失败，请检查网络再点重试");
+        } finally {
+          setUploading(false);
+        }
+      }
     } catch (e) {
       console.error("[MotShareRecorder] compose failed", e);
       setError(`视频合成失败：${e instanceof Error ? e.message : "请重试"}`);
@@ -226,6 +264,7 @@ export function MotShareRecorder({
   const filename = `${entry.word}-法语-${entry.date}${(videoBlob?.type ?? "").includes("mp4") ? ".mp4" : ".webm"}`;
 
   const [saveHint, setSaveHint] = useState<"sheet" | "download" | null>(null);
+  const inWeChat = typeof window !== "undefined" && isWeChat();
   const onSave = useCallback(async () => {
     if (!videoBlob) return;
     const how = await saveVideoToDevice(videoBlob, filename);
@@ -369,43 +408,100 @@ export function MotShareRecorder({
           {/* 阶段：done */}
           {phase === "done" && videoUrl && (
             <div className="space-y-4">
-              <video
-                src={videoUrl}
-                controls
-                playsInline
-                className="w-full rounded-2xl border border-rose-100 bg-black aspect-[9/16] max-h-[60vh]"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={restart}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold active:scale-95 transition"
-                >
-                  <RotateCcw size={14} /> 重做
-                </button>
-                <button
-                  type="button"
-                  onClick={onSave}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white text-sm font-bold shadow active:scale-95 transition"
-                >
-                  <Download size={14} /> 保存到相册
-                </button>
-              </div>
-              <p className="text-[11px] text-gray-500 leading-relaxed">
-                {saveHint === "sheet"
-                  ? "在弹出的菜单里选「保存视频」/「Save Video」即可存到相册。"
-                  : saveHint === "download"
-                  ? "已下载到「下载」目录，去相册里就能看到。"
-                  : "iPhone 会弹出系统菜单，里面选「保存视频」。Android 会直接存到下载文件夹。"}
-              </p>
-              {saveHint === null && (
-                <button
-                  type="button"
-                  onClick={onForceDownload}
-                  className="w-full text-[11px] text-gray-500 underline underline-offset-2 active:text-gray-700"
-                >
-                  没反应？点这里强制下载
-                </button>
+              {inWeChat ? (
+                /* 微信路径：等上传完，用真实 URL 喂 video，X5 才肯长按存 */
+                <>
+                  {serverUrl ? (
+                    <video
+                      src={serverUrl}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="w-full rounded-2xl border border-rose-100 bg-black aspect-[9/16] max-h-[60vh]"
+                    />
+                  ) : (
+                    <div className="w-full rounded-2xl border border-rose-100 bg-black aspect-[9/16] max-h-[60vh] flex flex-col items-center justify-center text-white/85 gap-2 px-4 text-center">
+                      {uploading ? (
+                        <>
+                          <Loader2 size={28} className="animate-spin text-rose-300" />
+                          <p className="text-sm font-semibold">视频上传中…</p>
+                          <p className="text-[11px] text-white/60">
+                            上传完成后才能长按保存到相册
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-semibold">{uploadError ?? "上传失败"}</p>
+                          <button
+                            type="button"
+                            onClick={retryUpload}
+                            className="mt-1 px-4 py-2 rounded-xl bg-white text-rose-600 text-xs font-bold active:scale-95 transition"
+                          >
+                            重试上传
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="rounded-xl bg-rose-50 border border-rose-100 px-3 py-3 text-[12px] text-rose-800 leading-relaxed">
+                    <p className="font-bold">在视频上长按 → 选「保存视频」</p>
+                    <p className="mt-1 text-rose-600">
+                      视频会直接存到手机相册，再到朋友圈相册里选这段视频发布。
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={restart}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold active:scale-95 transition"
+                    >
+                      <RotateCcw size={14} /> 重做
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <video
+                    src={videoUrl}
+                    controls
+                    playsInline
+                    className="w-full rounded-2xl border border-rose-100 bg-black aspect-[9/16] max-h-[60vh]"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={restart}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold active:scale-95 transition"
+                    >
+                      <RotateCcw size={14} /> 重做
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onSave}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white text-sm font-bold shadow active:scale-95 transition"
+                    >
+                      <Download size={14} /> 保存到相册
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    {saveHint === "sheet"
+                      ? "在弹出的菜单里选「保存视频」/「Save Video」即可存到相册。"
+                      : saveHint === "download"
+                      ? "已下载到「下载」目录，去相册里就能看到。"
+                      : "iPhone 会弹出系统菜单，里面选「保存视频」。Android 会直接存到下载文件夹。"}
+                  </p>
+                  {saveHint === null && (
+                    <button
+                      type="button"
+                      onClick={onForceDownload}
+                      className="w-full text-[11px] text-gray-500 underline underline-offset-2 active:text-gray-700"
+                    >
+                      没反应？点这里强制下载
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

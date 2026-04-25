@@ -16,9 +16,10 @@
 const VIDEO_W = 720;
 const VIDEO_H = 1280;
 const FPS = 30;
-const GAP_S = 0.45; // 用户录音和原版之间留白
+const GAP_S = 0.45; // 原版和用户录音之间的留白
 
 const BRAND = "@刚果金华人生活指南";
+const QR_SRC = "/mini-program-qr.png";
 
 export interface ComposeInput {
   word: string;
@@ -77,15 +78,17 @@ function fmtDateZh(d: string): string {
 
 /**
  * 一帧一帧绘制视频（按时间 t 秒计算应该高亮哪一段）。
- * subtitle: "你的发音" / "法语原版" / ""
+ * 顺序：原版法语 → 留白 → 用户发音
+ * subtitle: "法语原版" / "你的发音" / ""
  */
 function drawFrame(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
+  qr: HTMLImageElement | null,
   input: ComposeInput,
   t: number,
   totalT: number,
-  userDur: number,
+  origDur: number,
 ) {
   const W = VIDEO_W;
   const H = VIDEO_H;
@@ -145,10 +148,10 @@ function drawFrame(
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.fillText(`近似读音 · ${input.pron}`, W / 2, cardY + cardH + 215);
 
-  // 当前阶段提示（你的发音 / 法语原版）
-  const inUser = t < userDur;
-  const inGap = t >= userDur && t < userDur + GAP_S;
-  const stage = inGap ? "" : inUser ? "🎙  你的发音" : "🇫🇷  法语原版";
+  // 当前阶段提示（法语原版在前，你的发音在后）
+  const inOrig = t < origDur;
+  const inGap = t >= origDur && t < origDur + GAP_S;
+  const stage = inGap ? "" : inOrig ? "🇫🇷  法语原版" : "🎙  你的发音";
   if (stage) {
     const tagY = cardY + cardH + 285;
     ctx.font = "700 32px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
@@ -165,14 +168,26 @@ function drawFrame(
     ctx.fillText(text, W / 2, tagY);
   }
 
-  // 水印（朋友圈品牌）
-  ctx.font = "600 28px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  // 右下角水印：QR + 公众号 ID
+  const qrSize = 132;
+  const margin = 28;
+  const qrX = W - qrSize - margin;
+  const qrY = H - qrSize - margin - 38; // 给底下文字留位置
+  if (qr) {
+    // QR 底白卡（让绿/黑色 QR 不论背景都清晰）
+    ctx.fillStyle = "#fff";
+    roundRect(ctx, qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, 16);
+    ctx.fill();
+    ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
+  }
+  // 品牌文字：QR 正下方右对齐
+  ctx.font = "700 22px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.98)";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(BRAND, W - margin, H - margin - 4);
+  // 重置 textAlign 给下一帧
   ctx.textAlign = "center";
-  ctx.fillText(BRAND, W / 2, H - 60);
-  ctx.font = "500 20px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.7)";
-  ctx.fillText("悄悄学，惊艳所有人", W / 2, H - 30);
 }
 
 function roundRect(
@@ -207,7 +222,7 @@ export async function composeShareVideo(input: ComposeInput): Promise<ComposeRes
 
   const userDur = input.userAudio.duration;
   const origDur = input.originalAudio.duration;
-  const totalDur = userDur + GAP_S + origDur + 0.25; // 末尾留 0.25s 防截尾
+  const totalDur = origDur + GAP_S + userDur + 0.25; // 顺序：原版 → 留白 → 用户
 
   // canvas
   const canvas = document.createElement("canvas");
@@ -217,6 +232,13 @@ export async function composeShareVideo(input: ComposeInput): Promise<ComposeRes
   if (!ctx) throw new Error("canvas 不可用");
 
   const img = await loadImage(input.imageUrl);
+  // QR 失败不致命，没就不画
+  let qr: HTMLImageElement | null = null;
+  try {
+    qr = await loadImage(QR_SRC);
+  } catch {
+    qr = null;
+  }
 
   // AudioContext
   const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -254,13 +276,13 @@ export async function composeShareVideo(input: ComposeInput): Promise<ComposeRes
   };
 
   // 先画一帧，避免首帧空白
-  drawFrame(ctx, img, input, 0, totalDur, userDur);
+  drawFrame(ctx, img, qr, input, 0, totalDur, origDur);
 
   const startWall = performance.now();
   let raf = 0;
   const tick = () => {
     const t = (performance.now() - startWall) / 1000;
-    drawFrame(ctx, img, input, Math.min(t, totalDur), totalDur, userDur);
+    drawFrame(ctx, img, qr, input, Math.min(t, totalDur), totalDur, origDur);
     if (t < totalDur) {
       raf = requestAnimationFrame(tick);
     }
@@ -292,10 +314,10 @@ export async function composeShareVideo(input: ComposeInput): Promise<ComposeRes
     try {
       recorder.start(200);
       raf = requestAnimationFrame(tick);
-      // 安排音频
+      // 安排音频：原版在前，用户在后
       const now = ac.currentTime + 0.05;
-      userSrc.start(now);
-      origSrc.start(now + userDur + GAP_S);
+      origSrc.start(now);
+      userSrc.start(now + origDur + GAP_S);
       // 录到结束 + 微小缓冲
       window.setTimeout(() => {
         try { recorder.stop(); } catch { /* 已 stop */ }
@@ -336,6 +358,32 @@ export async function shareVideoFile(blob: Blob, filename: string, text: string)
   } catch {
     return false;
   }
+}
+
+/** 微信内置 X5 浏览器：禁 a[download]、文件 share、blob URL 长按保存。
+ *  解法：把视频上传到我们自己的 /api/upload（落 Turso，零 Blob 消耗），
+ *  再用 /api/media/{id}.mp4 真实 URL 喂给 <video>，X5 可长按"保存视频"。*/
+export function isWeChat(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /MicroMessenger/i.test(navigator.userAgent || "");
+}
+
+/** 上传视频 blob 到 /api/upload，返回带扩展名的可分享 URL */
+export async function uploadVideoToServer(blob: Blob): Promise<string> {
+  // 强制把 mime 主类型对齐到 mp4 / webm（X5 / 服务端只识别这俩）
+  const baseMime = (blob.type || "").split(";")[0] || "video/webm";
+  const finalBlob = new Blob([blob], { type: baseMime });
+  const ext = baseMime === "video/mp4" ? "mp4" : "webm";
+  const file = new File([finalBlob], `mot.${ext}`, { type: baseMime });
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("scope", "fwod-share");
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  if (!res.ok) throw new Error(`upload failed: HTTP ${res.status}`);
+  const data = (await res.json()) as { ok?: boolean; url?: string };
+  if (!data.ok || !data.url) throw new Error("upload response invalid");
+  // 给 URL 末尾补扩展名，X5 会把它当视频文件而不是未知资源
+  return `${data.url}.${ext}`;
 }
 
 function isIOS(): boolean {

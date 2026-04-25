@@ -16,7 +16,7 @@ import {
   Share2,
   MessageCircle,
   Link2,
-  Shuffle,
+  Compass,
 } from "lucide-react";
 
 import {
@@ -440,13 +440,23 @@ function HomeView({
   }, []);
 
   // 人工精选（b.featured）优先；没有时回落到全部真实商家（排除二手）。
-  // 默认：本人 approved 商家置顶（按 id desc），其它按 id desc。
-  // 洗牌：本人保持置顶，其它 Fisher-Yates 打乱。
+  // 默认（shuffleSeed === 0）：本人 approved 商家置顶（按 id desc），其它按 id desc。
+  // 探索（shuffleSeed > 0）：用户已经知道自己的商家了，把所有商家混在一起打乱，
+  //   不再让本人置顶——这就是"探索新商家"的意义。
   const featured = useMemo(() => {
     const explicit = allBusinesses.filter((b) => b.featured);
     const pool = explicit.length > 0
       ? explicit
       : allBusinesses.filter((b) => b.category !== "secondhand");
+
+    if (shuffleSeed > 0) {
+      const all = [...pool];
+      for (let i = all.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [all[i], all[j]] = [all[j], all[i]];
+      }
+      return all;
+    }
 
     const mine: Business[] = [];
     const rest: Business[] = [];
@@ -455,14 +465,7 @@ function HomeView({
       else rest.push(b);
     }
     mine.sort((a, b) => b.id - a.id);
-    if (shuffleSeed > 0) {
-      for (let i = rest.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [rest[i], rest[j]] = [rest[j], rest[i]];
-      }
-    } else {
-      rest.sort((a, b) => b.id - a.id);
-    }
+    rest.sort((a, b) => b.id - a.id);
     return [...mine, ...rest];
   }, [allBusinesses, mySubmissionIds, shuffleSeed]);
 
@@ -775,9 +778,9 @@ function FeaturedSwipeStack({
             onShuffle();
           }}
           className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 active:scale-95 transition"
-          aria-label="一键打乱热门商家"
+          aria-label="探索新商家"
         >
-          <Shuffle size={12} /> 一键打乱
+          <Compass size={12} /> 探索新商家
         </button>
       </div>
 
