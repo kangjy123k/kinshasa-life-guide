@@ -2,15 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, RotateCcw, Share2, Check, Copy } from "lucide-react";
+import { ArrowLeft, RotateCcw, ImageDown, Loader2, X } from "lucide-react";
 
 import {
   QUIZ_TITLE,
   QUIZ_TOTAL_SCORE,
+  type QuizTier,
   quizQuestions,
   tierForScore,
 } from "@/lib/quiz";
-import { getDeployVersion } from "@/lib/deploy-version";
 
 function shuffleIndices(n: number, seed: number): number[] {
   const arr = Array.from({ length: n }, (_, i) => i);
@@ -75,7 +75,7 @@ export default function QuizPage() {
   return (
     <main className="min-h-[100dvh] bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-16">
       <TopBar />
-      <Hero />
+      {!isResult && <Hero />}
 
       {!isResult && current && (
         <Question
@@ -229,10 +229,11 @@ function Result({
 }: {
   score: number;
   totalScore: number;
-  tier: ReturnType<typeof tierForScore>;
+  tier: QuizTier;
   onReset: () => void;
 }) {
   const [enter, setEnter] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   useEffect(() => {
     const t = window.setTimeout(() => setEnter(true), 16);
     return () => window.clearTimeout(t);
@@ -242,34 +243,46 @@ function Result({
 
   return (
     <section
-      className={`max-w-md mx-auto px-4 mt-6 transition-all duration-500 ease-out ${
+      className={`max-w-md mx-auto px-3 mt-4 transition-all duration-500 ease-out ${
         enter ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
       }`}
     >
-      <div
-        className={`rounded-3xl p-5 text-white shadow-xl bg-gradient-to-br ${tier.accent}`}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-4xl leading-none drop-shadow-sm">{tier.emoji}</span>
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold opacity-90">你的测评结果</p>
-            <h2 className="text-[22px] font-black leading-tight">{tier.title}</h2>
+      <div className="relative overflow-hidden rounded-3xl shadow-xl">
+        {/* tier 图作为背景 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={tier.image}
+          alt={tier.title}
+          className="w-full h-auto block select-none"
+          draggable={false}
+        />
+        {/* 顶部小标签 */}
+        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/80 backdrop-blur text-[11px] font-bold text-gray-800 shadow-sm">
+          你的测评结果
+        </div>
+        {/* 底部渐变 + 等级 + 分数 */}
+        <div className="absolute inset-x-0 bottom-0 pt-16 pb-4 px-4 bg-gradient-to-t from-black/85 via-black/55 to-transparent text-white">
+          <div className="flex items-end gap-2.5">
+            <span className="text-3xl leading-none drop-shadow">{tier.emoji}</span>
+            <h2 className="text-[26px] font-black leading-none drop-shadow tracking-wide">
+              {tier.title}
+            </h2>
+            <div className="ml-auto text-right leading-none">
+              <span className="text-[28px] font-black drop-shadow">{score}</span>
+              <span className="text-[12px] opacity-80"> / {totalScore}</span>
+            </div>
           </div>
-          <div className="ml-auto text-right">
-            <p className="text-[10px] opacity-80">得分</p>
-            <p className="text-[22px] font-black leading-none">{score}</p>
-            <p className="text-[10px] opacity-80">/ {totalScore}</p>
+          <div className="mt-2 h-1.5 bg-white/25 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-all duration-700"
+              style={{ width: enter ? `${pct}%` : "0%" }}
+            />
           </div>
         </div>
+      </div>
 
-        <div className="mt-3 h-2 bg-white/25 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-white rounded-full transition-all duration-700"
-            style={{ width: enter ? `${pct}%` : "0%" }}
-          />
-        </div>
-
-        <p className="mt-4 text-[13.5px] leading-relaxed opacity-95">
+      <div className="mt-4 px-1">
+        <p className="text-[14px] leading-relaxed text-gray-800">
           {tier.description}
         </p>
       </div>
@@ -282,7 +295,13 @@ function Result({
         >
           <RotateCcw size={14} /> 再测一次
         </button>
-        <ShareLinkButton tier={tier.title} score={score} totalScore={totalScore} />
+        <button
+          type="button"
+          onClick={() => setShareOpen(true)}
+          className="flex items-center justify-center gap-1.5 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[13px] font-bold active:scale-95 transition shadow-md"
+        >
+          <ImageDown size={14} /> 生成分享图
+        </button>
       </div>
 
       <Link
@@ -291,70 +310,262 @@ function Result({
       >
         返回首页继续逛
       </Link>
+
+      {shareOpen && (
+        <ShareCardSheet
+          tier={tier}
+          score={score}
+          totalScore={totalScore}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </section>
   );
 }
 
-function ShareLinkButton({
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+    img.src = src;
+  });
+}
+
+/** 文本换行 (CJK-friendly：按字符断行) */
+function wrapTextCJK(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const ch of Array.from(text)) {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = ch;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+async function buildShareCard(
+  tier: QuizTier,
+  score: number,
+  totalScore: number,
+): Promise<string> {
+  const W = 1080;
+  const H = 1620;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // 底色
+  ctx.fillStyle = "#fff7ed";
+  ctx.fillRect(0, 0, W, H);
+
+  // 等级背景图（top 0~1080 像 1:1 cover）
+  try {
+    const tierImg = await loadImage(tier.image);
+    const targetH = 1080;
+    // cover：保宽，按图片比例放高
+    const ratio = tierImg.width / tierImg.height;
+    let drawW = W;
+    let drawH = drawW / ratio;
+    if (drawH < targetH) {
+      drawH = targetH;
+      drawW = drawH * ratio;
+    }
+    const dx = (W - drawW) / 2;
+    const dy = 0;
+    ctx.drawImage(tierImg, dx, dy, drawW, drawH);
+  } catch {
+    // 图载失败：纯色降级
+    ctx.fillStyle = "#fde68a";
+    ctx.fillRect(0, 0, W, 1080);
+  }
+
+  // 顶部「测评结果」胶囊
+  const tagText = "测测你是否适合在刚果金工作";
+  ctx.font = "600 30px 'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
+  const tagW = ctx.measureText(tagText).width + 48;
+  const tagH = 56;
+  const tagX = (W - tagW) / 2;
+  const tagY = 36;
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  roundRect(ctx, tagX, tagY, tagW, tagH, 28);
+  ctx.fill();
+  ctx.fillStyle = "#1f2937";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(tagText, W / 2, tagY + tagH / 2 + 1);
+
+  // 等级 + 分数浮层（在 1080 图底部）
+  const overlayH = 240;
+  const overlayY = 1080 - overlayH;
+  const grad = ctx.createLinearGradient(0, overlayY, 0, 1080);
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(1, "rgba(0,0,0,0.85)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, overlayY, W, overlayH);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 96px 'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
+  ctx.fillText(`${tier.emoji} ${tier.title}`, 60, 1010);
+
+  ctx.textAlign = "right";
+  ctx.font = "900 88px 'PingFang SC','Hiragino Sans GB',sans-serif";
+  ctx.fillText(`${score}`, W - 60, 1010);
+  ctx.font = "600 32px 'PingFang SC',sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  const scoreLabelW = ctx.measureText(`/ ${totalScore}`).width;
+  ctx.fillText(`/ ${totalScore}`, W - 60, 1050);
+  // 把 / total 放在分数右下角
+  void scoreLabelW;
+
+  // 描述区（白底）1080~1380
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 1080, W, 540);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#1f2937";
+  ctx.font = "500 36px 'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
+  const descLines = wrapTextCJK(ctx, tier.description, W - 120);
+  let y = 1120;
+  for (const line of descLines.slice(0, 6)) {
+    ctx.fillText(line, 60, y);
+    y += 56;
+  }
+
+  // 底部 caption + 二维码
+  const footerY = 1410;
+  // 二维码
+  try {
+    const qr = await loadImage("/images/quiz/qr.png");
+    const qrSize = 180;
+    ctx.drawImage(qr, W - qrSize - 60, footerY, qrSize, qrSize);
+  } catch {
+    /* ignore */
+  }
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#9a3412";
+  ctx.font = "900 44px 'PingFang SC','Hiragino Sans GB',sans-serif";
+  ctx.fillText("@刚果金华人生活指南", 60, footerY + 70);
+
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "500 26px 'PingFang SC',sans-serif";
+  ctx.fillText("扫码进入小程序 · 商家免费入驻", 60, footerY + 130);
+
+  return canvas.toDataURL("image/png");
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+function ShareCardSheet({
   tier,
   score,
   totalScore,
+  onClose,
 }: {
-  tier: string;
+  tier: QuizTier;
   score: number;
   totalScore: number;
+  onClose: () => void;
 }) {
-  const [state, setState] = useState<"idle" | "done">("idle");
-  const lastClick = useRef(0);
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [closing, setClosing] = useState(false);
 
-  const onClick = async () => {
-    const now = Date.now();
-    if (now - lastClick.current < 600) return;
-    lastClick.current = now;
-    if (typeof window === "undefined") return;
-    const url = new URL("/quiz", window.location.origin);
-    const v = await getDeployVersion();
-    if (v) url.searchParams.set("v", v);
-    const text = `我的"是否适合在刚果金工作"测评结果：${tier} (${score}/${totalScore})。来测测你属于哪一档 → ${url.toString()}`;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-      setState("done");
-      window.setTimeout(() => setState("idle"), 1800);
-    } catch {
-      /* 静默失败 */
-    }
+  useEffect(() => {
+    let cancelled = false;
+    buildShareCard(tier, score, totalScore)
+      .then((url) => {
+        if (!cancelled) setDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tier, score, totalScore]);
+
+  const handleClose = () => {
+    setClosing((c) => {
+      if (c) return c;
+      window.setTimeout(onClose, 240);
+      return true;
+    });
   };
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-full text-[13px] font-bold active:scale-95 transition ${
-        state === "done"
-          ? "bg-emerald-500 text-white"
-          : "bg-gray-900 text-white"
+    <div
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 transition-opacity duration-300 ease-out ${
+        closing ? "opacity-0" : "opacity-100"
       }`}
     >
-      {state === "done" ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleClose();
+        }}
+        aria-label="关闭"
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center backdrop-blur"
+      >
+        <X size={18} />
+      </button>
+
+      {dataUrl ? (
         <>
-          <Check size={14} /> 已复制，去粘贴
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={dataUrl}
+            alt={`${tier.title} - 测评结果`}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[78vh] max-w-full w-auto rounded-xl shadow-2xl"
+            draggable={false}
+          />
+          <p className="mt-3 text-white text-sm font-medium px-4 text-center leading-relaxed">
+            长按图片 → 保存到相册 / 分享给朋友
+          </p>
         </>
+      ) : error ? (
+        <div className="text-white text-sm">图片生成失败，请重试</div>
       ) : (
-        <>
-          <Share2 size={14} /> 分享给朋友
-        </>
+        <div className="flex flex-col items-center gap-3 text-white">
+          <Loader2 size={28} className="animate-spin" />
+          <p className="text-sm">正在生成你的测评卡…</p>
+        </div>
       )}
-    </button>
+    </div>
   );
 }

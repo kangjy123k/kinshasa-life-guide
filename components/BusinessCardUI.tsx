@@ -127,10 +127,12 @@ export function BusinessCard({
               </p>
             )}
           </div>
-          <SpeakButton
-            text={`Je veux aller à cette adresse, ${biz.address || biz.area}`}
-            cacheKey={`biz-${biz.id}-addr`}
-          />
+          {biz.category !== "secondhand" && (
+            <SpeakButton
+              text={`Je veux aller à cette adresse, ${biz.address || biz.area}`}
+              cacheKey={`biz-${biz.id}-addr`}
+            />
+          )}
         </div>
 
         {biz.merchantType === "individual" && summarizeAvailability(biz.availability) && (

@@ -16,6 +16,8 @@ export interface QuizTier {
   emoji: string;
   description: string;
   accent: string;
+  /** 结果页 + 分享卡背景图 */
+  image: string;
 }
 
 export const quizQuestions: QuizQuestion[] = [
@@ -120,6 +122,7 @@ export const quizTiers: QuizTier[] = [
     description:
       "你更适合旅游、考察、短期出差。刚果金可以来看看，但不建议长期扎根。这里不是普通副本，别把自己空投进雨林。",
     accent: "from-sky-400 to-cyan-500",
+    image: "/images/quiz/tier-pilot.webp",
   },
   {
     minScore: 6,
@@ -129,6 +132,7 @@ export const quizTiers: QuizTier[] = [
     description:
       "你有一定适应力，但还需要在非洲其他条件更好的国家先待一段时间，适应一下社会发展程度较落后的感觉，之后再丝滑切入刚果金。",
     accent: "from-emerald-400 to-teal-500",
+    image: "/images/quiz/tier-hunter.webp",
   },
   {
     minScore: 11,
@@ -138,6 +142,7 @@ export const quizTiers: QuizTier[] = [
     description:
       "你具备较强的适应力、判断力和抗压能力。在刚果金，你有机会找到自己的位置，把收入翻番。",
     accent: "from-amber-400 to-orange-500",
+    image: "/images/quiz/tier-veteran.webp",
   },
   {
     minScore: 16,
@@ -147,6 +152,7 @@ export const quizTiers: QuizTier[] = [
     description:
       "你很适合这种高机会、高不确定性的环境。你不仅能生存，还可能建立资源网络、带队做事，闯出一片地盘。刚果金就是你命中注定要来的地方，你会在这里做出一番巨大的成就。",
     accent: "from-rose-500 to-fuchsia-600",
+    image: "/images/quiz/tier-chief.webp",
   },
 ];
 

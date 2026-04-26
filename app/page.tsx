@@ -38,6 +38,7 @@ import {
   SpeakButton,
   WhatsAppChip,
 } from "@/components/BusinessCardUI";
+import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
 import { homeUsefulItems } from "@/lib/useful-items";
 import { FrenchWordDot } from "@/components/FrenchWordDot";
 import { ProtectedImg } from "@/components/ProtectedImg";
@@ -62,21 +63,25 @@ interface AdSlide {
   href?: string;
   /** 商家 submissionId —— 命中 approvedExtras 后跳详情页 */
   bizSubmissionId?: string;
+  /** 直接打开发布表单 */
+  formKey?: FormKey;
   /** 无障碍标签 */
   ariaLabel?: string;
 }
 
 const ads: AdSlide[] = [
   {
+    image: "/images/sponsor-v2.webp",
+    plainImage: true,
+    imageBg: "#fd645a", // 与图片边缘红珊瑚色一致，避免 contain 模式下出现可见留白
+    formKey: "merchant",
+    ariaLabel: "立即发布商家入驻申请",
+  },
+  {
     image: "/images/quiz-hero.webp",
     plainImage: true,
     href: "/quiz",
     ariaLabel: "测测你是否适合在刚果金工作",
-  },
-  {
-    image: "/images/sponsor-v2.webp",
-    plainImage: true,
-    imageBg: "#fd645a", // 与图片边缘红珊瑚色一致，避免 contain 模式下出现可见留白
   },
   {
     image: "/images/concrete-plant-v2.webp",
@@ -103,6 +108,7 @@ export default function GuidePage() {
   const [approvedExtras, setApprovedExtras] = useState<Business[]>([]);
   const [detailBizId, setDetailBizId] = useState<number | null>(null);
   const [pendingBizSubmissionId, setPendingBizSubmissionId] = useState<string | null>(null);
+  const [adFormKey, setAdFormKey] = useState<FormKey | null>(null);
   const [posterOpen, setPosterOpen] = useState(false);
 
   // 首次访问显示语音播报海报，3 秒后消失；同一浏览器 48h 内只弹一次
@@ -289,6 +295,10 @@ export default function GuidePage() {
   }, [approvedExtras, pendingBizSubmissionId]);
 
   const onAdClick = (slide: AdSlide) => {
+    if (slide.formKey) {
+      setAdFormKey(slide.formKey);
+      return;
+    }
     if (slide.href) {
       router.push(slide.href);
       return;
@@ -359,6 +369,10 @@ export default function GuidePage() {
       {view === "home" && <ShareFab />}
 
       {posterOpen && <PosterPopup onClose={() => setPosterOpen(false)} />}
+
+      {adFormKey && (
+        <SubmissionModal formKey={adFormKey} onClose={() => setAdFormKey(null)} />
+      )}
     </div>
   );
 }
@@ -1290,17 +1304,19 @@ function BusinessDetailView({
               <p className="text-xs text-gray-500 mt-0.5">{biz.englishName}</p>
             )}
 
-            <button
-              onClick={onFocusMap}
-              className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 bg-red-400 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors"
-            >
-              <MapPin size={16} /> 在地图上查看
-            </button>
+            {biz.category !== "secondhand" && (
+              <button
+                onClick={onFocusMap}
+                className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 bg-red-400 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                <MapPin size={16} /> 在地图上查看
+              </button>
+            )}
 
             <button
               type="button"
               onClick={() => setBizShareOpen(true)}
-              className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 active:opacity-85 text-white text-sm font-semibold rounded-xl"
+              className={`${biz.category === "secondhand" ? "mt-4" : "mt-2"} w-full flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 active:opacity-85 text-white text-sm font-semibold rounded-xl`}
             >
               <Share2 size={15} /> 分享到微信
             </button>
@@ -1311,10 +1327,12 @@ function BusinessDetailView({
                   label="具体地址"
                   value={biz.address}
                   action={
-                    <SpeakButton
-                      text={`Je veux aller à cette adresse, ${biz.address}`}
-                      cacheKey={`biz-${biz.id}-addr`}
-                    />
+                    biz.category !== "secondhand" ? (
+                      <SpeakButton
+                        text={`Je veux aller à cette adresse, ${biz.address}`}
+                        cacheKey={`biz-${biz.id}-addr`}
+                      />
+                    ) : undefined
                   }
                 />
               )}
