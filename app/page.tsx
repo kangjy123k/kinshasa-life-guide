@@ -58,9 +58,21 @@ interface AdSlide {
   adTag?: boolean;    // 右上角"广告"角标
   plainImage?: boolean; // 纯图片（不加文字/蒙层/emoji，整张居中显示）
   imageBg?: string;    // plainImage 时的底色
+  /** 同站路由（如 "/quiz"）—— router.push 跳转 */
+  href?: string;
+  /** 商家 submissionId —— 命中 approvedExtras 后跳详情页 */
+  bizSubmissionId?: string;
+  /** 无障碍标签 */
+  ariaLabel?: string;
 }
 
 const ads: AdSlide[] = [
+  {
+    image: "/images/quiz-hero.webp",
+    plainImage: true,
+    href: "/quiz",
+    ariaLabel: "测测你是否适合在刚果金工作",
+  },
   {
     image: "/images/sponsor-v2.webp",
     plainImage: true,
@@ -70,6 +82,8 @@ const ads: AdSlide[] = [
     image: "/images/concrete-plant-v2.webp",
     plainImage: true,
     adTag: true,
+    bizSubmissionId: "1776975944189-0d4c5b", // 中国城搅拌站
+    ariaLabel: "中国城搅拌站",
   },
 ];
 
@@ -79,6 +93,7 @@ const ads: AdSlide[] = [
 type View = "home" | "category" | "business";
 
 export default function GuidePage() {
+  const router = useRouter();
   const [view, setView] = useState<View>("home");
   const [activeCategory, setActiveCategory] = useState<string>("restaurant");
   const [activeSub, setActiveSub] = useState<string>("全部");
@@ -87,6 +102,7 @@ export default function GuidePage() {
   const [adIndex, setAdIndex] = useState(0);
   const [approvedExtras, setApprovedExtras] = useState<Business[]>([]);
   const [detailBizId, setDetailBizId] = useState<number | null>(null);
+  const [pendingBizSubmissionId, setPendingBizSubmissionId] = useState<string | null>(null);
   const [posterOpen, setPosterOpen] = useState(false);
 
   // 首次访问显示语音播报海报，3 秒后消失；同一浏览器 48h 内只弹一次
@@ -132,6 +148,8 @@ export default function GuidePage() {
         setView("business");
         return;
       }
+      // 非数字 → 当作 submissionId，等 approvedExtras 加载完后再跳
+      setPendingBizSubmissionId(rawBiz);
     }
     if (rawCat && categories.some((c) => c.key === rawCat)) {
       // /?cat=xx 进入：在 home 之上再压一层 category
@@ -260,6 +278,32 @@ export default function GuidePage() {
     setView("business");
   };
 
+  // approvedExtras 加载完后，把待跳转的 submissionId 解析为 id 并打开详情页
+  useEffect(() => {
+    if (!pendingBizSubmissionId) return;
+    const biz = approvedExtras.find((b) => b.submissionId === pendingBizSubmissionId);
+    if (biz) {
+      setPendingBizSubmissionId(null);
+      openBusiness(biz.id);
+    }
+  }, [approvedExtras, pendingBizSubmissionId]);
+
+  const onAdClick = (slide: AdSlide) => {
+    if (slide.href) {
+      router.push(slide.href);
+      return;
+    }
+    if (slide.bizSubmissionId) {
+      const biz = allBusinesses.find((b) => b.submissionId === slide.bizSubmissionId);
+      if (biz) {
+        openBusiness(biz.id);
+        return;
+      }
+      // 还没拉到，硬跳带参数让 mount-time effect 处理
+      window.location.assign(`/?biz=${encodeURIComponent(slide.bizSubmissionId)}`);
+    }
+  };
+
   const goBack = () => {
     if (typeof window !== "undefined") window.history.back();
     else setView("home");
@@ -285,6 +329,7 @@ export default function GuidePage() {
           adIndex={adIndex}
           setAdIndex={setAdIndex}
           onOpenBusiness={openBusiness}
+          onAdClick={onAdClick}
         />
       )}
       {view === "category" && (
@@ -409,12 +454,14 @@ function HomeView({
   adIndex,
   setAdIndex,
   onOpenBusiness,
+  onAdClick,
 }: {
   businesses: Business[];
   onOpenCategory: (k: string) => void;
   adIndex: number;
   setAdIndex: (n: number) => void;
   onOpenBusiness: (id: number) => void;
+  onAdClick: (slide: AdSlide) => void;
 }) {
   const router = useRouter();
   const [mySubmissionIds, setMySubmissionIds] = useState<Set<string>>(new Set());
@@ -524,7 +571,7 @@ function HomeView({
 
       {/* ---- 轮播广告 ---- */}
       <section className="max-w-4xl mx-auto px-4 -mt-4 relative z-10">
-        <Carousel index={adIndex} onChange={setAdIndex} />
+        <Carousel index={adIndex} onChange={setAdIndex} onSlideClick={onAdClick} />
       </section>
 
       {/* ---- 我要找…… + 小搜索 ---- */}
@@ -594,27 +641,6 @@ function HomeView({
 
           </div>
         </div>
-      </section>
-
-      {/* ---- 人格测试入口 ---- */}
-      <section className="max-w-4xl mx-auto px-4 mt-5">
-        <Link
-          href="/quiz"
-          className="group block relative overflow-hidden rounded-2xl shadow-md active:scale-[0.99] transition-transform"
-          aria-label="测测你是否适合在刚果金工作"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/quiz-hero.webp"
-            alt="测测你是否适合在刚果金工作"
-            className="w-full h-auto block select-none"
-            draggable={false}
-          />
-          <span className="pointer-events-none absolute inset-0 ring-1 ring-black/5 rounded-2xl" />
-          <span className="pointer-events-none absolute right-2.5 bottom-2 px-2.5 py-1 rounded-full bg-white/90 text-orange-600 text-[11px] font-bold shadow-sm group-active:scale-95 transition">
-            ▶ 开始测试
-          </span>
-        </Link>
       </section>
 
       {/* ---- 实用信息 ---- */}
@@ -842,8 +868,17 @@ function FeaturedSwipeStack({
 /* ------------------------------------------------------------------ */
 /*  Carousel                                                           */
 /* ------------------------------------------------------------------ */
-function Carousel({ index, onChange }: { index: number; onChange: (n: number) => void }) {
+function Carousel({
+  index,
+  onChange,
+  onSlideClick,
+}: {
+  index: number;
+  onChange: (n: number) => void;
+  onSlideClick?: (slide: AdSlide) => void;
+}) {
   const slide = ads[index];
+  const clickable = !!(slide.href || slide.bizSubmissionId);
 
   // 首次挂载时预取带图片的广告，避免第一次切到时文字先出、图片后出的错位感
   useEffect(() => {
@@ -877,7 +912,23 @@ function Carousel({ index, onChange }: { index: number; onChange: (n: number) =>
   return (
     <div>
     <div
-      className={`relative rounded-2xl overflow-hidden shadow-lg aspect-[10/3] ${bgGradient}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => onSlideClick?.(slide) : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSlideClick?.(slide);
+              }
+            }
+          : undefined
+      }
+      aria-label={slide.ariaLabel}
+      className={`relative rounded-2xl overflow-hidden shadow-lg aspect-[10/3] ${bgGradient} ${
+        clickable ? "cursor-pointer active:scale-[0.99] transition-transform" : ""
+      }`}
       style={plain && slide.imageBg ? { background: slide.imageBg } : undefined}
     >
       {/* 切换时整块内容一起淡入，图/字同步出现 */}
