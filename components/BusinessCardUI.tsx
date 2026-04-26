@@ -16,6 +16,7 @@ import { type Business, categories } from "@/lib/businesses";
 import { ProtectedImg } from "@/components/ProtectedImg";
 
 const NEW_UPDATE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+const AVAILABILITY_FRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
 function hasFreshUpdate(biz: Business): boolean {
   if (!biz.updates || biz.updates.length === 0) return false;
@@ -24,6 +25,31 @@ function hasFreshUpdate(biz: Business): boolean {
   const t = Date.parse(latestAt);
   if (!Number.isFinite(t)) return false;
   return Date.now() - t <= NEW_UPDATE_WINDOW_MS;
+}
+
+function hasFreshAvailability(biz: Business): boolean {
+  if (!biz.availabilityUpdatedAt) return false;
+  const t = Date.parse(biz.availabilityUpdatedAt);
+  if (!Number.isFinite(t)) return false;
+  return Date.now() - t <= AVAILABILITY_FRESH_MS;
+}
+
+function summarizeAvailability(dates: string[] | undefined): string | null {
+  if (!dates || dates.length === 0) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const horizon = today.getTime() + 90 * 24 * 3600 * 1000;
+  const future = dates
+    .map((d) => Date.parse(d + "T00:00:00"))
+    .filter((t) => Number.isFinite(t) && t >= today.getTime() && t <= horizon)
+    .sort((a, b) => a - b);
+  if (future.length === 0) return null;
+  const fmt = (t: number) => {
+    const d = new Date(t);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+  const head = future.slice(0, 3).map(fmt).join(" · ");
+  return future.length > 3 ? `${head} · 共 ${future.length} 天` : head;
 }
 
 export function BusinessCard({
@@ -65,10 +91,30 @@ export function BusinessCard({
             ✨ 新动态
           </span>
         )}
-        <span className="absolute top-3 right-3 px-2.5 py-1 bg-sky-500 text-white text-xs font-semibold rounded-full shadow">
-          {cat?.label}
-          {biz.subcategory ? ` · ${biz.subcategory}` : ""}
-        </span>
+        {biz.merchantType === "individual" && hasFreshAvailability(biz) && (
+          <span
+            className="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10.5px] font-black rounded-full shadow-lg animate-pulse"
+            aria-label="档期更新"
+          >
+            🗓️ 档期更新
+          </span>
+        )}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {biz.merchantType === "individual" && (
+            <span className="px-2 py-1 bg-amber-500 text-white text-[10.5px] font-bold rounded-full shadow">
+              个人型
+            </span>
+          )}
+          {biz.merchantType === "company" && (
+            <span className="px-2 py-1 bg-indigo-500 text-white text-[10.5px] font-bold rounded-full shadow">
+              公司型
+            </span>
+          )}
+          <span className="px-2.5 py-1 bg-sky-500 text-white text-xs font-semibold rounded-full shadow">
+            {cat?.label}
+            {biz.subcategory ? ` · ${biz.subcategory}` : ""}
+          </span>
+        </div>
       </div>
 
       <div className="p-4">
@@ -86,6 +132,13 @@ export function BusinessCard({
             cacheKey={`biz-${biz.id}-addr`}
           />
         </div>
+
+        {biz.merchantType === "individual" && summarizeAvailability(biz.availability) && (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11.5px] font-semibold">
+            <span>🗓️ 最近档期</span>
+            <span className="text-amber-900">{summarizeAvailability(biz.availability)}</span>
+          </div>
+        )}
 
         <div className="mt-3 space-y-2">
           {biz.address && (

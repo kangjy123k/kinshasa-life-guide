@@ -20,9 +20,12 @@ export interface BusinessUpdate {
   images?: string[];
 }
 
+export type MerchantType = "company" | "individual";
+
 export interface Business {
   id: number;
   submissionId?: string; // 对应 user_submission.id (仅用户提交的商家有)
+  merchantType?: MerchantType; // 老数据无该字段时默认按 company 处理
   name: string;
   englishName?: string;
   contactPerson: string;
@@ -37,6 +40,10 @@ export interface Business {
   image: string;
   gallery?: string[];
   updates?: BusinessUpdate[];
+  /** 个人型商家档期 — ISO date 字符串数组（YYYY-MM-DD），仅未来 90 天 */
+  availability?: string[];
+  /** 档期最近一次更新时间 — ISO timestamp */
+  availabilityUpdatedAt?: string;
   category: string;
   subcategory?: string;
   featured?: boolean;
@@ -625,9 +632,32 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
     const coord = hasPicked
       ? ([pickedLat, pickedLng] as [number, number])
       : AREA_COORDS[area];
+    const merchantTypeRaw = get("merchantType");
+    const merchantType: MerchantType =
+      merchantTypeRaw === "个人型" || merchantTypeRaw === "individual"
+        ? "individual"
+        : "company";
+    // 档期字段：DB 里以"\n"分隔的 ISO date 字符串
+    const availabilityRaw = get("availabilityDates");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const horizon = today.getTime() + 90 * 24 * 3600 * 1000;
+    const availability = availabilityRaw
+      ? availabilityRaw
+          .split(/[\r\n,]+/)
+          .map((u) => u.trim())
+          .filter((u) => /^\d{4}-\d{2}-\d{2}$/.test(u))
+          .filter((d) => {
+            const t = Date.parse(d + "T00:00:00");
+            return Number.isFinite(t) && t >= today.getTime() && t <= horizon;
+          })
+          .sort()
+      : [];
+    const availabilityUpdatedAt = get("availabilityUpdatedAt") || undefined;
     return {
       id: baseId,
       submissionId: s.id,
+      merchantType,
       name,
       englishName: nameIntl || undefined,
       contactPerson: get("contactPerson"),
@@ -640,6 +670,8 @@ export function submissionToBusiness(s: RawSubmission, idx: number): Business | 
       image: isValidImg(cover) ? cover : DEFAULT_IMG[cat.key] ?? DEFAULT_IMG.business,
       gallery: gallery.length ? gallery : undefined,
       updates: updates.length ? updates : undefined,
+      ...(availability.length ? { availability } : {}),
+      ...(availabilityUpdatedAt ? { availabilityUpdatedAt } : {}),
       category: cat.key,
       subcategory: get("subcategory") || undefined,
       ...(coord ? { lat: coord[0], lng: coord[1] } : {}),

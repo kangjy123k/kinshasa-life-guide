@@ -8,6 +8,7 @@ import { X, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { categories, KINSHASA_COMMUNES } from "@/lib/businesses";
 import { getOwnerToken, setOwnerToken } from "@/lib/owner-token-client";
 import { SingleImageUploader, MultiImageUploader } from "@/components/ImageUploader";
+import { AvailabilityPicker } from "@/components/AvailabilityPicker";
 
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
   ssr: false,
@@ -28,7 +29,8 @@ type FieldType =
   | "contact-group"
   | "image"
   | "gallery"
-  | "location-picker";
+  | "location-picker"
+  | "availability";
 
 interface FormField {
   name: string;
@@ -39,6 +41,14 @@ interface FormField {
   options?: string[];
   helpText?: string;
   conditional?: { field: string; equals: string };
+}
+
+interface FormDef {
+  title: string;
+  fields: FormField[];
+  /** variant 模式：顶部强制渲染一个 radio，下面字段按选中值切换 */
+  variantSelector?: { name: string; label: string; options: string[] };
+  variants?: Record<string, FormField[]>;
 }
 
 export type FormKey =
@@ -55,7 +65,134 @@ const todayISO = () => {
   return `${y}-${m}-${day}`;
 };
 
-export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
+const merchantCommonStorefrontFields: FormField[] = [
+  {
+    name: "hasStore",
+    label: "是否有门店",
+    type: "select",
+    required: true,
+    options: ["有", "无"],
+  },
+  {
+    name: "storeAddress",
+    label: "具体地址（法语）",
+    type: "text",
+    required: true,
+    placeholder: "网站自动语音播报，方便客人告诉司机",
+    conditional: { field: "hasStore", equals: "有" },
+  },
+  {
+    name: "storeLocation",
+    label: "地图定位",
+    type: "location-picker",
+    required: true,
+    helpText: "在地图上点一下放大头钉，客人能在商家地图里看到这个点",
+    conditional: { field: "hasStore", equals: "有" },
+  },
+];
+
+const merchantCompanyFields: FormField[] = [
+  { name: "nameZh", label: "商家中文名称", type: "text", required: true },
+  { name: "nameIntl", label: "商家外文名称", type: "text" },
+  { name: "contactPerson", label: "联系人称呼", type: "text", required: true },
+  { name: "phone", label: "联系人电话/WhatsApp", type: "text", required: true },
+  { name: "wechat", label: "联系人微信号", type: "text" },
+  {
+    name: "category",
+    label: "所属分类",
+    type: "select",
+    required: true,
+    options: categories.map((c) => c.label),
+  },
+  { name: "subcategory", label: "子分类（可多选）", type: "subcategory", required: true },
+  ...merchantCommonStorefrontFields,
+  {
+    name: "area",
+    label: "所在区域（金沙萨）",
+    type: "select",
+    required: true,
+    options: KINSHASA_COMMUNES,
+  },
+  {
+    name: "mainService",
+    label: "主营产品或服务介绍",
+    type: "textarea",
+    required: true,
+    placeholder: "前 60 个字符将显示在商家卡片页上",
+  },
+  {
+    name: "coverImageUrl",
+    label: "页面首图（可选）",
+    type: "image",
+    helpText: "点击从手机相册选择；自动压缩。显示在商家卡片和详情页顶部，建议选横图。",
+  },
+  {
+    name: "galleryUrls",
+    label: "相册（可选 · 最多 12 张）",
+    type: "gallery",
+    helpText: "从手机相册多选，展示门店 / 产品 / 服务现场照。在详情页以九宫格展示。",
+  },
+  {
+    name: "latestUpdateText",
+    label: "最新动态（可选）",
+    type: "textarea",
+    placeholder: "新品到货 / 限时折扣 / 营业时间变更…审核通过后可随时在「我的发布」里再次编辑。",
+  },
+  {
+    name: "latestUpdateImages",
+    label: "最新动态配图（可选 · 最多 6 张）",
+    type: "gallery",
+    helpText: "从手机相册选择，用于展示最新产品或打折活动。",
+  },
+];
+
+const merchantIndividualFields: FormField[] = [
+  { name: "nameZh", label: "商家名称", type: "text", required: true },
+  { name: "phone", label: "电话/WhatsApp", type: "text", required: true },
+  { name: "wechat", label: "微信号", type: "text" },
+  {
+    name: "category",
+    label: "所属分类",
+    type: "select",
+    required: true,
+    options: categories.map((c) => c.label),
+  },
+  { name: "subcategory", label: "子分类（可多选）", type: "subcategory", required: true },
+  {
+    name: "mainService",
+    label: "主营业务描述",
+    type: "textarea",
+    required: true,
+    placeholder: "前 60 个字符将显示在商家卡片页上",
+  },
+  {
+    name: "area",
+    label: "所在区域（金沙萨）",
+    type: "select",
+    required: true,
+    options: KINSHASA_COMMUNES,
+  },
+  {
+    name: "coverImageUrl",
+    label: "页面首图（可选）",
+    type: "image",
+    helpText: "点击从手机相册选择；自动压缩。显示在商家卡片和详情页顶部，建议选横图。",
+  },
+  {
+    name: "galleryUrls",
+    label: "相册（可选 · 最多 12 张）",
+    type: "gallery",
+    helpText: "从手机相册多选；个人展示工作现场或作品照。",
+  },
+  {
+    name: "availabilityDates",
+    label: "最近档期（未来 90 天）",
+    type: "availability",
+    helpText: "点选你能接活的日期；客人会优先看到档期更新过的商家。可以随时在「我的发布」里再点。",
+  },
+];
+
+export const FORMS: Record<FormKey, FormDef> = {
   purchase: {
     title: "求购信息发布",
     fields: [
@@ -96,82 +233,16 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
   },
   merchant: {
     title: "商家入驻申请",
-    fields: [
-      { name: "nameZh", label: "商家中文名称", type: "text", required: true },
-      { name: "nameIntl", label: "商家外文名称", type: "text" },
-      { name: "contactPerson", label: "联系人称呼", type: "text", required: true },
-      { name: "phone", label: "联系人电话/WhatsApp", type: "text", required: true },
-      { name: "wechat", label: "联系人微信号", type: "text" },
-      {
-        name: "category",
-        label: "所属分类",
-        type: "select",
-        required: true,
-        options: categories.map((c) => c.label),
-      },
-      { name: "subcategory", label: "子分类（可多选）", type: "subcategory", required: true },
-      {
-        name: "hasStore",
-        label: "是否有门店",
-        type: "select",
-        required: true,
-        options: ["有", "无"],
-      },
-      {
-        name: "storeAddress",
-        label: "具体地址（法语）",
-        type: "text",
-        required: true,
-        placeholder: "网站自动语音播报，方便客人告诉司机",
-        conditional: { field: "hasStore", equals: "有" },
-      },
-      {
-        name: "storeLocation",
-        label: "地图定位",
-        type: "location-picker",
-        required: true,
-        helpText: "在地图上点一下放大头钉，客人能在商家地图里看到这个点",
-        conditional: { field: "hasStore", equals: "有" },
-      },
-      {
-        name: "area",
-        label: "所在区域（金沙萨）",
-        type: "select",
-        required: true,
-        options: KINSHASA_COMMUNES,
-      },
-      {
-        name: "mainService",
-        label: "主营产品或服务介绍",
-        type: "textarea",
-        required: true,
-        placeholder: "前 60 个字符将显示在商家卡片页上",
-      },
-      {
-        name: "coverImageUrl",
-        label: "页面首图（可选）",
-        type: "image",
-        helpText: "点击从手机相册选择；自动压缩。显示在商家卡片和详情页顶部，建议选横图。",
-      },
-      {
-        name: "galleryUrls",
-        label: "相册（可选 · 最多 12 张）",
-        type: "gallery",
-        helpText: "从手机相册多选，展示门店 / 产品 / 服务现场照。在详情页以九宫格展示。",
-      },
-      {
-        name: "latestUpdateText",
-        label: "最新动态（可选）",
-        type: "textarea",
-        placeholder: "新品到货 / 限时折扣 / 营业时间变更…审核通过后可随时在「我的发布」里再次编辑。",
-      },
-      {
-        name: "latestUpdateImages",
-        label: "最新动态配图（可选 · 最多 6 张）",
-        type: "gallery",
-        helpText: "从手机相册选择，用于展示最新产品或打折活动。",
-      },
-    ],
+    fields: [],
+    variantSelector: {
+      name: "merchantType",
+      label: "商家类型",
+      options: ["公司型", "个人型"],
+    },
+    variants: {
+      "公司型": merchantCompanyFields,
+      "个人型": merchantIndividualFields,
+    },
   },
   secondhand: {
     title: "二手物品发布",
@@ -237,6 +308,32 @@ export const FORMS: Record<FormKey, { title: string; fields: FormField[] }> = {
   },
 };
 
+function variantSelectorAsField(def: FormDef): FormField | null {
+  if (!def.variantSelector) return null;
+  return {
+    name: def.variantSelector.name,
+    label: def.variantSelector.label,
+    type: "radio",
+    required: true,
+    options: def.variantSelector.options,
+  };
+}
+
+function getActiveFields(def: FormDef, values: Record<string, string>): FormField[] {
+  if (!def.variantSelector || !def.variants) return def.fields;
+  const sel = variantSelectorAsField(def)!;
+  const picked = values[def.variantSelector.name];
+  const vfields = (picked && def.variants[picked]) || [];
+  return [sel, ...vfields, ...def.fields];
+}
+
+function getAllPossibleFields(def: FormDef): FormField[] {
+  if (!def.variantSelector || !def.variants) return def.fields;
+  const sel = variantSelectorAsField(def)!;
+  const all = Object.values(def.variants).flat();
+  return [sel, ...all, ...def.fields];
+}
+
 export function SubmissionModal({
   formKey,
   onClose,
@@ -257,11 +354,16 @@ export function SubmissionModal({
   const def = FORMS[formKey];
   const [values, setValues] = useState<Record<string, string>>(() => {
     const seed: Record<string, string> = {};
-    def.fields.forEach((f) => {
+    // variant 模式：默认选第一项；编辑模式则用 initialData 里的值（在下方回填覆盖）
+    if (def.variantSelector && def.variants) {
+      seed[def.variantSelector.name] = def.variantSelector.options[0];
+    }
+    const allFields = getAllPossibleFields(def);
+    allFields.forEach((f) => {
       if (f.type === "date") seed[f.name] = todayISO();
     });
     if (initialData) {
-      for (const f of def.fields) {
+      for (const f of allFields) {
         if (f.type === "range-usd" || f.type === "range-count") {
           // DB 里存的是 xxxMin / xxxMax，表单内部键是 xxx_min / xxx_max
           const lo = initialData[`${f.name}Min`];
@@ -328,8 +430,10 @@ export function SubmissionModal({
     return values[f.conditional.field] === f.conditional.equals;
   };
 
+  const activeFields = getActiveFields(def, values);
+
   const submit = async () => {
-    for (const f of def.fields) {
+    for (const f of activeFields) {
       if (!isActive(f)) continue;
       if (!f.required) continue;
 
@@ -382,7 +486,7 @@ export function SubmissionModal({
     setSubmitting(true);
     try {
       const payload: Record<string, string> = {};
-      for (const f of def.fields) {
+      for (const f of activeFields) {
         if (!isActive(f)) continue;
         if (f.name.startsWith("_")) continue;
         if (f.type === "range-usd" || f.type === "range-count") {
@@ -398,6 +502,10 @@ export function SubmissionModal({
         } else {
           payload[f.name] = values[f.name] ?? "";
         }
+      }
+      // 个人型档期：用户每次提交/编辑都更新 availabilityUpdatedAt，供卡片显示「档期更新」徽标
+      if (formKey === "merchant" && payload.availabilityDates?.trim()) {
+        payload.availabilityUpdatedAt = new Date().toISOString();
       }
       const token = getOwnerToken();
       if (editing) {
@@ -512,7 +620,7 @@ export function SubmissionModal({
         ) : (
           <>
             <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
-              {def.fields.map((f, idx) => {
+              {activeFields.map((f, idx) => {
                 if (!isActive(f)) return null;
 
                 if (f.type === "subcategory") {
@@ -685,6 +793,19 @@ function FormFieldInput({
             )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (field.type === "availability") {
+    const v = values[field.name] ?? "";
+    return (
+      <div>
+        <FieldLabel field={field} />
+        <AvailabilityPicker value={v} onChange={(next) => onChange(field.name, next)} />
+        {field.helpText && (
+          <p className="mt-1 text-[10.5px] leading-snug text-gray-500">{field.helpText}</p>
+        )}
       </div>
     );
   }

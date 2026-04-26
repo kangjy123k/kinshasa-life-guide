@@ -595,6 +595,27 @@ function HomeView({
         </div>
       </section>
 
+      {/* ---- 人格测试入口 ---- */}
+      <section className="max-w-4xl mx-auto px-4 mt-5">
+        <Link
+          href="/quiz"
+          className="group block relative overflow-hidden rounded-2xl shadow-md active:scale-[0.99] transition-transform"
+          aria-label="测测你是否适合在刚果金工作"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/quiz-hero.webp"
+            alt="测测你是否适合在刚果金工作"
+            className="w-full h-auto block select-none"
+            draggable={false}
+          />
+          <span className="pointer-events-none absolute inset-0 ring-1 ring-black/5 rounded-2xl" />
+          <span className="pointer-events-none absolute right-2.5 bottom-2 px-2.5 py-1 rounded-full bg-white/90 text-orange-600 text-[11px] font-bold shadow-sm group-active:scale-95 transition">
+            ▶ 开始测试
+          </span>
+        </Link>
+      </section>
+
       {/* ---- 实用信息 ---- */}
       <section className="max-w-4xl mx-auto px-4 mt-5">
         <div className="flex items-center gap-2 mb-3">
