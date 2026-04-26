@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { appendMerchantUpdate, deleteMerchantUpdate } from "@/lib/submissions";
+import {
+  appendMerchantUpdate,
+  deleteMerchantUpdate,
+  setMerchantAvailability,
+} from "@/lib/submissions";
 
 export const runtime = "nodejs";
 
@@ -19,17 +23,36 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
       submissionId?: string;
+      kind?: string;
       title?: string;
       text?: string;
       images?: string[];
+      dates?: string[];
     };
     const submissionId = typeof body?.submissionId === "string" ? body.submissionId.trim() : "";
+    if (!submissionId) {
+      return NextResponse.json({ ok: false, error: "missing submissionId" }, { status: 400 });
+    }
+
+    // 个人型档期独立保存（不重审）
+    if (body.kind === "availability") {
+      const dates = Array.isArray(body.dates) ? body.dates : [];
+      const result = await setMerchantAvailability(submissionId, token, dates);
+      if (!result) {
+        return NextResponse.json(
+          { ok: false, error: "not found / not owned / not individual / not approved" },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json({ ok: true, ...result });
+    }
+
     const title = typeof body?.title === "string" ? body.title : "";
     const text = typeof body?.text === "string" ? body.text : "";
     const images = Array.isArray(body?.images)
       ? body.images.filter((s): s is string => typeof s === "string").slice(0, 6)
       : [];
-    if (!submissionId || !title.trim()) {
+    if (!title.trim()) {
       return NextResponse.json({ ok: false, error: "missing fields" }, { status: 400 });
     }
     const entry = await appendMerchantUpdate(submissionId, token, { title, text, images });

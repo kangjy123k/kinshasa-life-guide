@@ -24,6 +24,7 @@ import {
 import { getOwnerToken } from "@/lib/owner-token-client";
 import { MultiImageUploader } from "@/components/ImageUploader";
 import { SubmissionModal, type FormKey } from "@/components/SubmissionModal";
+import { AvailabilityPicker } from "@/components/AvailabilityPicker";
 
 type SubmissionType =
   | "merchant"
@@ -260,6 +261,11 @@ function RecordCard({
   // 除问卷外都可编辑（问卷是一次性答题）；编辑后后端会重置为 pending
   const canEdit = record.type !== "survey";
   const canPostUpdate = record.type === "merchant" && record.status === "approved";
+  const isIndividualMerchant =
+    record.type === "merchant" &&
+    (record.data?.merchantType === "个人型" || record.data?.merchantType === "individual");
+  const canEditAvailability = isIndividualMerchant && record.status === "approved";
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const existingUpdates = useMemo(() => {
     const raw = record.data?.updates;
     if (!raw) return 0;
@@ -380,6 +386,19 @@ function RecordCard({
             )}
           </button>
         )}
+        {canEditAvailability && !confirming && (
+          <button
+            onClick={(e) => {
+              stop(e);
+              setAvailabilityOpen(true);
+            }}
+            disabled={working}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-lg shadow-sm active:scale-95 transition"
+          >
+            <CalendarHeart size={13} />
+            更新档期
+          </button>
+        )}
         {!confirming ? (
           <button
             onClick={(e) => {
@@ -447,6 +466,18 @@ function RecordCard({
           status={status}
           entries={entries}
           onClose={() => setViewOpen(false)}
+        />
+      )}
+
+      {availabilityOpen && (
+        <AvailabilityModal
+          submissionId={record.id}
+          initialDates={record.data.availabilityDates ?? ""}
+          onClose={() => setAvailabilityOpen(false)}
+          onSaved={() => {
+            setAvailabilityOpen(false);
+            onUpdatesChanged();
+          }}
         />
       )}
     </div>
@@ -693,5 +724,135 @@ function MerchantUpdateModal({
       </div>
     </div>,
     document.body
+  );
+}
+
+function AvailabilityModal({
+  submissionId,
+  initialDates,
+  onClose,
+  onSaved,
+}: {
+  submissionId: string;
+  /** 内部用 "\n" 分隔的 ISO date 字符串，与 AvailabilityPicker 对齐 */
+  initialDates: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [value, setValue] = useState(initialDates);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const handleClose = () => {
+    setClosing((c) => {
+      if (c) return c;
+      setTimeout(onClose, 260);
+      return true;
+    });
+  };
+
+  const submit = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const dates = value
+        .split(/[\r\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const token = getOwnerToken();
+      const res = await fetch("/api/merchant/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "x-owner-token": token } : {}),
+        },
+        body: JSON.stringify({
+          submissionId,
+          kind: "availability",
+          dates,
+        }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error || "save failed");
+      }
+      onSaved();
+    } catch {
+      setError("保存失败，请稍后再试");
+      setSubmitting(false);
+    }
+  };
+
+  if (!mounted) return null;
+  return createPortal(
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        handleClose();
+      }}
+      className={`fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4 transition-opacity duration-300 ease-out ${
+        closing ? "opacity-0" : "opacity-100"
+      }`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`bg-white shadow-xl flex flex-col overflow-hidden transition-all duration-300 ease-out w-screen h-[100dvh] max-w-none rounded-none sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[92dvh] sm:rounded-2xl ${
+          closing ? "opacity-0 scale-95" : "opacity-100 scale-100"
+        }`}
+      >
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
+          <h3 className="text-[15px] font-semibold text-gray-800 flex-1 min-w-0 truncate">
+            更新最近档期
+          </h3>
+          <button
+            onClick={handleClose}
+            aria-label="关闭"
+            className="w-7 h-7 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center active:scale-95 transition"
+          >
+            <X size={16} className="text-gray-500" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            点选你能接活的日期；保存后立即更新到商家卡片，<span className="font-semibold text-orange-600">无需重新审核</span>。
+            7 天内更新过的会自动置顶并打"档期更新"标志。
+          </p>
+          <AvailabilityPicker value={value} onChange={setValue} />
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 px-2.5 py-1.5 rounded-lg">{error}</p>
+          )}
+        </div>
+        <div
+          className="px-4 pt-2.5 border-t border-gray-100 shrink-0 bg-white"
+          style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}
+        >
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[13px] font-semibold rounded-full disabled:opacity-60 active:scale-95 transition"
+          >
+            {submitting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> 保存中…
+              </>
+            ) : (
+              "保存档期"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

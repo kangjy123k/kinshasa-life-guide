@@ -93,12 +93,24 @@ export default async function ShareBizPage({
           <h1 className="mt-2 text-2xl font-black text-gray-900 leading-tight">
             {biz.name}
           </h1>
-          {cat && (
-            <p className="mt-1 text-xs text-gray-500">
-              {cat.label}
-              {biz.subcategory ? ` · ${biz.subcategory}` : ""} · {biz.area}
-            </p>
-          )}
+          <div className="mt-1.5 flex items-center justify-center gap-1.5 flex-wrap">
+            {biz.merchantType === "individual" && (
+              <span className="px-2 py-0.5 bg-amber-500 text-white text-[11px] font-bold rounded-full">
+                个人型
+              </span>
+            )}
+            {biz.merchantType === "company" && (
+              <span className="px-2 py-0.5 bg-indigo-500 text-white text-[11px] font-bold rounded-full">
+                公司型
+              </span>
+            )}
+            {cat && (
+              <span className="text-xs text-gray-500">
+                {cat.label}
+                {biz.subcategory ? ` · ${biz.subcategory}` : ""} · {biz.area}
+              </span>
+            )}
+          </div>
         </div>
 
         {biz.image && (
@@ -130,6 +142,13 @@ export default async function ShareBizPage({
           </div>
         </div>
 
+        {biz.merchantType === "individual" && biz.availability && biz.availability.length > 0 && (
+          <ShareAvailabilityCard
+            dates={biz.availability}
+            updatedAt={biz.availabilityUpdatedAt}
+          />
+        )}
+
         <Link
           href="/"
           className="w-full flex items-center justify-center gap-1 py-3 bg-gradient-to-r from-sky-500 to-blue-500 text-white text-sm font-bold rounded-2xl shadow-md active:opacity-80"
@@ -147,6 +166,65 @@ export default async function ShareBizPage({
       {guideMode && (
         <ShareGuideOverlay type={guideMode} shareTitle={biz.name} />
       )}
+    </div>
+  );
+}
+
+function ShareAvailabilityCard({
+  dates,
+  updatedAt,
+}: {
+  dates: string[];
+  updatedAt?: string;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const horizon = today.getTime() + 90 * 24 * 3600 * 1000;
+  const future = dates
+    .map((d) => Date.parse(d + "T00:00:00"))
+    .filter((t) => Number.isFinite(t) && t >= today.getTime() && t <= horizon)
+    .sort((a, b) => a - b);
+  if (future.length === 0) return null;
+  const fresh = updatedAt
+    ? Date.now() - Date.parse(updatedAt) <= 7 * 24 * 3600 * 1000
+    : false;
+  const groups = new Map<string, number[]>();
+  for (const t of future) {
+    const d = new Date(t);
+    const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+    const arr = groups.get(key) ?? [];
+    arr.push(d.getDate());
+    groups.set(key, arr);
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 mb-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-base">🗓️</span>
+        <h3 className="text-sm font-bold text-gray-800">最近档期</h3>
+        <span className="text-[11px] text-amber-700 font-semibold">共 {future.length} 天</span>
+        {fresh && (
+          <span className="ml-auto px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black">
+            刚刚更新
+          </span>
+        )}
+      </div>
+      <div className="space-y-2">
+        {Array.from(groups.entries()).map(([k, days]) => (
+          <div key={k} className="flex flex-wrap items-center gap-1.5 text-[12px]">
+            <span className="text-gray-500 font-medium shrink-0">
+              {k.split("-")[1]} 月
+            </span>
+            {days.map((d) => (
+              <span
+                key={`${k}-${d}`}
+                className="inline-flex items-center justify-center min-w-[28px] h-7 px-1.5 rounded-md bg-amber-100 text-amber-800 font-semibold"
+              >
+                {d}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

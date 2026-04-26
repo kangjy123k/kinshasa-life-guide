@@ -29,6 +29,7 @@ import {
   businesses,
 } from "@/lib/businesses";
 import {
+  AvailabilityPanel,
   BusinessCard,
   CallChip,
   ContactButtons,
@@ -995,22 +996,39 @@ function CategoryView({
   const cat = categories.find((c) => c.key === categoryKey)!;
   const subs = useMemo(() => ["全部", ...cat.sub], [cat]);
 
-  const filtered = allBusinesses.filter((b) => {
-    if (b.category !== cat.key) return false;
-    if (activeSub !== "全部") {
-      const subs = (b.subcategory ?? "").split("、").map((s) => s.trim()).filter(Boolean);
-      if (!subs.includes(activeSub)) return false;
-    }
-    const q = searchQuery.toLowerCase();
-    if (!q) return true;
-    return (
-      b.name.toLowerCase().includes(q) ||
-      b.mainService.toLowerCase().includes(q) ||
-      b.area.toLowerCase().includes(q) ||
-      (b.address?.toLowerCase().includes(q) ?? false) ||
-      (b.intro?.toLowerCase().includes(q) ?? false)
-    );
-  });
+  const filtered = useMemo(() => {
+    const list = allBusinesses.filter((b) => {
+      if (b.category !== cat.key) return false;
+      if (activeSub !== "全部") {
+        const subs = (b.subcategory ?? "").split("、").map((s) => s.trim()).filter(Boolean);
+        if (!subs.includes(activeSub)) return false;
+      }
+      const q = searchQuery.toLowerCase();
+      if (!q) return true;
+      return (
+        b.name.toLowerCase().includes(q) ||
+        b.mainService.toLowerCase().includes(q) ||
+        b.area.toLowerCase().includes(q) ||
+        (b.address?.toLowerCase().includes(q) ?? false) ||
+        (b.intro?.toLowerCase().includes(q) ?? false)
+      );
+    });
+    // 个人型 + 近 7 天内更新过档期 → 自动置顶（按更新时间倒序）
+    const FRESH_MS = 7 * 24 * 3600 * 1000;
+    const now = Date.now();
+    const freshAt = (b: Business): number => {
+      if (b.merchantType !== "individual" || !b.availabilityUpdatedAt) return 0;
+      const t = Date.parse(b.availabilityUpdatedAt);
+      if (!Number.isFinite(t) || now - t > FRESH_MS) return 0;
+      return t;
+    };
+    return [...list].sort((a, b) => {
+      const fb = freshAt(b);
+      const fa = freshAt(a);
+      if (fa !== fb) return fb - fa;
+      return 0;
+    });
+  }, [allBusinesses, cat.key, activeSub, searchQuery]);
 
   const Icon = cat.icon;
 
@@ -1184,7 +1202,19 @@ function BusinessDetailView({
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold leading-tight truncate">{biz.name}</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-lg font-bold leading-tight truncate">{biz.name}</h1>
+              {biz.merchantType === "individual" && (
+                <span className="shrink-0 px-1.5 py-0.5 bg-amber-400 text-white text-[10px] font-bold rounded-full">
+                  个人型
+                </span>
+              )}
+              {biz.merchantType === "company" && (
+                <span className="shrink-0 px-1.5 py-0.5 bg-indigo-400 text-white text-[10px] font-bold rounded-full">
+                  公司型
+                </span>
+              )}
+            </div>
             <p className="text-xs text-white/80">
               {cat?.label}
               {biz.subcategory ? ` · ${biz.subcategory}` : ""}
@@ -1261,6 +1291,13 @@ function BusinessDetailView({
             <ContactButtons biz={biz} className="mt-5" />
           </div>
         </div>
+
+        {biz.merchantType === "individual" && biz.availability && biz.availability.length > 0 && (
+          <AvailabilityPanel
+            dates={biz.availability}
+            updatedAt={biz.availabilityUpdatedAt}
+          />
+        )}
 
         {biz.gallery && biz.gallery.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-sky-100 p-4">

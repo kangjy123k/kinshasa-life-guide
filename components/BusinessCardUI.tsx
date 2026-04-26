@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   MapPin,
   Phone,
@@ -157,6 +157,84 @@ export function BusinessCard({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+export function AvailabilityPanel({
+  dates,
+  updatedAt,
+}: {
+  dates: string[];
+  updatedAt?: string;
+}) {
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const horizonMs = today.getTime() + 90 * 24 * 3600 * 1000;
+  const future = useMemo(
+    () =>
+      dates
+        .map((d) => Date.parse(d + "T00:00:00"))
+        .filter((t) => Number.isFinite(t) && t >= today.getTime() && t <= horizonMs)
+        .sort((a, b) => a - b),
+    [dates, today, horizonMs],
+  );
+  if (future.length === 0) return null;
+  const fresh = updatedAt ? Date.now() - Date.parse(updatedAt) <= 7 * 24 * 3600 * 1000 : false;
+  const monthGroups = useMemo(() => {
+    const groups = new Map<string, number[]>();
+    for (const t of future) {
+      const d = new Date(t);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      const arr = groups.get(key) ?? [];
+      arr.push(d.getDate());
+      groups.set(key, arr);
+    }
+    return Array.from(groups.entries());
+  }, [future]);
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-amber-200 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-base">🗓️</span>
+        <h3 className="text-sm font-bold text-gray-800">最近档期</h3>
+        <span className="text-[11px] text-amber-700 font-semibold">共 {future.length} 天</span>
+        {fresh && (
+          <span className="ml-auto px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black animate-pulse">
+            刚刚更新
+          </span>
+        )}
+      </div>
+      <div className="space-y-2">
+        {monthGroups.map(([k, days]) => (
+          <div key={k} className="flex flex-wrap items-center gap-1.5 text-[12px]">
+            <span className="text-gray-500 font-medium shrink-0">
+              {k.split("-")[1]} 月
+            </span>
+            {days.map((d) => (
+              <span
+                key={`${k}-${d}`}
+                className="inline-flex items-center justify-center min-w-[28px] h-7 px-1.5 rounded-md bg-amber-100 text-amber-800 font-semibold"
+              >
+                {d}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+      {updatedAt && (
+        <p className="mt-3 text-[10.5px] text-gray-400">
+          上次更新：
+          {new Date(updatedAt).toLocaleDateString("zh-CN", {
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      )}
     </div>
   );
 }

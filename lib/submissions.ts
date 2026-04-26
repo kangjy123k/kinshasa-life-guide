@@ -334,6 +334,68 @@ export async function appendMerchantUpdate(
   return newEntry;
 }
 
+/**
+ * 个人型商家独立更新档期：只改 data_json 里的 availabilityDates + availabilityUpdatedAt，
+ * 不动 status（不重新走审核），要求 status === approved。
+ */
+export async function setMerchantAvailability(
+  submissionId: string,
+  ownerToken: string,
+  dates: string[],
+): Promise<{ availabilityDates: string; availabilityUpdatedAt: string } | null> {
+  await ensureSchema();
+  if (!submissionId || !ownerToken) return null;
+  const { rows } = await db().execute({
+    sql: `SELECT type, status, data_json FROM user_submission
+          WHERE id = ? AND owner_token = ?`,
+    args: [submissionId, ownerToken],
+  });
+  if (rows.length === 0) return null;
+  const row = rows[0] as unknown as {
+    type: string;
+    status: string;
+    data_json: string;
+  };
+  if (row.type !== "merchant") return null;
+  if (row.status !== "approved") return null;
+  let data: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(String(row.data_json ?? "{}"));
+    if (parsed && typeof parsed === "object") data = parsed as Record<string, string>;
+  } catch {
+    /* ignore */
+  }
+  // 仅个人型可独立改档期
+  if (data.merchantType && data.merchantType !== "个人型" && data.merchantType !== "individual") {
+    return null;
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const horizon = today.getTime() + 90 * 24 * 3600 * 1000;
+  const cleaned = Array.from(
+    new Set(
+      dates
+        .filter((d): d is string => typeof d === "string")
+        .map((d) => d.trim())
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+        .filter((d) => {
+          const t = Date.parse(d + "T00:00:00");
+          return Number.isFinite(t) && t >= today.getTime() && t <= horizon;
+        }),
+    ),
+  )
+    .sort()
+    .slice(0, 90);
+  const availabilityDates = cleaned.join("\n");
+  const availabilityUpdatedAt = new Date().toISOString();
+  const nextData = { ...data, availabilityDates, availabilityUpdatedAt };
+  await db().execute({
+    sql: "UPDATE user_submission SET data_json = ? WHERE id = ? AND owner_token = ?",
+    args: [JSON.stringify(nextData), submissionId, ownerToken],
+  });
+  return { availabilityDates, availabilityUpdatedAt };
+}
+
 export async function deleteMerchantUpdate(
   submissionId: string,
   ownerToken: string,
