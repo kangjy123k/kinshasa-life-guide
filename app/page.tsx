@@ -892,7 +892,7 @@ function Carousel({
   onSlideClick?: (slide: AdSlide) => void;
 }) {
   const slide = ads[index];
-  const clickable = !!(slide.href || slide.bizSubmissionId);
+  const clickable = !!(slide.href || slide.bizSubmissionId || slide.formKey);
 
   // 首次挂载时预取带图片的广告，避免第一次切到时文字先出、图片后出的错位感
   useEffect(() => {
