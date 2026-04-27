@@ -67,6 +67,8 @@ function MapPageInner() {
     () =>
       [...businesses, ...approvedExtras]
         .filter((b) => !b.hidden)
+        // 二手物品不上商家地图：地图只服务"找店铺"场景
+        .filter((b) => b.category !== "secondhand")
         // 无门店的不上地图（用户表单填"无"，种子数据也可能写"无固定店面 — …"）
         .filter((b) => !/^\s*无/.test(b.hasStore ?? ""))
         .map((b) => {
@@ -99,6 +101,11 @@ function MapPageInner() {
     return c;
   }, [allBusinesses]);
 
+  const visibleCategories = useMemo(
+    () => categories.filter((c) => c.key !== "secondhand"),
+    []
+  );
+
   const mapBiz = allBusinesses.map((b) => ({
     id: b.id,
     name: b.name,
@@ -125,13 +132,13 @@ function MapPageInner() {
         <div className="absolute top-3 left-16 z-[1000] px-3 py-1.5 rounded-full bg-white/95 shadow-sm ring-1 ring-sky-100 text-xs font-semibold text-sky-700"
           style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
         >
-          {activeKey === "all" ? "全部" : categories.find((c) => c.key === activeKey)?.label ?? ""}
+          {activeKey === "all" ? "全部" : visibleCategories.find((c) => c.key === activeKey)?.label ?? ""}
           <span className="ml-1 text-gray-400 font-normal">· {counts[activeKey] || 0} 家</span>
         </div>
         <MapSection
           businesses={mapBiz}
           activeKey={activeKey}
-          categories={categories.map((c) => ({
+          categories={visibleCategories.map((c) => ({
             key: c.key,
             label: c.label,
             color: c.color,
@@ -154,7 +161,7 @@ function MapPageInner() {
           active={activeKey === "all"}
           onClick={() => setActiveKey("all")}
         />
-        {categories.map((c) => (
+        {visibleCategories.map((c) => (
           <CategoryItem
             key={c.key}
             label={c.label}
