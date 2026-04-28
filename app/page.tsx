@@ -71,7 +71,7 @@ interface AdSlide {
 
 const ads: AdSlide[] = [
   {
-    image: "/images/sponsor-v2.webp",
+    image: "/images/sponsor-v3.webp",
     plainImage: true,
     imageBg: "#fd645a", // 与图片边缘红珊瑚色一致，避免 contain 模式下出现可见留白
     formKey: "merchant",

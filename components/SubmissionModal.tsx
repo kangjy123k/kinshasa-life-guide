@@ -620,6 +620,25 @@ export function SubmissionModal({
         ) : (
           <>
             <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
+              {formKey === "merchant" && !editing && (
+                <div className="flex justify-center pt-0.5 pb-1">
+                  <div
+                    className="relative w-24 h-24 flex items-center justify-center -rotate-[8deg]"
+                    style={{ filter: "drop-shadow(0 4px 8px rgba(244,63,94,0.35))" }}
+                  >
+                    <div
+                      className="absolute inset-0 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-600"
+                      style={{
+                        clipPath:
+                          "polygon(50% 0%, 63.4% 17.7%, 85.4% 14.6%, 82.3% 36.6%, 100% 50%, 82.3% 63.4%, 85.4% 85.4%, 63.4% 82.3%, 50% 100%, 36.6% 82.3%, 14.6% 85.4%, 17.7% 63.4%, 0% 50%, 17.7% 36.6%, 14.6% 14.6%, 36.6% 17.7%)",
+                      }}
+                    />
+                    <span className="relative font-black text-white text-[15px] tracking-wider drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">
+                      免费入驻
+                    </span>
+                  </div>
+                </div>
+              )}
               {activeFields.map((f, idx) => {
                 if (!isActive(f)) return null;
 
