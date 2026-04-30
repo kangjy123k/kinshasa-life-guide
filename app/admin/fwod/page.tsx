@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Lock } from "lucide-react";
 import { AdminFwodPanel } from "@/components/AdminFwodPanel";
+import { AdminFwodRecordingPanel } from "@/components/AdminFwodRecordingPanel";
 import { BANK } from "@/lib/french-word-of-the-day";
 
 const PASSWORD_KEY = "kinshasa_admin_pw";
@@ -124,6 +125,7 @@ export default function AdminFwodPage() {
 
       <main className="max-w-3xl mx-auto px-4 pt-4">
         <AdminFwodPanel password={password} />
+        <AdminFwodRecordingPanel password={password} />
       </main>
     </div>
   );
