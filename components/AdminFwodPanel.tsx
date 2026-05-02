@@ -26,10 +26,24 @@ interface FormState {
   exampleZh: string;
 }
 
-function todayISO(): string {
-  const d = new Date();
+function isoOf(d: Date): string {
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function todayISO(): string {
+  return isoOf(new Date());
+}
+
+function nextEmptyDate(entries: FrenchDailyEntry[]): string {
+  const taken = new Set(entries.map((e) => e.date));
+  const d = new Date();
+  for (let i = 0; i < 90; i++) {
+    const iso = isoOf(d);
+    if (!taken.has(iso)) return iso;
+    d.setDate(d.getDate() + 1);
+  }
+  return todayISO();
 }
 
 function emptyForm(): FormState {
@@ -44,6 +58,19 @@ function emptyForm(): FormState {
     example: "",
     exampleZh: "",
   };
+}
+
+function isFreshForm(f: FormState): boolean {
+  return (
+    !f.word.trim() &&
+    !f.zh.trim() &&
+    !f.pron.trim() &&
+    !f.image.trim() &&
+    !f.tip.trim() &&
+    !f.example.trim() &&
+    !f.exampleZh.trim() &&
+    !f.pos.trim()
+  );
 }
 
 /**
@@ -77,6 +104,15 @@ export function AdminFwodPanel({ password }: { password: string }) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setForm((f) => {
+      if (!isFreshForm(f)) return f;
+      const next = nextEmptyDate(dynamicEntries);
+      if (f.date === next) return f;
+      return { ...f, date: next };
+    });
+  }, [dynamicEntries]);
+
   const prefillFromStatic = (date: string) => {
     const staticEntry = BANK.find((b) => b.date === date);
     const dynamic = dynamicEntries.find((e) => e.date === date);
@@ -109,6 +145,13 @@ export function AdminFwodPanel({ password }: { password: string }) {
     if (!f.date || !f.word.trim() || !f.zh.trim() || !f.pron.trim() || !f.image.trim()) {
       showToast("日期 / 法文 / 中文 / 读音 / 图片 必填", "err");
       return;
+    }
+    const collision = dynamicEntries.find((e) => e.date === f.date);
+    if (collision) {
+      const ok = confirm(
+        `${f.date} 已上线 “${collision.word} · ${collision.zh}”，确定覆盖？`,
+      );
+      if (!ok) return;
     }
     setSaving(true);
     try {
@@ -151,6 +194,16 @@ export function AdminFwodPanel({ password }: { password: string }) {
     }
   };
 
+  const collision = dynamicEntries.find((e) => e.date === form.date);
+  const today = todayISO();
+  const dateBadge = collision
+    ? { text: `将覆盖：${collision.word} · ${collision.zh}`, tone: "warn" as const }
+    : form.date > today
+      ? { text: "未来日期 · 预发布", tone: "info" as const }
+      : form.date < today
+        ? { text: "过去日期 · 补录", tone: "muted" as const }
+        : { text: "今天", tone: "muted" as const };
+
   return (
     <div className="space-y-4">
       <form
@@ -187,6 +240,17 @@ export function AdminFwodPanel({ password }: { password: string }) {
               onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
               className={inputCls}
             />
+            <p
+              className={`mt-1 text-[10.5px] font-semibold ${
+                dateBadge.tone === "warn"
+                  ? "text-red-600"
+                  : dateBadge.tone === "info"
+                    ? "text-emerald-600"
+                    : "text-gray-400"
+              }`}
+            >
+              {dateBadge.text}
+            </p>
           </Field>
           <Field label="词性" hint="例：v. / n.m. / adj.">
             <input
@@ -263,10 +327,14 @@ export function AdminFwodPanel({ password }: { password: string }) {
         <button
           type="submit"
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 text-white text-sm font-bold shadow-sm active:scale-95 disabled:opacity-60"
+          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-white text-sm font-bold shadow-sm active:scale-95 disabled:opacity-60 ${
+            collision
+              ? "bg-gradient-to-r from-red-500 to-orange-500"
+              : "bg-gradient-to-r from-rose-500 to-amber-500"
+          }`}
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-          保存并上线
+          {collision ? `覆盖 ${form.date} 已上线词条` : "保存并上线"}
         </button>
       </form>
 
