@@ -589,7 +589,7 @@ function HomeView({
       </section>
 
       {/* ---- 我要找…… + 小搜索 ---- */}
-      <section className="mt-5">
+      <section id="categories" className="mt-5 scroll-mt-4">
         <div className="px-4 max-w-4xl mx-auto flex items-center gap-2 mb-3">
           <span className="w-1 h-5 bg-red-400 rounded-full shrink-0" />
           <h2 className="text-base font-bold text-gray-800 shrink-0">我要找……</h2>

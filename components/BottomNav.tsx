@@ -12,6 +12,8 @@ import {
   Store,
   Tag,
   CalendarHeart,
+  LayoutGrid,
+  Megaphone,
 } from "lucide-react";
 import { SubmissionModal, type FormKey } from "./SubmissionModal";
 
@@ -23,23 +25,49 @@ type Option = {
 };
 
 const PUBLISH_OPTIONS: Option[] = [
-  { key: "purchase",   label: "求购信息", icon: ShoppingCart, color: "bg-gradient-to-br from-orange-400 to-amber-500" },
-  { key: "merchant",   label: "商家入驻", icon: Store,        color: "bg-gradient-to-br from-sky-400 to-blue-500" },
-  { key: "secondhand", label: "二手物品", icon: Tag,          color: "bg-gradient-to-br from-teal-400 to-sky-500" },
-  { key: "event",      label: "发布活动", icon: CalendarHeart, color: "bg-gradient-to-br from-violet-500 to-sky-500" },
+  { key: "purchase",   label: "求购信息", icon: ShoppingCart,  color: "bg-orange-500" },
+  { key: "merchant",   label: "商家入驻", icon: Store,         color: "bg-rose-500" },
+  { key: "secondhand", label: "二手物品", icon: Tag,           color: "bg-teal-500" },
+  { key: "event",      label: "发布活动", icon: CalendarHeart, color: "bg-violet-500" },
 ];
 
 type Tab = {
   href: string;
   label: string;
   Icon: React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
+  /** 自定义激活判定（默认按 pathname 前缀匹配 href） */
+  matchPath?: (pathname: string | null) => boolean;
 };
 
 const LEFT_TABS: Tab[] = [
-  { href: "/", label: "首页", Icon: Home },
+  {
+    href: "/",
+    label: "首页",
+    Icon: Home,
+    matchPath: (p) => p === "/",
+  },
+  {
+    href: "/#categories",
+    label: "商家分类",
+    Icon: LayoutGrid,
+    // 商家分类指向首页锚点，激活态不抢"首页"
+    matchPath: () => false,
+  },
 ];
+
 const RIGHT_TABS: Tab[] = [
-  { href: "/my", label: "我的", Icon: User },
+  {
+    href: "/requests",
+    label: "需求大厅",
+    Icon: Megaphone,
+    matchPath: (p) => p === "/requests" || !!p?.startsWith("/requests/"),
+  },
+  {
+    href: "/my",
+    label: "我的",
+    Icon: User,
+    matchPath: (p) => p === "/my" || !!p?.startsWith("/my/"),
+  },
 ];
 
 export default function BottomNav() {
@@ -70,12 +98,8 @@ export default function BottomNav() {
     setTimeout(() => setFormKey(k), 200);
   };
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname?.startsWith(href + "/");
-
   return (
     <>
-      {/* 底部 tab bar — 仅移动端 */}
       <nav
         className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-gray-100"
         style={{
@@ -86,20 +110,20 @@ export default function BottomNav() {
       >
         <div className="flex items-end h-14 px-1">
           {LEFT_TABS.map((t) => (
-            <TabLink key={t.href} tab={t} active={isActive(t.href)} />
+            <TabLink key={t.href} tab={t} active={!!t.matchPath?.(pathname)} />
           ))}
           <button
             onClick={openPicker}
             aria-label="发布"
             className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition"
           >
-            <span className="-mt-4 w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-red-500 text-white flex items-center justify-center shadow-[0_6px_18px_rgba(244,63,94,0.45)] ring-4 ring-white">
-              <Plus size={20} strokeWidth={2.8} />
+            <span className="-mt-4 w-11 h-11 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-[0_6px_18px_rgba(244,63,94,0.45)] ring-4 ring-white">
+              <Plus size={22} strokeWidth={2.8} />
             </span>
-            <span className="text-[10px] font-semibold text-gray-500">发布</span>
+            <span className="text-[10px] font-bold text-gray-500">发布</span>
           </button>
           {RIGHT_TABS.map((t) => (
-            <TabLink key={t.href} tab={t} active={isActive(t.href)} />
+            <TabLink key={t.href} tab={t} active={!!t.matchPath?.(pathname)} />
           ))}
         </div>
       </nav>
@@ -121,7 +145,9 @@ export default function BottomNav() {
             }`}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-gray-800">选择要发布的类型</h3>
+              <h3 className="text-[16px] font-black text-black tracking-tight">
+                选择要发布的类型
+              </h3>
               <button
                 onClick={closePicker}
                 aria-label="关闭"
@@ -130,7 +156,7 @@ export default function BottomNav() {
                 <X size={16} className="text-gray-500" />
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+            <div className="grid grid-cols-4 gap-x-2 gap-y-4">
               {PUBLISH_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 return (
@@ -140,11 +166,11 @@ export default function BottomNav() {
                     className="flex flex-col items-center gap-1.5 py-1 active:scale-95 transition"
                   >
                     <span
-                      className={`${opt.color} w-14 h-14 rounded-full flex items-center justify-center shadow-md ring-1 ring-white/70 ring-inset`}
+                      className={`${opt.color} w-14 h-14 rounded-2xl flex items-center justify-center shadow-md`}
                     >
                       <Icon size={22} className="text-white" />
                     </span>
-                    <span className="text-[11px] font-medium text-gray-700 whitespace-nowrap">
+                    <span className="text-[11px] font-semibold text-gray-700 whitespace-nowrap">
                       {opt.label}
                     </span>
                   </button>
@@ -169,15 +195,15 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
     <Link
       href={href}
       className={`flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition ${
-        active ? "text-red-500" : "text-gray-500"
+        active ? "text-rose-500" : "text-gray-500"
       }`}
     >
       <Icon
-        size={22}
+        size={20}
         strokeWidth={active ? 2.4 : 1.8}
         className={active ? "drop-shadow-sm" : ""}
       />
-      <span className={`text-[10px] font-semibold ${active ? "" : "text-gray-500"}`}>
+      <span className={`text-[10px] font-bold ${active ? "" : "text-gray-500"}`}>
         {label}
       </span>
     </Link>
