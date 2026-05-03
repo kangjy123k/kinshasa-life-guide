@@ -104,23 +104,14 @@ export async function renderBizCardImage(
   if (!ctx) throw new Error("canvas 2d context not available");
   ctx.scale(SCALE, SCALE);
 
-  // 1. 纸张底纹（失败兜底为米白）
+  // 1. 纸张底色（拉伸覆盖整张卡，失败兜底为白）
   try {
-    const paper = await loadImg("/images/bizcard-paper.jpg");
+    const paper = await loadImg("/images/bizcard-paper.png");
     ctx.drawImage(paper, 0, 0, W, H);
   } catch {
-    ctx.fillStyle = "#f6f3ec";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W, H);
   }
-
-  // 2. 92% 白罩，淡化原图文字、保留纸张纤维感
-  ctx.fillStyle = "rgba(255,255,255,0.93)";
-  ctx.fillRect(0, 0, W, H);
-
-  // 3. 边缘极淡阴影
-  ctx.strokeStyle = "rgba(0,0,0,0.05)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
   // 4. logo
   const logoBox = { x: 60, y: 180, w: 300, h: 300 };

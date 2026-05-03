@@ -486,21 +486,21 @@ function FullscreenPreview({
       <button
         onClick={handleClose}
         aria-label="关闭"
-        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center active:scale-95 transition z-10"
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/55 text-white flex items-center justify-center active:scale-95 transition z-10 backdrop-blur-sm"
       >
         <X size={20} />
       </button>
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 p-1 bg-white/10 rounded-full backdrop-blur-sm z-10"
+        className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 p-1 bg-black/55 rounded-full backdrop-blur-sm z-10"
       >
         {(["zh", "en", "fr"] as BizCardLang[]).map((l) => (
           <button
             key={l}
             onClick={() => setLang(l)}
             className={`px-3 py-1 rounded-full text-[11px] font-bold transition active:scale-95 ${
-              lang === l ? "bg-white text-black" : "text-white/80 hover:text-white"
+              lang === l ? "bg-white text-black" : "text-white/85 hover:text-white"
             }`}
           >
             {LANG_LABEL[l]}
@@ -510,12 +510,12 @@ function FullscreenPreview({
 
       <style>{`
         .bizcard-fit {
-          width: min(95vw, calc(95dvh * 1.667));
+          width: min(100vw, calc(100dvh * 1.667));
           aspect-ratio: 1100 / 660;
         }
         @media (orientation: portrait) {
           .bizcard-fit {
-            width: min(95dvh, calc(95vw * 1.667));
+            width: min(100dvh, calc(100vw * 1.667));
             transform: rotate(90deg);
           }
         }
@@ -531,7 +531,7 @@ function FullscreenPreview({
           <img
             src={imgUrl}
             alt="名片"
-            className="bizcard-fit rounded-xl shadow-2xl"
+            className="bizcard-fit shadow-2xl"
             style={{
               WebkitTouchCallout: "default",
               WebkitUserSelect: "auto",
@@ -539,11 +539,11 @@ function FullscreenPreview({
             }}
           />
         ) : error ? (
-          <div className="bizcard-fit rounded-xl bg-white/5 flex items-center justify-center text-white/60 text-sm">
+          <div className="bizcard-fit bg-white/5 flex items-center justify-center text-white/60 text-sm">
             {error}
           </div>
         ) : (
-          <div className="bizcard-fit rounded-xl bg-white/5 flex items-center justify-center text-white/40 text-sm animate-pulse">
+          <div className="bizcard-fit bg-white/5 flex items-center justify-center text-white/40 text-sm animate-pulse">
             生成中…
           </div>
         )}
