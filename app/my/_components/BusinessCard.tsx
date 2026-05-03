@@ -510,44 +510,56 @@ function FullscreenPreview({
 
       <style>{`
         .bizcard-fit {
+          position: absolute;
+          top: 50%;
+          left: 50%;
           width: min(100vw, calc(100dvh * 1.667));
+          height: auto;
           aspect-ratio: 1100 / 660;
+          max-width: none;
+          max-height: none;
+          transform: translate(-50%, -50%);
+          transform-origin: center;
+          transition: opacity 0.3s ease-out, transform 0.3s ease-out;
         }
         @media (orientation: portrait) {
           .bizcard-fit {
             width: min(100dvh, calc(100vw * 1.667));
-            transform: rotate(90deg);
+            transform: translate(-50%, -50%) rotate(90deg);
           }
+        }
+        .bizcard-fit-closing {
+          opacity: 0;
         }
       `}</style>
 
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`transition-transform duration-300 ${
-          closing ? "scale-95 opacity-0" : "scale-100 opacity-100"
-        }`}
-      >
-        {imgUrl ? (
-          <img
-            src={imgUrl}
-            alt="名片"
-            className="bizcard-fit shadow-2xl"
-            style={{
-              WebkitTouchCallout: "default",
-              WebkitUserSelect: "auto",
-              userSelect: "auto",
-            }}
-          />
-        ) : error ? (
-          <div className="bizcard-fit bg-white/5 flex items-center justify-center text-white/60 text-sm">
-            {error}
-          </div>
-        ) : (
-          <div className="bizcard-fit bg-white/5 flex items-center justify-center text-white/40 text-sm animate-pulse">
-            生成中…
-          </div>
-        )}
-      </div>
+      {imgUrl ? (
+        <img
+          src={imgUrl}
+          alt="名片"
+          onClick={(e) => e.stopPropagation()}
+          className={`bizcard-fit shadow-2xl ${closing ? "bizcard-fit-closing" : ""}`}
+          style={{
+            WebkitTouchCallout: "default",
+            WebkitUserSelect: "auto",
+            userSelect: "auto",
+          }}
+        />
+      ) : error ? (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="bizcard-fit bg-white/5 flex items-center justify-center text-white/60 text-sm"
+        >
+          {error}
+        </div>
+      ) : (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="bizcard-fit bg-white/5 flex items-center justify-center text-white/40 text-sm animate-pulse"
+        >
+          生成中…
+        </div>
+      )}
     </div>,
     document.body,
   );
