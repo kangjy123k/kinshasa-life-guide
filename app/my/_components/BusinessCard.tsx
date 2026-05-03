@@ -479,7 +479,7 @@ function FullscreenPreview({
   return createPortal(
     <div
       onClick={handleClose}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 transition-opacity duration-300 ease-out ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-black/95 transition-opacity duration-300 ease-out ${
         closing ? "opacity-0" : "opacity-100"
       }`}
     >
@@ -508,35 +508,45 @@ function FullscreenPreview({
         ))}
       </div>
 
+      <style>{`
+        .bizcard-fit {
+          width: min(95vw, calc(95dvh * 1.667));
+          aspect-ratio: 1100 / 660;
+        }
+        @media (orientation: portrait) {
+          .bizcard-fit {
+            width: min(95dvh, calc(95vw * 1.667));
+            transform: rotate(90deg);
+          }
+        }
+      `}</style>
+
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full px-4 transition-transform duration-300 ${
+        className={`transition-transform duration-300 ${
           closing ? "scale-95 opacity-0" : "scale-100 opacity-100"
         }`}
       >
-        <div className="mx-auto" style={{ maxWidth: "min(95vw, calc(95vh * 1.667))" }}>
-          {imgUrl ? (
-            <img
-              src={imgUrl}
-              alt="名片"
-              className="w-full h-auto rounded-xl shadow-2xl"
-              style={{
-                aspectRatio: "1100 / 660",
-                WebkitTouchCallout: "default",
-                WebkitUserSelect: "auto",
-                userSelect: "auto",
-              }}
-            />
-          ) : error ? (
-            <div className="aspect-[1100/660] w-full rounded-xl bg-white/5 flex items-center justify-center text-white/60 text-sm">
-              {error}
-            </div>
-          ) : (
-            <div className="aspect-[1100/660] w-full rounded-xl bg-white/5 flex items-center justify-center text-white/40 text-sm animate-pulse">
-              生成中…
-            </div>
-          )}
-        </div>
+        {imgUrl ? (
+          <img
+            src={imgUrl}
+            alt="名片"
+            className="bizcard-fit rounded-xl shadow-2xl"
+            style={{
+              WebkitTouchCallout: "default",
+              WebkitUserSelect: "auto",
+              userSelect: "auto",
+            }}
+          />
+        ) : error ? (
+          <div className="bizcard-fit rounded-xl bg-white/5 flex items-center justify-center text-white/60 text-sm">
+            {error}
+          </div>
+        ) : (
+          <div className="bizcard-fit rounded-xl bg-white/5 flex items-center justify-center text-white/40 text-sm animate-pulse">
+            生成中…
+          </div>
+        )}
       </div>
     </div>,
     document.body,
