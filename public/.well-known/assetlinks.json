@@ -6,5 +6,13 @@
       "package_name": "site.blackstream.klg",
       "sha256_cert_fingerprints": ["34:46:43:4E:0E:03:24:D7:E9:C7:87:71:78:BE:4A:3C:2A:E9:B3:14:E7:8B:DC:1B:F2:24:44:CA:56:8F:4E:D0"]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "site.blackstream.share.twa",
+      "sha256_cert_fingerprints": ["34:46:43:4E:0E:03:24:D7:E9:C7:87:71:78:BE:4A:3C:2A:E9:B3:14:E7:8B:DC:1B:F2:24:44:CA:56:8F:4E:D0"]
+    }
   }
 ]
