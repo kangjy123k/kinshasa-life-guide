@@ -22,6 +22,18 @@ export const metadata: Metadata = {
     title: "刚果金华人生活服务指南",
     description: "商家免费入驻中 · 随便逛逛有惊喜",
   },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "华人指南",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport = {
