@@ -18,6 +18,14 @@ export const usefulItems: UsefulItem[] = [
     keywords: ["法语", "français", "每日", "单词", "学习", "发音"],
   },
   {
+    key: "french-sentence",
+    title: "每日法语一句",
+    desc: "整句 + 谐音 + 关键词变位",
+    emoji: "💬",
+    href: "/guides/french-sentence",
+    keywords: ["法语", "français", "每日", "句子", "一句", "学习", "发音", "变位", "语法"],
+  },
+  {
     key: "weather",
     title: "天气预报·金沙萨",
     desc: "极端天气早知道",
