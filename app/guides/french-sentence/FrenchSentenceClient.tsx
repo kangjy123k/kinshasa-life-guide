@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  CheckCircle2,
   Flame,
   Repeat2,
   Share2,
@@ -14,6 +15,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { SpeakButton } from "@/components/BusinessCardUI";
+import { playLearnedChime, playMilestoneChime } from "@/lib/chime";
 import {
   BANK,
   todayIndex,
@@ -101,6 +103,12 @@ export default function FrenchSentenceClient() {
   const [milestone, setMilestone] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showList, setShowList] = useState(false);
+  const [listMode, setListMode] = useState<"all" | "learned">("all");
+
+  const openList = useCallback((mode: "all" | "learned") => {
+    setListMode(mode);
+    setShowList(true);
+  }, []);
 
   useEffect(() => {
     setProgress(readProgress());
@@ -117,51 +125,46 @@ export default function FrenchSentenceClient() {
   const learnedCount = Object.keys(progress.learned).length;
   const alreadyLearned = !!progress.learned[entry.date];
 
-  const markLearned = useCallback(
-    (e: FrenchSentenceEntry, tapToday: boolean) => {
-      setProgress((prev) => {
-        const already = !!prev.learned[e.date];
-        const today = localDateString();
-        let { streak, longestStreak: longest, lastStudy } = prev;
+  // 用户主动点「已学」才算学过 —— 带多邻国式音效反馈
+  const handleMarkLearned = useCallback(() => {
+    playLearnedChime();
+    if (alreadyLearned) return; // 已学过：只补一声「叮」，不重复计数
 
-        if (tapToday) {
-          if (lastStudy === today) {
-            /* 今天已打卡 */
-          } else if (lastStudy && daysBetween(lastStudy, today) === 1) {
-            streak += 1;
-          } else {
-            streak = 1;
-          }
-          lastStudy = today;
-          if (streak > longest) longest = streak;
+    const today = localDateString();
+    setProgress((prev) => {
+      if (prev.learned[entry.date]) return prev;
+      let { streak, longestStreak: longest, lastStudy } = prev;
+      if (isToday) {
+        if (lastStudy === today) {
+          /* 今天已打过卡 */
+        } else if (lastStudy && daysBetween(lastStudy, today) === 1) {
+          streak += 1;
+        } else {
+          streak = 1;
         }
+        lastStudy = today;
+        if (streak > longest) longest = streak;
+      }
+      const next: Progress = {
+        learned: { ...prev.learned, [entry.date]: today },
+        streak,
+        longestStreak: longest,
+        lastStudy,
+      };
+      writeProgress(next);
+      return next;
+    });
 
-        const next: Progress = {
-          learned: already ? prev.learned : { ...prev.learned, [e.date]: today },
-          streak,
-          longestStreak: longest,
-          lastStudy,
-        };
-        writeProgress(next);
+    setJustLearned(true);
+    window.setTimeout(() => setJustLearned(false), 1400);
 
-        if (!already) {
-          setJustLearned(true);
-          window.setTimeout(() => setJustLearned(false), 1400);
-          const ms = milestoneFor(Object.keys(next.learned).length, totalEntries);
-          if (ms) {
-            setMilestone(ms);
-            window.setTimeout(() => setMilestone(null), 2600);
-          }
-        }
-        return next;
-      });
-    },
-    [totalEntries],
-  );
-
-  useEffect(() => {
-    markLearned(entry, isToday);
-  }, [entry, isToday, markLearned]);
+    const ms = milestoneFor(learnedCount + 1, totalEntries);
+    if (ms) {
+      window.setTimeout(() => playMilestoneChime(), 260); // 让「叮叮」先响完
+      setMilestone(ms);
+      window.setTimeout(() => setMilestone(null), 2600);
+    }
+  }, [alreadyLearned, entry.date, isToday, learnedCount, totalEntries]);
 
   // 触摸滑动：右滑看更早，左滑往今天走
   const touchStartX = useRef<number | null>(null);
@@ -227,7 +230,7 @@ export default function FrenchSentenceClient() {
           </div>
           <button
             type="button"
-            onClick={() => setShowList(true)}
+            onClick={() => openList("all")}
             className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 active:scale-95 transition px-2 py-1 rounded-lg"
           >
             句库
@@ -236,10 +239,15 @@ export default function FrenchSentenceClient() {
 
         <div className="max-w-2xl mx-auto px-4 pb-2">
           <div className="flex items-center gap-2">
-            <div className="flex-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[12px] font-semibold">
+            <button
+              type="button"
+              onClick={() => openList("learned")}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[12px] font-semibold active:scale-95 transition"
+            >
               <Sparkles size={13} />
               已学 {learnedCount} / {totalEntries} 句
-            </div>
+              <ChevronRight size={13} className="opacity-60" />
+            </button>
             {progress.streak > 0 && (
               <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 text-[11px] font-semibold">
                 <Flame size={11} fill="currentColor" />
@@ -298,7 +306,12 @@ export default function FrenchSentenceClient() {
           </button>
         </div>
 
-        <SentenceCard key={entry.date} entry={entry} />
+        <SentenceCard
+          key={entry.date}
+          entry={entry}
+          learned={alreadyLearned}
+          onMarkLearned={handleMarkLearned}
+        />
 
         {/* 分享 */}
         <div className="mt-4">
@@ -342,6 +355,7 @@ export default function FrenchSentenceClient() {
           currentIndex={index}
           learned={progress.learned}
           todayIdx={todayIdx}
+          initialFilter={listMode}
           onClose={() => setShowList(false)}
           onPick={(i) => {
             userMovedRef.current = true;
@@ -355,9 +369,9 @@ export default function FrenchSentenceClient() {
 }
 
 function milestoneFor(learned: number, total: number): string | null {
-  if (learned === 3) return "学满 3 句，开口不慌了！";
-  if (learned === 7) return "已学 7 句，日常应对没问题！";
-  if (learned === total) return `${total} 句全部拿下，恭喜出师！`;
+  if (learned === total && total > 0) return `${total} 句全部拿下，恭喜出师！`;
+  if (learned > 0 && learned % 10 === 0) return `已经学了 ${learned} 句，太猛了！`;
+  if (learned > 0 && learned % 5 === 0) return `已经学了 ${learned} 句，继续加油！`;
   return null;
 }
 
@@ -377,7 +391,15 @@ const TENSES: Array<{ key: keyof FrenchSentenceEntry["conj"]; label: string }> =
   { key: "futur", label: "简单将来时" },
 ];
 
-function SentenceCard({ entry }: { entry: FrenchSentenceEntry }) {
+function SentenceCard({
+  entry,
+  learned,
+  onMarkLearned,
+}: {
+  entry: FrenchSentenceEntry;
+  learned: boolean;
+  onMarkLearned: () => void;
+}) {
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const id = requestAnimationFrame(() => setShown(true));
@@ -429,6 +451,21 @@ function SentenceCard({ entry }: { entry: FrenchSentenceEntry }) {
             <p className="mt-2 text-sm text-gray-700 leading-relaxed">{entry.keywordUsage}</p>
           </div>
         </section>
+
+        {/* 已学打卡按钮 —— 点一下有音效反馈（多邻国式） */}
+        <button
+          type="button"
+          onClick={onMarkLearned}
+          aria-pressed={learned}
+          className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold shadow-sm active:scale-[0.97] transition ${
+            learned
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
+          }`}
+        >
+          <CheckCircle2 size={18} strokeWidth={2.5} />
+          {learned ? "已学会 · 再听一次 🔔" : "我学会了这句 ✓"}
+        </button>
 
         {/* 四时态变位 */}
         <section>
@@ -532,6 +569,7 @@ function SentenceListSheet({
   currentIndex,
   learned,
   todayIdx,
+  initialFilter,
   onClose,
   onPick,
 }: {
@@ -539,14 +577,26 @@ function SentenceListSheet({
   currentIndex: number;
   learned: Record<string, string>;
   todayIdx: number;
+  initialFilter: "all" | "learned";
   onClose: () => void;
   onPick: (i: number) => void;
 }) {
   const [shown, setShown] = useState(false);
+  const [filter, setFilter] = useState<"all" | "learned">(initialFilter);
   useEffect(() => {
     const id = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  const learnedCount = entries.filter((e) => learned[e.date]).length;
+  const rows = entries
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => (filter === "learned" ? !!learned[e.date] : true));
+
+  const tabCls = (active: boolean) =>
+    `flex-1 text-center text-xs font-bold py-1.5 rounded-full transition ${
+      active ? "bg-indigo-600 text-white shadow-sm" : "text-indigo-600"
+    }`;
 
   return (
     <div
@@ -559,60 +609,86 @@ function SentenceListSheet({
         className="w-full max-w-2xl bg-white rounded-t-3xl max-h-[80vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-indigo-100 px-5 py-3 flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-800">句库总览</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm text-indigo-600 font-semibold px-2 py-1 rounded-lg hover:bg-indigo-50"
-          >
-            关闭
-          </button>
+        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-indigo-100 px-5 py-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-gray-800">
+              {filter === "learned" ? "我已学会的" : "句库总览"}
+            </h3>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-indigo-600 font-semibold px-2 py-1 rounded-lg hover:bg-indigo-50"
+            >
+              关闭
+            </button>
+          </div>
+          <div className="flex items-center gap-1 p-1 rounded-full bg-indigo-50">
+            <button type="button" onClick={() => setFilter("all")} className={tabCls(filter === "all")}>
+              全部 {entries.length}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("learned")}
+              className={tabCls(filter === "learned")}
+            >
+              已学 {learnedCount}
+            </button>
+          </div>
         </div>
-        <ul className="divide-y divide-indigo-50">
-          {entries.map((e, i) => {
-            const isLearned = !!learned[e.date];
-            const isLocked = i > todayIdx;
-            const isCurrent = i === currentIndex;
-            return (
-              <li key={e.date}>
-                <button
-                  type="button"
-                  disabled={isLocked}
-                  onClick={() => onPick(i)}
-                  className={`w-full flex items-center gap-3 px-5 py-3 text-left active:bg-indigo-50 transition disabled:opacity-40 disabled:cursor-not-allowed ${
-                    isCurrent ? "bg-indigo-50/70" : ""
-                  }`}
-                >
-                  <div className="w-8 text-xs font-bold text-gray-400 tabular-nums">
-                    {(i + 1).toString().padStart(2, "0")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-gray-900 truncate">
-                      {e.sentence}
+
+        {rows.length === 0 ? (
+          <div className="px-5 py-12 text-center text-sm text-gray-400">
+            还没有学会的句子，点每张卡片上的「我学会了这句」开始打卡吧。
+          </div>
+        ) : (
+          <ul className="divide-y divide-indigo-50">
+            {rows.map(({ e, i }) => {
+              const isLearned = !!learned[e.date];
+              const isLocked = i > todayIdx;
+              const isCurrent = i === currentIndex;
+              return (
+                <li key={e.date}>
+                  <button
+                    type="button"
+                    disabled={isLocked}
+                    onClick={() => onPick(i)}
+                    className={`w-full flex items-center gap-3 px-5 py-3 text-left active:bg-indigo-50 transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                      isCurrent ? "bg-indigo-50/70" : ""
+                    }`}
+                  >
+                    <div className="w-8 text-xs font-bold text-gray-400 tabular-nums">
+                      {(i + 1).toString().padStart(2, "0")}
                     </div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">
-                      {formatDateHuman(e.date)} · 关键词 {e.keyword}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-black text-indigo-700 shrink-0">
+                          {e.keyword}
+                        </span>
+                        <span className="text-[11px] text-gray-500 truncate">{e.keywordZh}</span>
+                      </div>
+                      <div className="text-[11px] text-gray-400 mt-0.5 truncate">
+                        {formatDateHuman(e.date)} · {e.sentence}
+                      </div>
                     </div>
-                  </div>
-                  {isLocked ? (
-                    <span className="text-[10px] text-gray-400 px-1.5 py-0.5 rounded-full bg-gray-100 shrink-0">
-                      未解锁
-                    </span>
-                  ) : isLearned ? (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 px-1.5 py-0.5 rounded-full bg-emerald-100 shrink-0">
-                      <Check size={10} strokeWidth={3} /> 已学
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-indigo-500 px-1.5 py-0.5 rounded-full bg-indigo-50 shrink-0">
-                      未学
-                    </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    {isLocked ? (
+                      <span className="text-[10px] text-gray-400 px-1.5 py-0.5 rounded-full bg-gray-100 shrink-0">
+                        未解锁
+                      </span>
+                    ) : isLearned ? (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 px-1.5 py-0.5 rounded-full bg-emerald-100 shrink-0">
+                        <Check size={10} strokeWidth={3} /> 已学
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-indigo-500 px-1.5 py-0.5 rounded-full bg-indigo-50 shrink-0">
+                        未学
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );
